@@ -195,12 +195,15 @@ export default function MovearenaPDV() {
   // -- LOCAL STATES (Configurações locais) --
   const [customExpenseCategories, setCustomExpenseCategories] = usePersistedState<string[]>("mv_expense_categories", [])
   const [productCategories, setProductCategories] = usePersistedState<string[]>("mv_product_categories", DEFAULT_CATEGORIES)
-  const [cashierOpen, setCashierOpen] = usePersistedState<boolean>("mv_cashier_open", false)
-  const [cashierData, setCashierData] = usePersistedState<{
+  
+  // -- CASHIER STATE (Now synced with DB) --
+  const [cashierSessionId, setCashierSessionId] = useState<number | null>(null)
+  const [cashierOpen, setCashierOpen] = useState(false)
+  const [cashierData, setCashierData] = useState<{
     opening: number
     sales: Record<string, number>
     openedAt?: string
-  }>("mv_cashier_data", {
+  }>({
     opening: 0,
     sales: { money: 0, pix: 0, debit: 0, credit: 0 },
   })
@@ -270,6 +273,34 @@ export default function MovearenaPDV() {
       const { data: sh, error: shError } = await supabase.from('stock_history').select('*').order('date', { ascending: false })
       if (shError) throw shError
       if (sh) setStockHistory(sh)
+
+      // -- FETCH CASHIER STATUS --
+      const { data: session, error: sessionError } = await supabase
+        .from('cashier_sessions')
+        .select('*')
+        .is('closed_at', null)
+        .maybeSingle()
+
+      if (session) {
+        setCashierOpen(true)
+        setCashierSessionId(session.id)
+        
+        // Calculate sales since opening
+        const sessionSales = s ? s.filter((sale: any) => new Date(sale.date) >= new Date(session.opened_at)) : []
+        const salesSummary: Record<string, number> = { money: 0, pix: 0, debit: 0, credit: 0 }
+        
+        sessionSales.forEach((sale: any) => {
+          const method = sale.paymentMethod || "money"
+          if (salesSummary[method] !== undefined) salesSummary[method] += sale.total
+          else salesSummary[method] = sale.total
+        })
+
+        setCashierData({ opening: session.opening_balance, sales: salesSummary, openedAt: session.opened_at })
+      } else {
+        setCashierOpen(false)
+        setCashierSessionId(null)
+        setCashierData({ opening: 0, sales: { money: 0, pix: 0, debit: 0, credit: 0 } })
+      }
 
       setIsOnline(true)
     } catch (error: any) {
@@ -495,11 +526,6 @@ export default function MovearenaPDV() {
           user: sale.user
         })
         if (insertError) throw insertError
-
-        setCashierData((prev) => ({
-          ...prev,
-          sales: { ...prev.sales, [method]: (prev.sales[method] || 0) + total },
-        }))
 
         // Deduct stock
         for (const item of cart) {
@@ -778,10 +804,17 @@ export default function MovearenaPDV() {
   )
 
   // Cashier
-  const openCashier = useCallback((amount: number) => {
-    setCashierOpen(true)
-    setCashierData((prev: { opening: number; sales: Record<string, number>; openedAt?: string }) => ({ ...prev, opening: amount, sales: { money: 0, pix: 0, debit: 0, credit: 0 }, openedAt: new Date().toISOString() }))
-    toast.success("Caixa aberto!")
+  const openCashier = useCallback(async (amount: number) => {
+    const { error } = await supabase.from('cashier_sessions').insert({
+      opening_balance: amount,
+      opened_at: new Date().toISOString()
+    })
+    
+    if (error) toast.error("Erro ao abrir caixa")
+    else {
+      toast.success("Caixa aberto!")
+      fetchData()
+    }
   }, [])
 
   // Expenses
@@ -847,18 +880,26 @@ export default function MovearenaPDV() {
     toast.success("Cliente excluido!")
   }, [])
 
-  const closeCashier = useCallback(() => {
+  const closeCashier = useCallback(async () => {
     const totalSales = Object.values(cashierData.sales).reduce((a: number, b: number) => a + b, 0)
     const todayExpenses = expenses
       .filter((e: Expense) => new Date(e.date).toDateString() === new Date().toDateString())
       .reduce((sum: number, e: Expense) => sum + e.amount, 0)
-    alert(
-      `Fechamento do Caixa:\n\nAbertura: ${formatCurrency(cashierData.opening)}\nVendas: ${formatCurrency(totalSales)}\nDespesas do dia: -${formatCurrency(todayExpenses)}\nSaldo final: ${formatCurrency(cashierData.opening + totalSales - todayExpenses)}\n\nAberto em: ${cashierData.openedAt ? new Date(cashierData.openedAt).toLocaleString("pt-BR") : "N/A"}\nFechado em: ${new Date().toLocaleString("pt-BR")}`
-    )
-    setCashierOpen(false)
-    setCashierData({ opening: 0, sales: { money: 0, pix: 0, debit: 0, credit: 0 } })
-    toast.success("Caixa fechado!")
-  }, [cashierData, expenses, setCashierOpen, setCashierData])
+    
+    const finalBalance = cashierData.opening + totalSales - todayExpenses
+
+    if (confirm(`Confirmar fechamento?\nSaldo Final: ${formatCurrency(finalBalance)}`)) {
+      const { error } = await supabase.from('cashier_sessions')
+        .update({ closed_at: new Date().toISOString(), final_balance: finalBalance })
+        .eq('id', cashierSessionId)
+
+      if (error) toast.error("Erro ao fechar caixa")
+      else {
+        toast.success("Caixa fechado!")
+        fetchData()
+      }
+    }
+  }, [cashierData, expenses, cashierSessionId, fetchData])
 
   // ==================== RENDER ====================
   if (!loggedIn) return <LoginScreen onLogin={handleLogin} />
