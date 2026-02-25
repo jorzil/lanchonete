@@ -230,13 +230,21 @@ export default function MovearenaPDV() {
   // ++ DATA FETCHING ++
   const fetchData = useCallback(async () => {
     try {
-      const { data: p } = await supabase.from('products').select('*').order('name')
+      // Verificação explícita das variáveis de ambiente
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error("Configuração ausente: Verifique se NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão no arquivo .env.local")
+      }
+
+      const { data: p, error: pError } = await supabase.from('products').select('*').order('name')
+      if (pError) throw pError
       if (p) setProducts(p)
 
-      const { data: s } = await supabase.from('sales').select('*').order('date', { ascending: false })
+      const { data: s, error: sError } = await supabase.from('sales').select('*').order('date', { ascending: false })
+      if (sError) throw sError
       if (s) setSales(s)
 
-      const { data: t } = await supabase.from('table_orders').select('*')
+      const { data: t, error: tError } = await supabase.from('table_orders').select('*')
+      if (tError) throw tError
       if (t) setTableOrders(t.map((row: any) => ({
         tableNumber: row.table_number,
         cart: row.cart,
@@ -244,18 +252,32 @@ export default function MovearenaPDV() {
         customerPhone: row.customer_phone
       })))
 
-      const { data: c } = await supabase.from('customers').select('*')
+      const { data: c, error: cError } = await supabase.from('customers').select('*')
+      if (cError) throw cError
       if (c) setCustomers(c)
 
-      const { data: e } = await supabase.from('expenses').select('*').order('date', { ascending: false })
+      const { data: e, error: eError } = await supabase.from('expenses').select('*').order('date', { ascending: false })
+      if (eError) throw eError
       if (e) setExpenses(e)
 
-      const { data: sh } = await supabase.from('stock_history').select('*').order('date', { ascending: false })
+      const { data: sh, error: shError } = await supabase.from('stock_history').select('*').order('date', { ascending: false })
+      if (shError) throw shError
       if (sh) setStockHistory(sh)
 
       setIsOnline(true)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao buscar dados:", error)
+      
+      const errorMessage = error.message || ""
+      if (errorMessage.includes("Invalid API key") || error.code === "401" || errorMessage.includes("JWT")) {
+        toast.error("Erro de Autenticação: Verifique as chaves no arquivo .env.local")
+      } else if (error.code === "42P01") {
+        toast.error("Erro: Tabelas não encontradas. Crie as tabelas no Supabase.")
+      } else if (errorMessage.toLowerCase().includes("failed to fetch")) {
+        toast.error("Erro de Conexão: Verifique a URL do Supabase no .env.local")
+      } else {
+        toast.error(`Erro ao carregar dados: ${errorMessage || "Verifique o console"}`)
+      }
       setIsOnline(false)
     }
   }, [])
@@ -310,26 +332,16 @@ export default function MovearenaPDV() {
     if (!editingTable) return
 
     try {
-      const response = await fetch(`/api/tables/${editingTable}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('table_orders')
+        .update({
           cart: cart,
           customer_name: customerName,
           customer_phone: customerPhone,
-        }),
-      })
+        })
+        .eq('table_number', editingTable)
 
-      if (!response.ok) {
-        let errorMessage = "Erro ao salvar a mesa."
-        try {
-          const result = await response.json()
-          if (result.error) errorMessage = result.error
-        } catch {
-          errorMessage = `Erro do servidor (${response.status})`
-        }
-        throw new Error(errorMessage)
-      }
+      if (error) throw new Error(error.message)
 
       toast.success(`Mesa ${editingTable} salva!`)
       // O Supabase Realtime vai cuidar de atualizar os dados,
@@ -353,22 +365,14 @@ export default function MovearenaPDV() {
       }
 
       try {
-        const response = await fetch('/api/tables', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_number: tableNumber }),
+        const { error } = await supabase.from('table_orders').insert({
+          table_number: tableNumber,
+          cart: [],
+          customer_name: '',
+          customer_phone: '',
         })
 
-        let result
-        try {
-          result = await response.json()
-        } catch {
-          throw new Error(`Erro de comunicação (${response.status}). Verifique a API.`)
-        }
-
-        if (!response.ok) {
-          throw new Error(result.error || "Erro ao abrir mesa.")
-        }
+        if (error) throw new Error(error.message)
         
         // A subscrição do Supabase Realtime vai atualizar a lista de mesas.
         // Apenas entramos no modo de edição.
@@ -454,7 +458,7 @@ export default function MovearenaPDV() {
 
       // If it was a table order, remove it from the open tables list via API
       if (editingTable) {
-        await fetch(`/api/tables/${editingTable}`, { method: 'DELETE' })
+        await supabase.from('table_orders').delete().eq('table_number', editingTable)
         setEditingTable(null)
       }
 
