@@ -179,9 +179,9 @@ const NAV_ITEMS: { key: AppView; label: string; icon: any }[] = [
 
 // ==================== MAIN APP ====================
 export default function MovearenaPDV() {
-  const [loggedIn, setLoggedIn] = useState(false)
-  const [role, setRole] = useState<UserRole>("attendant")
-  const [view, setView] = useState<AppView>("pos")
+  const [loggedIn, setLoggedIn] = usePersistedState<boolean>("mv_logged_in", false)
+  const [role, setRole] = usePersistedState<UserRole>("mv_user_role", "attendant")
+  const [view, setView] = usePersistedState<AppView>("mv_current_view", "pos")
   const [isOnline, setIsOnline] = useState(true) // Simulação de status de conexão
   
   // -- SUPABASE STATES --
@@ -205,17 +205,17 @@ export default function MovearenaPDV() {
     sales: { money: 0, pix: 0, debit: 0, credit: 0 },
   })
 
-  const [editingTable, setEditingTable] = useState<string | null>(null)
+  const [editingTable, setEditingTable] = usePersistedState<string | null>("mv_editing_table", null)
 
-  // -- Session-only states (reset on reload) --
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [orderType, setOrderType] = useState<OrderType>("pickup")
+  // -- Persisted states (saved in localStorage) --
+  const [cart, setCart] = usePersistedState<CartItem[]>("mv_cart", [])
+  const [orderType, setOrderType] = usePersistedState<OrderType>("mv_order_type", "pickup")
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
-  const [customerName, setCustomerName] = useState("")
-  const [customerPhone, setCustomerPhone] = useState("")
-  const [deliveryAddress, setDeliveryAddress] = useState("")
-  const [orderObservation, setOrderObservation] = useState("")
-  const [deliveryFee, setDeliveryFee] = useState(5.0)
+  const [customerName, setCustomerName] = usePersistedState<string>("mv_customer_name", "")
+  const [customerPhone, setCustomerPhone] = usePersistedState<string>("mv_customer_phone", "")
+  const [deliveryAddress, setDeliveryAddress] = usePersistedState<string>("mv_delivery_address", "")
+  const [orderObservation, setOrderObservation] = usePersistedState<string>("mv_order_observation", "")
+  const [deliveryFee, setDeliveryFee] = usePersistedState<number>("mv_delivery_fee", 5.0)
   const [showBuilder, setShowBuilder] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
 
@@ -315,6 +315,12 @@ export default function MovearenaPDV() {
     setLoggedIn(false)
     setView("pos")
     setCart([])
+    setCustomerName("")
+    setCustomerPhone("")
+    setDeliveryAddress("")
+    setOrderObservation("")
+    setEditingTable(null)
+    setDeliveryFee(5.0)
     toast.info("Ate logo!")
   }, [])
 
