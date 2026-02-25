@@ -241,7 +241,14 @@ export default function MovearenaPDV() {
 
       const { data: s, error: sError } = await supabase.from('sales').select('*').order('date', { ascending: false })
       if (sError) throw sError
-      if (s) setSales(s)
+      if (s) {
+        setSales(s.map((item: any) => ({
+          ...item,
+          deliveryFee: item.delivery_fee ?? item.deliveryFee ?? 0,
+          orderType: item.order_type ?? item.orderType ?? "pickup",
+          paymentMethod: item.payment_method ?? item.paymentMethod ?? "money",
+        })))
+      }
 
       const { data: t, error: tError } = await supabase.from('table_orders').select('*')
       if (tError) throw tError
@@ -439,74 +446,96 @@ export default function MovearenaPDV() {
   // Checkout
   const handleFinalize = useCallback(
     async (method: PaymentMethod) => {
-      const sale: Sale = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        customer: customerName || "Cliente",
-        phone: customerPhone,
-        address: orderType === "delivery" ? deliveryAddress : "",
-        orderType,
-        deliveryFee: totalDeliveryFee,
-        items: [...cart],
-        subtotal,
-        discount: { type: null, value: 0 },
-        total,
-        paymentMethod: method,
-        observation: orderObservation,
-        user: role === "admin" ? "Admin" : "Atendente",
-      }
+      try {
+        const sale: Sale = {
+          id: Date.now(),
+          date: new Date().toISOString(),
+          customer: customerName || "Cliente",
+          phone: customerPhone,
+          address: orderType === "delivery" ? deliveryAddress : "",
+          orderType,
+          deliveryFee: totalDeliveryFee,
+          items: [...cart],
+          subtotal,
+          discount: { type: null, value: 0 },
+          total,
+          paymentMethod: method,
+          observation: orderObservation,
+          user: role === "admin" ? "Admin" : "Atendente",
+        }
 
-      // If it was a table order, remove it from the open tables list via API
-      if (editingTable) {
-        await supabase.from('table_orders').delete().eq('table_number', editingTable)
-        setEditingTable(null)
-      }
+        // If it was a table order, remove it from the open tables list via API
+        if (editingTable) {
+          const { error: deleteError } = await supabase.from('table_orders').delete().eq('table_number', editingTable)
+          if (deleteError) throw deleteError
+          setEditingTable(null)
+        }
 
-      // Save Sale
-      await supabase.from('sales').insert(sale)
+        // Save Sale
+        const { error: insertError } = await supabase.from('sales').insert({
+          id: sale.id,
+          date: sale.date,
+          customer: sale.customer,
+          phone: sale.phone,
+          address: sale.address,
+          order_type: sale.orderType,
+          delivery_fee: sale.deliveryFee,
+          items: sale.items,
+          subtotal: sale.subtotal,
+          discount: sale.discount,
+          total: sale.total,
+          payment_method: sale.paymentMethod,
+          observation: sale.observation,
+          user: sale.user
+        })
+        if (insertError) throw insertError
 
-      setCashierData((prev: { opening: number; sales: Record<string, number>; openedAt?: string }) => ({
-        ...prev,
-        sales: { ...prev.sales, [method]: (prev.sales[method] || 0) + total },
-      }))
+        setCashierData((prev) => ({
+          ...prev,
+          sales: { ...prev.sales, [method]: (prev.sales[method] || 0) + total },
+        }))
 
-      // Deduct stock
-      for (const item of cart) {
-        if (!item.isCustom) {
-          const product = products.find(p => p.id === item.id)
-          if (product) {
-            await supabase.from('products').update({ stock: Math.max(0, product.stock - item.quantity) }).eq('id', product.id)
+        // Deduct stock
+        for (const item of cart) {
+          if (!item.isCustom) {
+            const product = products.find(p => p.id === item.id)
+            if (product) {
+              await supabase.from('products').update({ stock: Math.max(0, product.stock - item.quantity) }).eq('id', product.id)
+            }
           }
         }
-      }
 
-      // Auto-save customer if name is provided
-      if (customerName.trim()) {
-        const existing = customers.find(c => c.name.toLowerCase() === customerName.trim().toLowerCase())
-        if (!existing) {
-          await supabase.from('customers').insert({
-            id: Date.now(),
-            name: customerName.trim(),
-            phone: customerPhone.trim(),
-            address: orderType === "delivery" ? deliveryAddress.trim() : "",
-          })
-        } else if (orderType === "delivery" && deliveryAddress.trim()) {
-           await supabase.from('customers').update({ address: deliveryAddress.trim() }).eq('id', existing.id)
+        // Auto-save customer if name is provided
+        if (customerName.trim()) {
+          const existing = customers.find(c => c.name.toLowerCase() === customerName.trim().toLowerCase())
+          if (!existing) {
+            await supabase.from('customers').insert({
+              id: Date.now(),
+              name: customerName.trim(),
+              phone: customerPhone.trim(),
+              address: orderType === "delivery" ? deliveryAddress.trim() : "",
+            })
+          } else if (orderType === "delivery" && deliveryAddress.trim() && existing.address !== deliveryAddress.trim()) {
+             await supabase.from('customers').update({ address: deliveryAddress.trim() }).eq('id', existing.id)
+          }
         }
+
+        // Refresh data
+        await fetchData()
+
+        setCart([])
+        setCustomerName("")
+        setCustomerPhone("")
+        setDeliveryAddress("")
+        setOrderObservation("")
+        setShowCheckout(false)
+        toast.success("Venda finalizada!")
+      } catch (error: any) {
+        console.error("Erro ao finalizar venda:", error)
+        toast.error(`Falha ao salvar a venda: ${error.message}`)
       }
-
-      // Refresh data
-      fetchData()
-
-      setCart([])
-      setCustomerName("")
-      setCustomerPhone("")
-      setDeliveryAddress("")
-      setOrderObservation("")
-      setShowCheckout(false)
-      toast.success("Venda finalizada!")
     },
-    [cart, customerName, customerPhone, orderType, deliveryAddress, totalDeliveryFee, subtotal, total, role, editingTable, orderObservation, setSales, setCashierData, setProducts, setCustomers, fetchData]
+    [cart, customerName, customerPhone, orderType, deliveryAddress, totalDeliveryFee, subtotal, total, role, editingTable, orderObservation, products, customers, setCashierData, fetchData]
   )
 
   // Print
