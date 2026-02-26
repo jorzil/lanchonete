@@ -570,6 +570,119 @@ export default function MovearenaPDV() {
     [cart, customerName, customerPhone, orderType, deliveryAddress, totalDeliveryFee, subtotal, total, role, editingTable, orderObservation, products, customers, setCashierData, fetchData]
   )
 
+  const handleReprint = useCallback((sale: Sale) => {
+    if (!sale || !sale.items || sale.items.length === 0) {
+      toast.error("Venda inválida para reimpressão!");
+      return;
+    }
+
+    const orderNum = sale.id.toString().slice(-5);
+    const date = new Date(sale.date).toLocaleString("pt-BR");
+    const orderTypeLabel =
+      sale.orderType === "delivery" ? "ENTREGA"
+      : sale.orderType === "table" ? `MESA (Fechada)`
+      : "RETIRADA";
+
+    let itemsHtml = "";
+    sale.items.forEach((item: CartItem) => {
+      const itemTotal = (item.price * item.quantity).toFixed(2);
+      itemsHtml += `<tr><td style="font-weight:900;font-size:14px;padding-top:5px;">${item.quantity}x ${item.name}</td></tr>\n`;
+      if (item.observation) {
+        const obsLines = item.observation.split("\n");
+        obsLines.forEach((line: string) => {
+          if (line.trim()) {
+            itemsHtml += `<tr><td style="font-size:13px;padding-left:6px;font-weight:700;">${line.trim()}</td></tr>\n`;
+          }
+        });
+      }
+      itemsHtml += `<tr><td style="text-align:right;font-size:13px;font-weight:800;padding-bottom:3px;">R$ ${itemTotal}</td></tr>\n`;
+    });
+
+    const printWindow = window.open("", "_blank", "width=380,height=700");
+    if (printWindow) {
+      printWindow.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Reimpressão Pedido #${orderNum}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: 58mm auto; margin: 0; }
+  @media print { html, body { width: 58mm; } }
+  body {
+    width: 54mm;
+    max-width: 54mm;
+    margin: 0 auto;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1mm;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  td { vertical-align: top; padding: 0; word-wrap: break-word; overflow-wrap: break-word; }
+  .sep { border-top: 1px dashed #000; margin: 3px 0; }
+  .sep-bold { border-top: 2px solid #000; margin: 4px 0; }
+</style>
+</head><body>
+
+<table>
+  <tr><td style="text-align:center;font-size:16px;font-weight:900;letter-spacing:1px;padding-bottom:1px;">MOVEARENA</td></tr>
+  <tr><td style="text-align:center;font-size:13px;font-weight:900;">** REIMPRESSÃO **</td></tr>
+  <tr><td style="text-align:center;font-size:13px;font-weight:900;">PEDIDO #${orderNum}</td></tr>
+  <tr><td style="text-align:center;font-size:10px;font-weight:600;padding-bottom:2px;">${date}</td></tr>
+</table>
+
+<div class="sep"></div>
+
+<table>
+  <tr><td style="font-size:11px;font-weight:900;">Cliente: ${sale.customer || "Cliente"}</td></tr>
+  ${sale.phone ? `<tr><td style="font-size:10px;font-weight:700;">Tel: ${sale.phone}</td></tr>` : ""}
+  ${sale.orderType === "delivery" ? `<tr><td style="font-size:10px;font-weight:700;">End: ${sale.address}</td></tr>` : ""}
+  <tr><td style="font-size:11px;font-weight:900;">Tipo: ${orderTypeLabel}</td></tr>
+  ${sale.observation ? `<tr><td style="font-size:11px;font-weight:900;padding-top:2px;">Obs: ${sale.observation}</td></tr>` : ""}
+</table>
+
+<div class="sep"></div>
+
+<table>
+  ${itemsHtml}
+</table>
+
+<div class="sep"></div>
+
+<table>
+  <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
+  <tr>
+    <td style="font-size:11px;font-weight:700;">Subtotal:</td>
+    <td style="font-size:11px;font-weight:700;text-align:right;">R$ ${sale.subtotal.toFixed(2)}</td>
+  </tr>
+  ${sale.deliveryFee > 0 ? `<tr><td style="font-size:11px;font-weight:700;">Taxa entrega:</td><td style="font-size:11px;font-weight:700;text-align:right;">R$ ${sale.deliveryFee.toFixed(2)}</td></tr>` : ""}
+</table>
+
+<div class="sep-bold"></div>
+
+<table>
+  <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
+  <tr>
+    <td style="font-size:14px;font-weight:900;">TOTAL:</td>
+    <td style="font-size:14px;font-weight:900;text-align:right;">R$ ${sale.total.toFixed(2)}</td>
+  </tr>
+</table>
+
+<div class="sep"></div>
+
+<table>
+  <tr><td style="text-align:center;font-size:10px;font-weight:700;padding-top:3px;">Obrigado pela preferencia!</td></tr>
+  <tr><td style="text-align:center;font-size:10px;font-weight:700;">Volte sempre!</td></tr>
+</table>
+
+<script>window.onload=function(){setTimeout(function(){window.print();window.close();},400)};<\/script>
+</body></html>`);
+      printWindow.document.close();
+    }
+    toast.success("Reimpressão enviada!");
+  }, []);
+
   // Print
   const handlePrint = useCallback(() => {
     if (cart.length === 0) {
@@ -1163,6 +1276,7 @@ export default function MovearenaPDV() {
             expenses={expenses}
             onDeleteSale={deleteSale}
             onUpdateSale={updateSale}
+            onReprint={handleReprint}
           />
         )}
 

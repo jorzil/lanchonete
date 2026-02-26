@@ -31,6 +31,7 @@ import {
   Award,
   Flame,
   RefreshCw,
+  Printer,
 } from "lucide-react"
 import { formatCurrency, type Product, type Sale, type StockEntry, type Expense, type Customer } from "@/lib/store"
 
@@ -1028,9 +1029,10 @@ interface ReportsViewProps {
   expenses?: Expense[]
   onDeleteSale: (id: number) => void
   onUpdateSale: (id: number, updatedData: Partial<Sale>) => void
+  onReprint?: (sale: Sale) => void
 }
 
-export function ReportsView({ sales, expenses = [], onDeleteSale, onUpdateSale }: ReportsViewProps) {
+export function ReportsView({ sales, expenses = [], onDeleteSale, onUpdateSale, onReprint }: ReportsViewProps) {
   const [editingSale, setEditingSale] = useState<Sale | null>(null)
   const [editForm, setEditForm] = useState({
     date: "",
@@ -1370,6 +1372,11 @@ export function ReportsView({ sales, expenses = [], onDeleteSale, onUpdateSale }
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpandedSaleId(expandedSaleId === s.id ? null : s.id)}>
                             <ShoppingBag className="h-3 w-3 text-chart-3" />
                           </Button>
+                          {onReprint && (
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Reimprimir" onClick={() => onReprint(s)}>
+                              <Printer className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => startEdit(s)}>
                             <Edit2 className="h-3 w-3 text-accent-foreground" />
                           </Button>
@@ -1435,6 +1442,11 @@ export function ReportsView({ sales, expenses = [], onDeleteSale, onUpdateSale }
                               <Button variant="ghost" size="sm" className="h-7 px-2" title="Ver itens" onClick={() => setExpandedSaleId(expandedSaleId === s.id ? null : s.id)}>
                                 <ShoppingBag className="h-3.5 w-3.5 text-chart-3" />
                               </Button>
+                              {onReprint && (
+                                <Button variant="ghost" size="sm" className="h-7 px-2" title="Reimprimir pedido" onClick={() => onReprint(s)}>
+                                  <Printer className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="sm" className="h-7 px-2" title="Editar venda" onClick={() => startEdit(s)}>
                                 <Edit2 className="h-3.5 w-3.5 text-accent-foreground" />
                               </Button>
