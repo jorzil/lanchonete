@@ -84,8 +84,8 @@ export type UserRole = 'admin' | 'attendant'
 // ==================== MENU DATA ====================
 export const MENU = {
   sizes: {
-    '15cm': { name: '15cm', price: 18.0, extras: { bacon: 4.0, presunto: 3.0, peru: 4.0, queijo: 3.0 } },
-    '30cm': { name: '30cm', price: 32.0, extras: { bacon: 6.0, presunto: 5.0, peru: 6.0, queijo: 5.0 } },
+    '15cm': { name: '15cm', price: 21.90, extras: { bacon: 4.0, presunto: 3.0, peru: 4.0, queijo: 3.0 } },
+    '30cm': { name: '30cm', price: 37.90, extras: { bacon: 6.0, presunto: 5.0, peru: 6.0, queijo: 5.0 } },
   },
   meats: [
     { key: 'carne-suprema', name: 'Carne Suprema' },
