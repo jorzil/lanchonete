@@ -1,17 +1,22 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const poppins = Poppins({
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  weight: ['400', '600', '700', '900'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'Mais Sub - Monte Seu Sub Do Seu Jeito',
-  description: 'Delivery de subs artesanais. Ingredientes frescos, personalize seu lanche e receba em casa.',
-  keywords: 'sub, lanche, delivery, artesanal, personalizado, mais sub',
+  title: 'Mais Sub - O Sub Mais Gostoso Da Cidade',
+  description: 'Delivery de subs artesanais. Ingredientes frescos, personalize seu lanche e receba em casa em até 30 minutos.',
+  keywords: 'sub, lanche, delivery, artesanal, personalizado, mais sub, frango, lombo, carne',
   openGraph: {
-    title: 'Mais Sub - Monte Seu Sub Do Seu Jeito',
+    title: 'Mais Sub - O Sub Mais Gostoso Da Cidade',
     description: 'Delivery de subs artesanais. Ingredientes frescos, personalize seu lanche.',
     type: 'website',
   },
@@ -26,10 +31,16 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${poppins.variable} font-sans antialiased`} suppressHydrationWarning>
         <CartProvider>
           {children}
-          <Toaster position="top-center" richColors />
+          <Toaster
+            position="top-center"
+            richColors
+            toastOptions={{
+              style: { fontFamily: 'var(--font-poppins)' },
+            }}
+          />
         </CartProvider>
       </body>
     </html>
