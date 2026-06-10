@@ -22,8 +22,10 @@ export interface Product {
   description: string
   price: number
   image: string
+  imageUrl?: string
   category: 'subs-15cm' | 'subs-30cm' | 'combos' | 'bebidas'
   active: boolean
+  badge?: { label: string; color: string }
 }
 
 export interface CartItem {
@@ -115,18 +117,66 @@ export const MENU = {
 }
 
 export const PRODUCTS: Product[] = [
-  { id: 'sub-15-frango', name: 'Sub Frango com Cream Cheese 15cm', description: 'Frango suculento com cream cheese cremoso, pão artesanal tostado', price: 21.9, image: '🥖', category: 'subs-15cm', active: true },
-  { id: 'sub-15-lombo', name: 'Sub Lombo Defumado 15cm', description: 'Lombo defumado artesanal com sabor inconfundível', price: 21.9, image: '🥖', category: 'subs-15cm', active: true },
-  { id: 'sub-15-carne', name: 'Sub Carne Suprema 15cm', description: 'Carne bovina premium com requeijão cremoso', price: 21.9, image: '🥖', category: 'subs-15cm', active: true },
-  { id: 'sub-30-frango', name: 'Sub Frango com Cream Cheese 30cm', description: 'Frango suculento com cream cheese cremoso, pão artesanal tostado', price: 37.9, image: '🥖', category: 'subs-30cm', active: true },
-  { id: 'sub-30-lombo', name: 'Sub Lombo Defumado 30cm', description: 'Lombo defumado artesanal com sabor inconfundível', price: 37.9, image: '🥖', category: 'subs-30cm', active: true },
-  { id: 'sub-30-carne', name: 'Sub Carne Suprema 30cm', description: 'Carne bovina premium com requeijão cremoso', price: 37.9, image: '🥖', category: 'subs-30cm', active: true },
-  { id: 'combo-15-refri', name: 'Combo Sub 15cm + Refri', description: 'Sub 15cm de sua escolha + refrigerante 350ml', price: 29.9, image: '🎁', category: 'combos', active: true },
-  { id: 'combo-30-refri', name: 'Combo Sub 30cm + Refri', description: 'Sub 30cm de sua escolha + refrigerante 350ml', price: 45.9, image: '🎁', category: 'combos', active: true },
-  { id: 'combo-duplo', name: 'Combo Duplo 15cm', description: '2 Subs 15cm + 2 refrigerantes 350ml', price: 54.9, image: '🎁', category: 'combos', active: true },
-  { id: 'refri-lata', name: 'Refrigerante Lata 350ml', description: 'Coca-Cola, Guaraná, Sprite ou Fanta', price: 6.0, image: '🥤', category: 'bebidas', active: true },
-  { id: 'agua', name: 'Água Mineral 500ml', description: 'Água mineral sem gás gelada', price: 4.0, image: '💧', category: 'bebidas', active: true },
-  { id: 'suco', name: 'Suco Natural 400ml', description: 'Laranja, Limão ou Maracujá', price: 9.0, image: '🍊', category: 'bebidas', active: true },
+  {
+    id: 'sub-15-frango', name: 'Frango com Cream Cheese', description: 'Frango grelhado, cream cheese cremoso, saladas frescas no pão artesanal tostado',
+    price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-15cm', active: true, badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
+  },
+  {
+    id: 'sub-15-lombo', name: 'Lombo Defumado', description: 'Lombo suíno defumado artesanalmente, mussarela derretida, pão quentinho',
+    price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-15cm', active: true, badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
+  },
+  {
+    id: 'sub-15-carne', name: 'Carne Suprema', description: 'Carne bovina premium, requeijão cremoso, tomate e alface no pão especial',
+    price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-15cm', active: true, badge: { label: '🆕 Novo', color: 'bg-green-500' },
+  },
+  {
+    id: 'sub-30-frango', name: 'Frango com Cream Cheese', description: 'Versão família — frango grelhado, cream cheese, legumes frescos no pão artesanal',
+    price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-30cm', active: true, badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
+  },
+  {
+    id: 'sub-30-lombo', name: 'Lombo Defumado', description: 'Versão família — lombo defumado, queijo derretido, saladas e molho especial',
+    price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-30-carne', name: 'Carne Suprema', description: 'Versão família — carne premium, requeijão cremoso, vegetais frescos',
+    price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=600&q=85&auto=format&fit=crop',
+    category: 'subs-30cm', active: true, badge: { label: '🆕 Novo', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-15-refri', name: 'Combo Classic', description: 'Sub 15cm de sua escolha + refrigerante gelado 350ml. Perfeito para o dia a dia',
+    price: 29.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&q=85&auto=format&fit=crop',
+    category: 'combos', active: true, badge: { label: '⚡ Econômico', color: 'bg-blue-500' },
+  },
+  {
+    id: 'combo-30-refri', name: 'Combo Premium', description: 'Sub 30cm de sua escolha + refrigerante gelado 350ml. O combo completo',
+    price: 45.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&q=85&auto=format&fit=crop',
+    category: 'combos', active: true,
+  },
+  {
+    id: 'combo-duplo', name: 'Combo Duplo', description: '2 Subs 15cm + 2 refrigerantes 350ml. Ideal para compartilhar',
+    price: 54.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=600&q=85&auto=format&fit=crop',
+    category: 'combos', active: true, badge: { label: '💥 Oferta', color: 'bg-purple-600' },
+  },
+  {
+    id: 'refri-lata', name: 'Refrigerante 350ml', description: 'Coca-Cola, Guaraná Antarctica, Sprite ou Fanta bem gelados',
+    price: 6.0, image: '🥤', imageUrl: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=600&q=85&auto=format&fit=crop',
+    category: 'bebidas', active: true,
+  },
+  {
+    id: 'agua', name: 'Água Mineral 500ml', description: 'Água mineral natural sem gás, gelada e refrescante',
+    price: 4.0, image: '💧', imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=600&q=85&auto=format&fit=crop',
+    category: 'bebidas', active: true,
+  },
+  {
+    id: 'suco', name: 'Suco Natural 400ml', description: 'Laranja, Limão ou Maracujá espremidos na hora',
+    price: 9.0, image: '🍊', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&q=85&auto=format&fit=crop',
+    category: 'bebidas', active: true,
+  },
 ]
 
 export function formatCurrency(value: number): string {
