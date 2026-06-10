@@ -33,7 +33,7 @@ const PAYMENT_OPTIONS = [
 ]
 
 function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['customization']>): string {
-  const parts = [c.size]
+  const parts: string[] = [c.size]
   if (c.meat) { const m = MENU.meats.find((m) => m.key === c.meat); if (m) parts.push(m.name) }
   if (c.cheese) { const ch = MENU.cheeses.find((ch) => ch.key === c.cheese); if (ch) parts.push(ch.name) }
   return parts.join(' • ')
