@@ -15,26 +15,53 @@ import { toast } from 'sonner'
 // ─── HERO ─────────────────────────────────────────────────────────────────────
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-end overflow-hidden">
-      {/* BG Photo */}
+    <section className="relative min-h-screen flex items-end overflow-hidden bg-[#011a33]">
+      {/* BG Photo layers */}
       <div className="absolute inset-0">
         <Image
           src="https://images.unsplash.com/photo-1553909489-cd47e0907980?w=1920&q=90&auto=format&fit=crop"
           alt="Sub artesanal Mais Sub"
-          fill
-          priority
-          className="object-cover object-center"
+          fill priority
+          className="object-cover object-center scale-105"
           sizes="100vw"
         />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#011a33] via-[#011a33]/70 to-[#011a33]/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#011a33]/80 via-transparent to-transparent" />
+        {/* Multi-layer atmospheric overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#011a33] via-[#011a33]/65 to-[#011a33]/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#011a33]/90 via-[#011a33]/30 to-transparent" />
+        {/* Noise grain texture */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,backgroundSize:'200px 200px'}} />
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-40">
+      {/* Floating glass info cards — top right */}
+      <div className="absolute top-28 right-6 sm:right-12 lg:right-20 hidden md:flex flex-col gap-3 animate-fade-in animation-delay-700">
+        <div className="liquid-glass rounded-2xl px-4 py-3 flex items-center gap-3 w-52">
+          <div className="w-9 h-9 rounded-xl bg-yellow-400/20 flex items-center justify-center text-lg">⭐</div>
+          <div>
+            <p className="text-white font-black text-sm leading-none">4.9 / 5.0</p>
+            <p className="text-white/55 text-[11px] mt-0.5">2.000+ avaliações</p>
+          </div>
+        </div>
+        <div className="liquid-glass rounded-2xl px-4 py-3 flex items-center gap-3 w-52">
+          <div className="w-9 h-9 rounded-xl bg-green-400/20 flex items-center justify-center text-lg">🚀</div>
+          <div>
+            <p className="text-white font-black text-sm leading-none">~28 minutos</p>
+            <p className="text-white/55 text-[11px] mt-0.5">Tempo médio de entrega</p>
+          </div>
+        </div>
+        <div className="liquid-glass-orange rounded-2xl px-4 py-3 flex items-center gap-3 w-52">
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg">🎁</div>
+          <div>
+            <p className="text-white font-black text-sm leading-none">Frete Grátis</p>
+            <p className="text-white/70 text-[11px] mt-0.5">Pedidos acima de R$50</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 pt-40">
         <div className="max-w-2xl">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-[#EE5C13] text-white text-xs font-black tracking-widest uppercase px-4 py-2 rounded-full mb-6 animate-fade-in shadow-lg shadow-[#EE5C13]/40">
+          <div className="inline-flex items-center gap-2 liquid-glass-orange text-white text-xs font-black tracking-widest uppercase px-4 py-2 rounded-full mb-6 animate-fade-in shadow-lg shadow-[#EE5C13]/30">
             🔥 Novo • Carne Suprema chegou
           </div>
 
@@ -44,32 +71,34 @@ function HeroSection() {
             Da Cidade
           </h1>
 
-          <p className="text-white/75 text-lg sm:text-xl leading-relaxed mb-10 animate-slide-up animation-delay-200 max-w-lg">
+          <p className="text-white/70 text-lg sm:text-xl leading-relaxed mb-10 animate-slide-up animation-delay-200 max-w-lg">
             Ingredientes frescos, pão artesanal, personalização total — pronto em até 30 minutos na sua porta.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-12 animate-slide-up animation-delay-300">
+          {/* CTA buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-14 animate-slide-up animation-delay-300">
             <Link href="/cardapio">
-              <Button size="lg" className="bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-black px-10 py-6 rounded-2xl text-lg transition-all hover:scale-105 hover:shadow-2xl hover:shadow-[#EE5C13]/40 w-full sm:w-auto">
+              <button className="flex items-center justify-center gap-2 bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-black px-10 py-4 rounded-2xl text-lg transition-all hover:scale-105 hover:shadow-2xl hover:shadow-[#EE5C13]/40 w-full sm:w-auto shadow-xl shadow-[#EE5C13]/30">
                 Montar Meu Sub
-                <ChevronRight size={22} className="ml-1" />
-              </Button>
+                <ChevronRight size={22} />
+              </button>
             </Link>
             <Link href="/cardapio">
-              <Button size="lg" variant="outline" className="border-2 border-white/40 text-white hover:bg-white/10 hover:border-white font-semibold px-8 py-6 rounded-2xl text-lg transition-all bg-transparent w-full sm:w-auto backdrop-blur-sm">
+              <button className="flex items-center justify-center gap-2 liquid-glass text-white font-semibold px-8 py-4 rounded-2xl text-lg transition-all hover:scale-105 w-full sm:w-auto">
                 Ver Cardápio
-              </Button>
+                <ArrowRight size={18} />
+              </button>
             </Link>
           </div>
 
-          {/* Trust row */}
-          <div className="flex flex-wrap items-center gap-6 animate-fade-in animation-delay-500">
+          {/* Trust badges — liquid glass pills */}
+          <div className="flex flex-wrap items-center gap-3 animate-fade-in animation-delay-500">
             {[
-              { icon: <Star size={15} className="fill-yellow-400 text-yellow-400" />, text: '4.9 • 2.000+ avaliações' },
-              { icon: <Clock size={15} className="text-[#EE5C13]" />, text: 'Entrega em ~30 min' },
-              { icon: <Zap size={15} className="text-green-400" />, text: 'Frete grátis acima de R$50' },
+              { icon: <Star size={14} className="fill-yellow-400 text-yellow-400" />, text: '4.9 • 2.000+ avaliações' },
+              { icon: <Clock size={14} className="text-[#EE5C13]" />, text: 'Entrega em ~30 min' },
+              { icon: <Zap size={14} className="text-green-400" />, text: 'Frete grátis +R$50' },
             ].map((b) => (
-              <div key={b.text} className="flex items-center gap-2 text-white/80 text-sm font-medium backdrop-blur-sm bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
+              <div key={b.text} className="liquid-glass flex items-center gap-2 text-white/85 text-sm font-medium px-4 py-2 rounded-full">
                 {b.icon} {b.text}
               </div>
             ))}
@@ -77,8 +106,8 @@ function HeroSection() {
         </div>
       </div>
 
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent" />
+      {/* Bottom fade into next section */}
+      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-gray-50 to-transparent" />
     </section>
   )
 }
