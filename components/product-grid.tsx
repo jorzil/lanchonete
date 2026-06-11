@@ -1,10 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Sandwich, CupSoda, Droplets, Zap, GlassWater, Package, AlertCircle } from "lucide-react"
+import { Sandwich, CupSoda, Droplets, Zap, GlassWater, Package, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCurrency, type Product } from "@/lib/store"
+
+function getCategoryColor(category: string): string {
+  const map: Record<string, string> = {
+    lanches: "hsl(38,95%,50%)",
+    bebidas: "hsl(220,70%,52%)",
+    porcoes: "hsl(280,65%,58%)",
+    sobremesas: "hsl(340,80%,58%)",
+    acompanhamentos: "hsl(158,72%,36%)",
+  }
+  return map[category.toLowerCase()] ?? "hsl(220,14%,50%)"
+}
 
 function getBevIcon(name: string) {
   const n = name.toLowerCase()
@@ -24,7 +34,6 @@ interface ProductGridProps {
 export function ProductGrid({ products, onAddToCart, onStartCustomBurger }: ProductGridProps) {
   const [category, setCategory] = useState<string>("all")
 
-  // Derive categories dynamically from products
   const productCategories = Array.from(new Set(products.filter((p) => p.active).map((p) => p.category)))
   const categories: { key: string; label: string }[] = [
     { key: "all", label: "Todos" },
@@ -38,90 +47,118 @@ export function ProductGrid({ products, onAddToCart, onStartCustomBurger }: Prod
     <div className="flex-1 flex flex-col bg-background">
       {/* Category Filter */}
       <div className="bg-card border-b border-border px-4 py-3">
-        <div className="flex gap-2 overflow-x-auto">
-          {categories.map((cat) => (
-            <Button
-              key={cat.key}
-              size="sm"
-              variant={category === cat.key ? "default" : "outline"}
-              className={cn(
-                "rounded-full whitespace-nowrap font-bold text-sm",
-                category === cat.key && "bg-accent text-accent-foreground shadow-sm"
-              )}
-              onClick={() => setCategory(cat.key)}
-            >
-              {cat.label}
-            </Button>
-          ))}
+        <div className="flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
+          {categories.map((cat) => {
+            const isActive = category === cat.key
+            const color = cat.key === "all" ? "hsl(158,72%,36%)" : getCategoryColor(cat.key)
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setCategory(cat.key)}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border",
+                  isActive
+                    ? "text-white shadow-sm border-transparent"
+                    : "bg-transparent text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground"
+                )}
+                style={isActive ? { background: color, borderColor: color } : {}}
+              >
+                {cat.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Products */}
       <div className="flex-1 overflow-y-auto p-4 pb-24 lg:pb-4">
-        {category === "lanches" && filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-4 bg-accent/20 rounded-full flex items-center justify-center">
-              <Sandwich className="h-10 w-10 text-accent-foreground" />
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">Monte seu Lanche!</h3>
-            <p className="text-muted-foreground mb-4">Personalize do seu jeito</p>
-            <Button size="lg" className="bg-primary text-primary-foreground" onClick={onStartCustomBurger}>
-              <Sandwich className="h-5 w-5 mr-2" />
-              Monte seu Lanche
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-            {/* Always show "Monte seu Lanche" card */}
-            <button
-              onClick={onStartCustomBurger}
-              className="bg-primary/5 rounded-xl border-2 border-dashed border-primary/40 overflow-hidden hover:border-primary hover:shadow-md transition-all cursor-pointer flex flex-col items-center justify-center p-4 min-h-[160px] active:scale-95"
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+          {/* Custom burger card */}
+          <button
+            onClick={onStartCustomBurger}
+            className="group relative rounded-2xl border-2 border-dashed overflow-hidden transition-all hover:shadow-md active:scale-95 flex flex-col items-center justify-center p-5 min-h-[170px]"
+            style={{ borderColor: "hsl(38,95%,50%)", background: "hsl(38,95%,98%)" }}
+          >
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
+              style={{ background: "linear-gradient(135deg, hsl(38,95%,50%), hsl(38,90%,42%))" }}
             >
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-                <Sandwich className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="font-bold text-sm text-primary text-center">Monte seu Lanche</h3>
-              <p className="text-xs text-muted-foreground mt-1">Personalizado</p>
-            </button>
+              <Sandwich className="h-7 w-7 text-white" />
+            </div>
+            <span className="font-black text-sm text-center leading-tight" style={{ color: "hsl(30,50%,20%)" }}>
+              Monte seu Lanche
+            </span>
+            <span className="text-xs mt-1 font-medium" style={{ color: "hsl(38,50%,50%)" }}>Personalizado</span>
+          </button>
 
-            {filtered.map((product) => {
-              const Icon = product.category === "bebidas" ? getBevIcon(product.name) : Package
-              const isOutOfStock = product.stock <= 0
+          {filtered.map((product) => {
+            const Icon = product.category === "bebidas" ? getBevIcon(product.name) : Package
+            const isOutOfStock = product.stock <= 0
+            const isLowStock = product.stock > 0 && product.stock <= 5
+            const color = getCategoryColor(product.category)
 
-              return (
-                <button
-                  key={product.id}
-                  disabled={isOutOfStock}
-                  onClick={() => onAddToCart(product)}
-                  className={cn(
-                    "bg-card rounded-xl shadow-sm border border-border overflow-hidden transition-all text-left relative group",
-                    isOutOfStock ? "opacity-60 cursor-not-allowed bg-muted" : "hover:shadow-md hover:-translate-y-1 cursor-pointer active:scale-95"
-                  )}
+            return (
+              <button
+                key={product.id}
+                disabled={isOutOfStock}
+                onClick={() => onAddToCart(product)}
+                className={cn(
+                  "group bg-card rounded-2xl border border-border overflow-hidden transition-all text-left relative",
+                  isOutOfStock
+                    ? "opacity-55 cursor-not-allowed"
+                    : "hover:shadow-lg hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                )}
+              >
+                {/* Color stripe */}
+                <div className="h-1 w-full" style={{ background: isOutOfStock ? "hsl(220,14%,88%)" : color }} />
+
+                {/* Out of stock overlay */}
+                {isOutOfStock && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
+                    <span className="bg-destructive text-destructive-foreground text-xs font-black px-3 py-1.5 rounded-full shadow-sm">
+                      Esgotado
+                    </span>
+                  </div>
+                )}
+
+                {/* Icon area */}
+                <div className="aspect-square flex items-center justify-center relative"
+                  style={{ background: `${color}12` }}
                 >
-                  {isOutOfStock && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-[1px]">
-                      <span className="bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" /> Esgotado
+                  <Icon className="h-12 w-12 transition-transform group-hover:scale-110" style={{ color: `${color}80` }} />
+                </div>
+
+                {/* Info */}
+                <div className="p-3">
+                  <h3 className="font-bold text-sm text-foreground mb-2 leading-tight line-clamp-2">{product.name}</h3>
+                  <div className="flex items-end justify-between gap-1">
+                    <span className="text-lg font-black" style={{ color: isOutOfStock ? "hsl(220,14%,60%)" : color }}>
+                      {formatCurrency(product.price)}
+                    </span>
+                    {isLowStock && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-destructive">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        {product.stock}
                       </span>
-                    </div>
-                  )}
-                  <div className="aspect-square bg-muted/50 relative flex items-center justify-center">
-                    <Icon className="h-12 w-12 text-muted-foreground/40" />
+                    )}
+                    {!isLowStock && !isOutOfStock && (
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {product.stock} un
+                      </span>
+                    )}
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-bold text-sm text-foreground mb-1 leading-tight">{product.name}</h3>
-                    <div className="flex items-center justify-between">
-                      <span className={cn("text-lg font-black", isOutOfStock ? "text-muted-foreground" : "text-primary")}>
-                        {formatCurrency(product.price)}
-                      </span>
-                      <span className={cn("text-xs", product.stock <= 5 && !isOutOfStock ? "text-destructive font-bold" : "text-muted-foreground")}>
-                        Est: {product.stock}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        {filtered.length === 0 && category !== "all" && (
+          <div className="text-center py-16 mt-4">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
+              <Package className="h-8 w-8 text-muted-foreground/40" />
+            </div>
+            <p className="font-bold text-foreground">Nenhum produto nesta categoria</p>
+            <p className="text-sm text-muted-foreground mt-1">Tente selecionar outra categoria ou cadastre produtos.</p>
           </div>
         )}
       </div>

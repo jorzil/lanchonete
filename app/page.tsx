@@ -68,28 +68,56 @@ function TablesView({
 
   return (
     <div className="p-4 md:p-6 h-full overflow-y-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-        <h2 className="text-2xl font-bold text-foreground mb-2 md:mb-0">Gerenciamento de Mesas</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+          <h2 className="text-2xl font-black text-foreground">Mesas</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {tableOrders.length === 0 ? "Nenhuma mesa aberta" : `${tableOrders.length} mesa${tableOrders.length > 1 ? "s" : ""} ativa${tableOrders.length > 1 ? "s" : ""}`}
+          </p>
+        </div>
         <form onSubmit={handleNew} className="flex gap-2">
-          <Input placeholder="Nº da Mesa" value={newTableNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTableNumber(e.target.value)} className="w-32" />
-          <Button type="submit" className="bg-primary text-primary-foreground">Abrir</Button>
+          <Input
+            placeholder="Número da mesa"
+            value={newTableNumber}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTableNumber(e.target.value)}
+            className="w-40 h-10"
+          />
+          <Button type="submit" className="h-10 px-5 bg-primary text-primary-foreground font-bold shadow-sm">
+            <Users className="h-4 w-4 mr-2" />
+            Abrir
+          </Button>
         </form>
       </div>
+
       {tableOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground -mt-16">
-          <Users className="h-16 w-16 mb-4" />
-          <p className="text-lg font-semibold">Nenhuma mesa aberta</p>
-          <p>Use o campo acima para abrir uma nova mesa.</p>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-4">
+            <Users className="h-10 w-10 text-muted-foreground/50" />
+          </div>
+          <p className="text-lg font-bold text-foreground">Nenhuma mesa aberta</p>
+          <p className="text-sm text-muted-foreground mt-1">Insira o número e clique em Abrir para iniciar um atendimento.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-          {tableOrders.map((order) => (
-            <button key={order.tableNumber} onClick={() => onEdit(order.tableNumber)} className="bg-card border-2 border-border rounded-xl p-4 text-center hover:bg-accent/50 hover:border-primary transition-all shadow-sm active:scale-95">
-              <p className="font-black text-2xl text-foreground mb-1">Mesa {order.tableNumber}</p>
-              <Badge variant="secondary" className="mb-2">{order.cart.length} {order.cart.length === 1 ? "item" : "itens"}</Badge>
-              <p className="text-base font-bold text-primary mt-1">{formatCurrency(order.cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0))}</p>
-            </button>
-          ))}
+          {tableOrders.map((order) => {
+            const tableTotal = order.cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0)
+            const itemCount = order.cart.reduce((sum: number, item: CartItem) => sum + item.quantity, 0)
+            return (
+              <button
+                key={order.tableNumber}
+                onClick={() => onEdit(order.tableNumber)}
+                className="group bg-card border border-border rounded-2xl p-4 text-center hover:border-primary hover:shadow-lg transition-all active:scale-95 relative overflow-hidden"
+              >
+                <div className="absolute inset-x-0 top-0 h-1 bg-primary rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-lg font-black text-primary">{order.tableNumber}</span>
+                </div>
+                <p className="font-bold text-sm text-foreground mb-1">Mesa {order.tableNumber}</p>
+                <p className="text-xs text-muted-foreground mb-2">{itemCount} {itemCount === 1 ? "item" : "itens"}</p>
+                <p className="text-base font-black text-primary">{formatCurrency(tableTotal)}</p>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -99,8 +127,8 @@ function TablesView({
 // ==================== LOGIN SCREEN ====================
 function LoginScreen({ onLogin }: { onLogin: (role: UserRole) => void }) {
   const [role, setRole] = useState<UserRole>("attendant")
-  const [username, setUsername] = useState("admin")
-  const [password, setPassword] = useState("admin")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,53 +138,83 @@ function LoginScreen({ onLogin }: { onLogin: (role: UserRole) => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary">
-      <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      style={{ background: "linear-gradient(135deg, hsl(158,72%,28%) 0%, hsl(158,72%,20%) 50%, hsl(30,80%,25%) 100%)" }}
+    >
+      {/* Decorative circles */}
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-10" style={{ background: "hsl(38,95%,50%)" }} />
+      <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full opacity-10" style={{ background: "hsl(38,95%,50%)" }} />
+      <div className="absolute top-1/2 -translate-y-1/2 left-0 w-2 h-32 rounded-r-full opacity-20" style={{ background: "hsl(38,95%,50%)" }} />
+
+      <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 w-full max-w-sm mx-4">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Sandwich className="h-10 w-10 text-primary-foreground" />
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl"
+            style={{ background: "linear-gradient(135deg, hsl(38,95%,50%), hsl(38,95%,40%))" }}
+          >
+            <Sandwich className="h-10 w-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-foreground">Movearena</h1>
-          <p className="text-muted-foreground mt-2">Sistema de Pedidos</p>
+          <h1 className="text-3xl font-black text-white tracking-tight">Movearena</h1>
+          <p className="text-white/60 text-sm mt-1 font-medium">Sistema de Pedidos</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">Usuario</label>
-            <Input
-              value={username}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-              placeholder="admin"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">Senha</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              placeholder="admin"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
+          {/* Role selector */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-white/10 rounded-xl">
+            <button
               type="button"
-              variant={role === "admin" ? "default" : "outline"}
-              className={cn("flex-1", role === "admin" && "bg-accent text-accent-foreground")}
               onClick={() => setRole("admin")}
+              className={cn(
+                "py-2.5 rounded-lg text-sm font-bold transition-all",
+                role === "admin"
+                  ? "bg-white text-foreground shadow-md"
+                  : "text-white/70 hover:text-white"
+              )}
             >
-              Admin
-            </Button>
-            <Button
+              Administrador
+            </button>
+            <button
               type="button"
-              variant={role === "attendant" ? "default" : "outline"}
-              className={cn("flex-1", role === "attendant" && "bg-accent text-accent-foreground")}
               onClick={() => setRole("attendant")}
+              className={cn(
+                "py-2.5 rounded-lg text-sm font-bold transition-all",
+                role === "attendant"
+                  ? "bg-white text-foreground shadow-md"
+                  : "text-white/70 hover:text-white"
+              )}
             >
               Atendente
-            </Button>
+            </button>
           </div>
-          <Button type="submit" className="w-full bg-primary text-primary-foreground text-lg py-6">
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Usuário</label>
+              <Input
+                value={username}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+                placeholder="Digite seu usuário"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20 h-11"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Senha</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                placeholder="Digite sua senha"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/20 h-11"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={!username || !password}
+            className="w-full h-12 text-base font-black rounded-xl shadow-lg disabled:opacity-40 mt-2"
+            style={{ background: "linear-gradient(135deg, hsl(38,95%,50%), hsl(38,90%,42%))", color: "hsl(30,30%,10%)" }}
+          >
             Entrar
           </Button>
         </form>
@@ -1020,87 +1078,105 @@ export default function MovearenaPDV() {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border z-40">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Sandwich className="h-5 w-5 text-primary-foreground" />
+      <header className="bg-card border-b border-border z-40 shadow-sm">
+        <div className="flex items-center justify-between px-3 md:px-4 h-14">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg, hsl(158,72%,36%), hsl(158,72%,28%))" }}
+            >
+              <Sandwich className="h-4.5 w-4.5 text-white" />
             </div>
-            <div>
-              <h1 className="font-black text-lg text-foreground">
-                Movearena <span className="text-primary">PRO</span>
-              </h1>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground capitalize">
-                  {role === "admin" ? "Administrador" : "Atendente"}
+                <span className="font-black text-base text-foreground leading-none">Movearena</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md text-white leading-none"
+                  style={{ background: "hsl(38,95%,50%)", color: "hsl(30,30%,10%)" }}
+                >PRO</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] text-muted-foreground">{role === "admin" ? "Administrador" : "Atendente"}</span>
+                <span className="text-muted-foreground/40">·</span>
+                <span className={cn(
+                  "text-[11px] font-bold",
+                  cashierOpen ? "text-primary" : "text-destructive"
+                )}>
+                  {cashierOpen ? "Caixa aberto" : "Caixa fechado"}
                 </span>
-                <Badge
-                  variant={cashierOpen ? "default" : "destructive"}
-                  className={cn(
-                    "text-xs",
-                    cashierOpen && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  {cashierOpen ? "CAIXA ABERTO" : "CAIXA FECHADO"}
-                </Badge>
               </div>
             </div>
           </div>
-          
-          {/* Indicador de Conexão (Simulado) */}
-          <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-full border border-border mr-2 md:mr-0">
-             {isOnline ? <Cloud className="h-3 w-3 text-primary" /> : <CloudOff className="h-3 w-3 text-destructive" />}
-             <span className="text-[10px] font-medium text-muted-foreground hidden sm:inline">{isOnline ? "Online" : "Offline"}</span>
-          </div>
 
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-0.5 bg-muted/60 rounded-xl p-1">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setView(item.key)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all",
+                    view === item.key
+                      ? "bg-card shadow-sm text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="hidden lg:inline">{item.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Right actions */}
           <div className="flex items-center gap-2">
+            {/* Connection indicator */}
+            <div className={cn(
+              "hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold",
+              isOnline
+                ? "bg-primary/10 text-primary"
+                : "bg-destructive/10 text-destructive"
+            )}>
+              {isOnline
+                ? <Cloud className="h-3 w-3" />
+                : <CloudOff className="h-3 w-3" />}
+              <span>{isOnline ? "Online" : "Offline"}</span>
+            </div>
+
             <Button
               size="sm"
-              className="hidden md:flex bg-primary text-primary-foreground"
-              onClick={() => {
-                setView("pos")
-                setShowBuilder(true)
-              }}
+              className="hidden md:flex h-8 text-xs font-bold"
+              style={{ background: "hsl(38,95%,50%)", color: "hsl(30,30%,10%)" }}
+              onClick={() => { setView("pos"); setShowBuilder(true) }}
             >
-              <Sandwich className="h-4 w-4 mr-2" />
-              Monte seu Lanche
+              <Sandwich className="h-3.5 w-3.5 mr-1.5" />
+              Montar Lanche
             </Button>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex bg-muted rounded-lg p-1">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setView(item.key)}
-                    className={cn(
-                      "px-3 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-1.5",
-                      view === item.key
-                        ? "bg-card shadow-sm text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden lg:inline">{item.label}</span>
-                  </button>
-                )
-              })}
-            </nav>
-
-            {/* Mobile nav hamburger */}
+            {/* Mobile hamburger */}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="md:hidden h-9 w-9">
+                  <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-64 p-0">
+              <SheetContent side="right" className="w-72 p-0">
                 <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-border bg-muted/50">
-                    <h3 className="font-bold text-foreground">Menu</h3>
+                  <div className="p-5 border-b border-border"
+                    style={{ background: "linear-gradient(135deg, hsl(158,72%,36%), hsl(158,72%,28%))" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                        <Sandwich className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-black text-white text-base">Movearena PRO</p>
+                        <p className="text-white/70 text-xs">{role === "admin" ? "Administrador" : "Atendente"}</p>
+                      </div>
+                    </div>
                   </div>
-                  <nav className="flex-1 p-3 space-y-1">
+                  <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
                     {NAV_ITEMS.map((item) => {
                       const Icon = item.icon
                       return (
@@ -1108,13 +1184,13 @@ export default function MovearenaPDV() {
                           key={item.key}
                           onClick={() => setView(item.key)}
                           className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all",
+                            "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all",
                             view === item.key
-                              ? "bg-primary text-primary-foreground"
+                              ? "bg-primary text-primary-foreground shadow-sm"
                               : "text-foreground hover:bg-muted"
                           )}
                         >
-                          <Icon className="h-5 w-5" />
+                          <Icon className="h-5 w-5 shrink-0" />
                           {item.label}
                         </button>
                       )
@@ -1122,16 +1198,14 @@ export default function MovearenaPDV() {
                   </nav>
                   <div className="p-3 border-t border-border space-y-2">
                     <Button
-                      className="w-full bg-primary text-primary-foreground"
-                      onClick={() => {
-                        setView("pos")
-                        setShowBuilder(true)
-                      }}
+                      className="w-full font-bold"
+                      style={{ background: "hsl(38,95%,50%)", color: "hsl(30,30%,10%)" }}
+                      onClick={() => { setView("pos"); setShowBuilder(true) }}
                     >
                       <Sandwich className="h-4 w-4 mr-2" />
-                      Monte seu Lanche
+                      Montar Lanche
                     </Button>
-                    <Button variant="ghost" className="w-full text-destructive" onClick={handleLogout}>
+                    <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10" onClick={handleLogout}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Sair
                     </Button>
@@ -1140,7 +1214,12 @@ export default function MovearenaPDV() {
               </SheetContent>
             </Sheet>
 
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:flex text-muted-foreground hover:text-destructive">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="hidden md:flex h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -1190,11 +1269,18 @@ export default function MovearenaPDV() {
             {cart.length > 0 && (
               <button
                 onClick={() => setMobileCartOpen(true)}
-                className="lg:hidden fixed bottom-20 right-4 z-50 bg-primary text-primary-foreground rounded-full shadow-xl px-5 py-3 flex items-center gap-2 font-bold text-sm"
+                className="lg:hidden fixed bottom-20 right-4 z-50 rounded-2xl shadow-2xl flex items-center gap-2.5 font-bold text-sm px-4 py-3"
+                style={{ background: "linear-gradient(135deg, hsl(158,72%,36%), hsl(158,72%,28%))", color: "white" }}
               >
-                <ShoppingCart className="h-5 w-5" />
-                <span>{cart.reduce((s: number, i: CartItem) => s + i.quantity, 0)} itens</span>
-                <span className="ml-1">{formatCurrency(total)}</span>
+                <div className="relative">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black"
+                    style={{ background: "hsl(38,95%,50%)", color: "hsl(30,30%,10%)" }}
+                  >
+                    {cart.reduce((s: number, i: CartItem) => s + i.quantity, 0)}
+                  </span>
+                </div>
+                <span>{formatCurrency(total)}</span>
               </button>
             )}
 
@@ -1292,39 +1378,39 @@ export default function MovearenaPDV() {
       </main>
 
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-stretch">
-        {/* Botões personalizados para fluxo de Garçom/Mobile */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch">
         <button
           onClick={() => setView("tables")}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[56px]",
-            view === "tables" ? "text-primary bg-primary/5" : "text-muted-foreground"
+            "flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-all min-h-[58px]",
+            view === "tables" ? "text-primary" : "text-muted-foreground"
           )}
         >
-          <Users className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Mesas</span>
+          <Users className={cn("h-5 w-5 transition-transform", view === "tables" && "scale-110")} />
+          <span className="text-[10px] font-bold leading-none">Mesas</span>
         </button>
 
         <button
           onClick={() => setView("pos")}
           className={cn(
-            "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[56px]",
-            view === "pos" ? "text-primary bg-primary/5" : "text-muted-foreground"
+            "flex-1 flex flex-col items-center justify-center py-2.5 gap-1 transition-all min-h-[58px]",
+            view === "pos" ? "text-primary" : "text-muted-foreground"
           )}
         >
-          <ShoppingCart className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Novo Pedido</span>
+          <ShoppingCart className={cn("h-5 w-5 transition-transform", view === "pos" && "scale-110")} />
+          <span className="text-[10px] font-bold leading-none">PDV</span>
         </button>
 
         <button
-          onClick={() => {
-            setView("pos")
-            setShowBuilder(true)
-          }}
-          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-primary min-h-[56px]"
+          onClick={() => { setView("pos"); setShowBuilder(true) }}
+          className="flex-1 flex flex-col items-center justify-center py-2.5 gap-1 min-h-[58px] relative"
         >
-          <Sandwich className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Montar</span>
+          <div className="absolute -top-4 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
+            style={{ background: "linear-gradient(135deg, hsl(38,95%,50%), hsl(38,90%,42%))" }}
+          >
+            <Sandwich className="h-6 w-6" style={{ color: "hsl(30,30%,10%)" }} />
+          </div>
+          <span className="text-[10px] font-bold leading-none text-muted-foreground mt-7">Montar</span>
         </button>
       </nav>
 
