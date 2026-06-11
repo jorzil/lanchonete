@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
+import { CartPanel } from '@/components/cart/cart-panel'
 import './globals.css'
 
 const poppins = Poppins({
@@ -42,6 +43,7 @@ export default function RootLayout({
       >
         <CartProvider>
           {children}
+          <CartPanel />
           <Toaster
             position="top-center"
             richColors
