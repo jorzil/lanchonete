@@ -1,16 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { Poppins } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanel } from '@/components/cart/cart-panel'
 import './globals.css'
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  variable: '--font-poppins',
-  weight: ['400', '600', '700', '900'],
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Mais Sub — O Sub Mais Gostoso Da Cidade',
@@ -35,12 +27,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={poppins.variable}>
-      <body
-        className="font-sans antialiased"
-        style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
-        suppressHydrationWarning
-      >
+    <html lang="pt-BR">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <CartProvider>
           {children}
           <CartPanel />
