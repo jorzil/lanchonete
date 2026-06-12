@@ -2,8 +2,8 @@
 
 import Image from 'next/image'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { Search, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { SandwichBuilder } from '@/components/builder/sandwich-builder'
@@ -27,39 +27,40 @@ function ProductCard({ product, onCustomize, onAdd }: {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
 
   return (
-    <div className="group flex flex-col bg-white rounded-xl overflow-hidden border border-[#E4E4E7] hover:border-[#D1D5DB] hover:shadow-[0_4px_20px_rgba(0,0,0,0.07)] transition-all duration-300">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#F4F4F5]">
+    <div className="group flex flex-col bg-[#141414] rounded-2xl overflow-hidden border border-white/6 hover:border-[#EE5C13]/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#1a1a1a]">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
             className="object-cover card-img"
-            sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,25vw"
+            sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
           />
         ) : (
           <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414]/50 via-transparent to-transparent" />
         {product.badge && (
-          <span className="absolute top-3 left-3 bg-[#0A0A0A]/80 backdrop-blur-sm text-white text-[10px] font-semibold tracking-wide uppercase px-2.5 py-1 rounded-full">
-            {product.badge.label}
+          <span className="absolute top-3 left-3 bg-[#EE5C13] text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+            {product.badge.label.replace(/[^\w\s]/g, '').trim()}
           </span>
         )}
       </div>
 
       <div className="p-4 flex flex-col flex-1">
         <div className="flex-1">
-          <h3 className="font-semibold text-[#0A0A0A] text-[14px] leading-snug mb-1">{product.name}</h3>
-          <p className="text-[#9CA3AF] text-[12.5px] leading-relaxed line-clamp-2">{product.description}</p>
+          <h3 className="font-bold text-white text-[14px] leading-snug mb-1">{product.name}</h3>
+          <p className="text-white/35 text-[12px] leading-relaxed line-clamp-2">{product.description}</p>
         </div>
-        <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[#F4F4F5]">
+        <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-white/6">
           <div>
-            <p className="text-[9.5px] text-[#9CA3AF] font-medium uppercase tracking-wider mb-0.5">a partir de</p>
-            <p className="text-[17px] font-bold text-[#0A0A0A] leading-none tabular-nums">{formatCurrency(product.price)}</p>
+            <p className="text-[9px] text-white/25 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
+            <p className="text-[16px] font-black text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
           </div>
           <button
             onClick={() => isSub ? onCustomize(product) : onAdd(product)}
-            className="flex items-center gap-1.5 bg-[#0A0A0A] hover:bg-[#EE5C13] text-white text-[12px] font-semibold px-4 py-2 rounded-full transition-all duration-200"
+            className="flex items-center gap-1.5 bg-white/6 hover:bg-[#EE5C13] border border-white/10 hover:border-[#EE5C13] text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
             {isSub ? 'Personalizar' : 'Adicionar'}
           </button>
@@ -102,34 +103,41 @@ export default function CardapioPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FAFAFA]">
+      <main className="min-h-screen bg-[#0A0A0A]">
 
         {/* Page header */}
-        <section className="bg-[#011a33] pt-28 pb-14">
-          <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <section className="relative bg-[#0A0A0A] pt-28 pb-14 overflow-hidden">
+          {/* Glow */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[#EE5C13]/5 blur-[100px] rounded-full" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px]" />
+          </div>
+
+          <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
             >
               <p className="text-[11px] font-semibold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Mais Sub</p>
-              <h1 className="text-[2.8rem] sm:text-[3.5rem] font-bold text-white leading-[1.05] tracking-[-0.035em] mb-5">
+              <h1 className="text-[2.8rem] sm:text-[3.8rem] font-black text-white leading-[1.04] tracking-[-0.045em] mb-5">
                 Cardápio
               </h1>
-              <p className="text-white/50 text-[15px] max-w-md leading-relaxed mb-8">
+              <p className="text-white/35 text-[15px] max-w-md leading-relaxed mb-8">
                 Subs 15cm e 30cm, combos e bebidas. Personalize cada detalhe do seu jeito.
               </p>
+              {/* Search */}
               <div className="relative max-w-sm">
-                <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/25" />
                 <input
                   type="text"
                   placeholder="Buscar no cardápio…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-full bg-white/8 border border-white/12 text-white placeholder-white/30 text-[14px] outline-none focus:border-white/25 focus:bg-white/12 transition-all"
+                  className="w-full h-11 pl-10 pr-9 rounded-full bg-white/6 border border-white/10 text-white placeholder-white/25 text-[14px] outline-none focus:border-[#EE5C13]/40 focus:bg-white/8 transition-all"
                 />
                 {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
                     <X size={14} />
                   </button>
                 )}
@@ -141,21 +149,22 @@ export default function CardapioPage() {
         <div ref={sentinelRef} className="h-px" />
 
         {/* Filter bar */}
-        <div className={`bg-white border-b border-[#E4E4E7] z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-sm' : ''}`}>
+        <div className={`bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/6 z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-[0_4px_30px_rgba(0,0,0,0.4)]' : ''}`}>
           <div className="max-w-7xl mx-auto px-5 sm:px-8">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-3">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-3">
+              <SlidersHorizontal size={13} className="text-white/20 shrink-0" />
               {CATS.map(cat => (
                 <button
                   key={cat.key}
                   onClick={() => setActive(cat.key)}
-                  className={`cat-pill shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium transition-all ${
+                  className={`cat-pill shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all ${
                     active === cat.key
-                      ? 'bg-[#0A0A0A] text-white'
-                      : 'text-[#6B7280] hover:bg-[#F4F4F5] hover:text-[#0A0A0A]'
+                      ? 'bg-[#EE5C13] text-white shadow-[0_0_20px_rgba(238,92,19,0.3)]'
+                      : 'text-white/35 hover:bg-white/6 hover:text-white border border-white/8'
                   }`}
                 >
                   {cat.label}
-                  <span className={`text-[11px] font-semibold ${active === cat.key ? 'text-white/50' : 'text-[#9CA3AF]'}`}>
+                  <span className={`text-[11px] font-bold ${active === cat.key ? 'text-white/70' : 'text-white/20'}`}>
                     {cat.count}
                   </span>
                 </button>
@@ -166,50 +175,65 @@ export default function CardapioPage() {
 
         {/* Grid */}
         <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
-          <p className="text-[13px] text-[#9CA3AF] mb-7">
-            <span className="font-semibold text-[#0A0A0A]">{filtered.length}</span> {filtered.length === 1 ? 'item' : 'itens'}
-            {search && <> para <span className="font-semibold text-[#0A0A0A]">&ldquo;{search}&rdquo;</span></>}
+          <p className="text-[13px] text-white/25 mb-7">
+            <span className="font-bold text-white/60">{filtered.length}</span> {filtered.length === 1 ? 'item' : 'itens'}
+            {search && <> para <span className="font-bold text-white/60">&ldquo;{search}&rdquo;</span></>}
           </p>
 
-          {filtered.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-              {filtered.map((product, i) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.04, 0.3) }}
-                >
-                  <ProductCard
-                    product={product}
-                    onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
-                    onAdd={handleAdd}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-24 text-center">
-              <p className="text-4xl mb-4">🔍</p>
-              <h3 className="font-bold text-[#0A0A0A] text-lg mb-2">Nenhum resultado</h3>
-              <p className="text-[#9CA3AF] text-[14px] mb-6">Tente outro termo ou limpe os filtros.</p>
-              <button
-                onClick={() => { setSearch(''); setActive('all') }}
-                className="inline-flex items-center gap-2 border border-[#E4E4E7] hover:border-[#0A0A0A] text-[#0A0A0A] text-[13.5px] font-semibold px-6 py-2.5 rounded-full transition-all"
+          <AnimatePresence mode="wait">
+            {filtered.length > 0 ? (
+              <motion.div
+                key={active + search}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5"
               >
-                Limpar filtros
-              </button>
-            </div>
-          )}
+                {filtered.map((product, i) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.04, 0.25) }}
+                  >
+                    <ProductCard
+                      product={product}
+                      onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
+                      onAdd={handleAdd}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-24 text-center"
+              >
+                <p className="text-4xl mb-4">🔍</p>
+                <h3 className="font-bold text-white text-lg mb-2">Nenhum resultado</h3>
+                <p className="text-white/35 text-[14px] mb-6">Tente outro termo ou limpe os filtros.</p>
+                <button
+                  onClick={() => { setSearch(''); setActive('all') }}
+                  className="inline-flex items-center gap-2 border border-white/12 hover:border-white/25 text-white/50 hover:text-white text-[13.5px] font-semibold px-6 py-2.5 rounded-full transition-all"
+                >
+                  Limpar filtros
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <div className="border-t border-[#E4E4E7] bg-white py-10">
+        {/* WhatsApp CTA */}
+        <div className="border-t border-white/6 bg-[#0D0D0D] py-12">
           <div className="max-w-xl mx-auto px-5 text-center">
-            <p className="text-[#9CA3AF] text-[13.5px] mb-4">Prefere pedir pelo WhatsApp?</p>
+            <p className="text-white/30 text-[13.5px] mb-5">Prefere pedir pelo WhatsApp?</p>
             <a
               href="https://wa.me/5511999999999"
               target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold px-7 py-3 rounded-full text-[14px] transition-all hover:scale-[1.02]"
+              className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all hover:shadow-[0_0_30px_rgba(37,211,102,0.35)]"
             >
               💬 Pedir pelo WhatsApp
             </a>

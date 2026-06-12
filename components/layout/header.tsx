@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShoppingBag, Menu, X, ArrowRight } from 'lucide-react'
+import { ShoppingBag, Menu, X, ArrowUpRight } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
 
 const NAV = [
@@ -17,130 +17,88 @@ export function Header() {
   const { itemCount, openCart } = useCart()
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 72)
+    const fn = () => setScrolled(window.scrollY > 60)
     window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  const dark = !scrolled
-
   return (
     <>
-      <header
-        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? 'bg-white/96 backdrop-blur-sm border-b border-[#E4E4E7]'
-            : 'bg-transparent'
-        }`}
-      >
+      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? 'bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/6'
+          : 'bg-transparent'
+      }`}>
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center shrink-0">
-            <span className={`text-[17px] font-semibold tracking-[-0.03em] transition-colors ${dark ? 'text-white' : 'text-[#0A0A0A]'}`}>
-              mais<span className="font-black text-[#EE5C13]">sub</span>
-            </span>
+          <Link href="/" className="flex items-center shrink-0 gap-1">
+            <span className="text-[15px] font-black text-white tracking-[-0.04em] uppercase">mais</span>
+            <span className="text-[15px] font-black text-[#EE5C13] tracking-[-0.04em] uppercase">sub</span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden md:flex items-center gap-8">
             {NAV.map(l => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`text-[13.5px] font-medium transition-colors duration-200 ${
-                  dark ? 'text-white/65 hover:text-white' : 'text-[#6B7280] hover:text-[#0A0A0A]'
-                }`}
-              >
+              <Link key={l.href} href={l.href}
+                className="text-[13px] font-medium text-white/50 hover:text-white transition-colors duration-200">
                 {l.label}
               </Link>
             ))}
           </nav>
 
-          {/* Actions */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* Cart */}
-            <button
-              onClick={openCart}
-              aria-label="Carrinho"
-              className={`relative p-1.5 transition-colors duration-200 ${
-                dark ? 'text-white/70 hover:text-white' : 'text-[#6B7280] hover:text-[#0A0A0A]'
-              }`}
-            >
-              <ShoppingBag size={19} />
+            <button onClick={openCart} aria-label="Carrinho"
+              className="relative p-1.5 text-white/50 hover:text-white transition-colors">
+              <ShoppingBag size={18} />
               {itemCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EE5C13] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none">
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EE5C13] text-white text-[9px] font-black min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
               )}
             </button>
 
-            {/* CTA */}
             <Link href="/cardapio" className="hidden sm:block">
-              <button className="group flex items-center gap-1.5 bg-[#EE5C13] hover:bg-[#d94b0d] text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
+              <button className="group flex items-center gap-1 bg-[#EE5C13] hover:bg-[#ff6b1a] text-white text-[12.5px] font-bold px-4 py-2 rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(238,92,19,0.3)]">
                 Pedir agora
-                <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                <ArrowUpRight size={12} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </button>
             </Link>
 
-            {/* Hamburger */}
-            <button
-              onClick={() => setMobileOpen(true)}
-              className={`md:hidden p-1 transition-colors ${dark ? 'text-white' : 'text-[#0A0A0A]'}`}
-              aria-label="Menu"
-            >
+            <button onClick={() => setMobileOpen(true)}
+              className="md:hidden p-1 text-white/60 hover:text-white transition-colors">
               <Menu size={20} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile overlay */}
-      <div
-        className={`fixed inset-0 z-[100] bg-white transition-transform duration-300 ${
-          mobileOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        <div className="flex items-center justify-between h-16 px-5 border-b border-[#E4E4E7]">
-          <span className="text-[17px] font-semibold tracking-[-0.03em]">
-            mais<span className="font-black text-[#EE5C13]">sub</span>
+      {/* Mobile menu */}
+      <div className={`fixed inset-0 z-[100] bg-[#0A0A0A] flex flex-col transition-all duration-400 ${
+        mobileOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'
+      }`}>
+        <div className="flex items-center justify-between h-16 px-5 border-b border-white/6">
+          <span className="text-[15px] font-black text-white tracking-[-0.04em] uppercase">
+            mais<span className="text-[#EE5C13]">sub</span>
           </span>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="p-1 text-[#6B7280] hover:text-[#0A0A0A] transition-colors"
-          >
+          <button onClick={() => setMobileOpen(false)} className="p-1 text-white/50 hover:text-white">
             <X size={20} />
           </button>
         </div>
-
-        <nav className="px-5 py-6">
+        <nav className="flex-1 px-5 py-8">
           {[{ href: '/', label: 'Início' }, ...NAV].map(l => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-between py-4 border-b border-[#F4F4F5] text-[15px] font-medium text-[#0A0A0A] hover:text-[#EE5C13] transition-colors"
-            >
+            <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-between py-5 border-b border-white/6 text-[22px] font-bold text-white/80 hover:text-white transition-colors">
               {l.label}
-              <ArrowRight size={14} className="text-[#9CA3AF]" />
+              <ArrowUpRight size={18} className="text-white/20" />
             </Link>
           ))}
-
-          <div className="mt-6 space-y-3">
-            <Link href="/cardapio" onClick={() => setMobileOpen(false)}>
-              <button className="w-full bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-semibold py-3.5 rounded-full text-[15px] transition-colors">
-                Pedir agora
-              </button>
-            </Link>
-            <a
-              href="https://wa.me/5511999999999"
-              target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full border border-[#E4E4E7] text-[#6B7280] font-medium py-3.5 rounded-full text-[15px] hover:border-[#0A0A0A] hover:text-[#0A0A0A] transition-colors"
-            >
-              WhatsApp
-            </a>
-          </div>
         </nav>
+        <div className="px-5 pb-10 space-y-3">
+          <Link href="/cardapio" onClick={() => setMobileOpen(false)}>
+            <button className="w-full bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-4 rounded-2xl text-[15px] transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)]">
+              Montar meu sub
+            </button>
+          </Link>
+        </div>
       </div>
     </>
   )
