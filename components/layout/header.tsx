@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, Menu, MessageCircle, X } from 'lucide-react'
+import { ShoppingBag, Menu, X, ArrowRight } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
-const NAV_LINKS = [
-  { href: '/',         label: 'Início'   },
+const NAV = [
   { href: '/cardapio', label: 'Cardápio' },
-  { href: '/#sobre',   label: 'Sobre'    },
+  { href: '/cardapio?cat=combos', label: 'Combos' },
+  { href: '/#sobre', label: 'Sobre' },
 ]
 
 export function Header() {
@@ -18,125 +17,131 @@ export function Header() {
   const { itemCount, openCart } = useCart()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    const fn = () => setScrolled(window.scrollY > 72)
+    window.addEventListener('scroll', fn, { passive: true })
+    return () => window.removeEventListener('scroll', fn)
   }, [])
 
+  const dark = !scrolled
+
   return (
-    <header className="fixed top-0 inset-x-0 z-50 pointer-events-none">
-      <div className={`max-w-7xl mx-auto px-4 sm:px-6 transition-all duration-500 ${scrolled ? 'pt-0' : 'pt-4'}`}>
-        <nav className={`pointer-events-auto liquid-glass flex items-center justify-between gap-4 px-5 sm:px-7 py-3.5 transition-all duration-500 ${
-          scrolled ? 'rounded-none -mx-4 sm:-mx-6 px-8 sm:px-10' : 'rounded-2xl'
-        }`}>
+    <>
+      <header
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/96 backdrop-blur-sm border-b border-[#E4E4E7]'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 z-10">
-            <span className="text-2xl select-none">🥖</span>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-xl font-black text-white leading-none">MAIS</span>
-              <span className="text-xl font-black text-[#EE5C13] leading-none">SUB</span>
-            </div>
+          <Link href="/" className="flex items-center shrink-0">
+            <span className={`text-[17px] font-semibold tracking-[-0.03em] transition-colors ${dark ? 'text-white' : 'text-[#0A0A0A]'}`}>
+              mais<span className="font-black text-[#EE5C13]">sub</span>
+            </span>
           </Link>
 
-          {/* Center nav pills */}
-          <div className="hidden md:flex items-center liquid-glass rounded-full px-2 py-1.5 gap-1">
-            {NAV_LINKS.map(l => (
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-7">
+            {NAV.map(l => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="px-4 py-1.5 rounded-full text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-all duration-200"
+                className={`text-[13.5px] font-medium transition-colors duration-200 ${
+                  dark ? 'text-white/65 hover:text-white' : 'text-[#6B7280] hover:text-[#0A0A0A]'
+                }`}
               >
                 {l.label}
               </Link>
             ))}
-          </div>
+          </nav>
 
-          {/* Right actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="https://wa.me/5511999999999"
-              target="_blank" rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 liquid-glass text-white/90 hover:text-white text-xs font-bold px-3.5 py-2 rounded-full transition-all hover:scale-105"
-            >
-              <MessageCircle size={14} />
-              WhatsApp
-            </a>
-
+          {/* Actions */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Cart */}
             <button
               onClick={openCart}
-              className="relative liquid-glass-orange text-white p-2.5 rounded-full transition-all hover:scale-105 active:scale-95"
               aria-label="Carrinho"
+              className={`relative p-1.5 transition-colors duration-200 ${
+                dark ? 'text-white/70 hover:text-white' : 'text-[#6B7280] hover:text-[#0A0A0A]'
+              }`}
             >
-              <ShoppingCart size={18} />
+              <ShoppingBag size={19} />
               {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-[#EE5C13] text-[10px] font-black w-4.5 h-4.5 min-w-[1.1rem] min-h-[1.1rem] flex items-center justify-center rounded-full shadow-lg px-1">
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EE5C13] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
               )}
             </button>
 
-            <Link
-              href="/cardapio"
-              className="hidden sm:block bg-white text-[#011a33] font-black text-sm px-5 py-2.5 rounded-full hover:bg-[#EE5C13] hover:text-white transition-all duration-200 hover:scale-105 shadow-lg"
-            >
-              Pedir Agora
+            {/* CTA */}
+            <Link href="/cardapio" className="hidden sm:block">
+              <button className="group flex items-center gap-1.5 bg-[#EE5C13] hover:bg-[#d94b0d] text-white text-[13px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
+                Pedir agora
+                <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+              </button>
             </Link>
 
-            {/* Mobile hamburger */}
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <button className="md:hidden liquid-glass text-white p-2.5 rounded-full transition-all hover:scale-105">
-                  <Menu size={18} />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="right" className="bg-[#011a33]/95 backdrop-blur-2xl border-white/10 w-72 p-0">
-                <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">🥖</span>
-                    <div className="flex items-baseline gap-0.5">
-                      <span className="text-xl font-black text-white">MAIS</span>
-                      <span className="text-xl font-black text-[#EE5C13]">SUB</span>
-                    </div>
-                  </div>
-                  <button onClick={() => setMobileOpen(false)} className="text-white/60 hover:text-white p-1">
-                    <X size={20} />
-                  </button>
-                </div>
-                <nav className="px-6 py-6 flex flex-col gap-2">
-                  {NAV_LINKS.map(l => (
-                    <Link
-                      key={l.href}
-                      href={l.href}
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 font-semibold transition-all"
-                    >
-                      {l.label}
-                    </Link>
-                  ))}
-                </nav>
-                <div className="px-6 pt-2 flex flex-col gap-3">
-                  <a
-                    href="https://wa.me/5511999999999"
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-all"
-                  >
-                    <MessageCircle size={16} />
-                    Pedir pelo WhatsApp
-                  </a>
-                  <Link
-                    href="/cardapio"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-center bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-bold py-3 rounded-xl transition-all"
-                  >
-                    Ver Cardápio
-                  </Link>
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* Hamburger */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className={`md:hidden p-1 transition-colors ${dark ? 'text-white' : 'text-[#0A0A0A]'}`}
+              aria-label="Menu"
+            >
+              <Menu size={20} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile overlay */}
+      <div
+        className={`fixed inset-0 z-[100] bg-white transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between h-16 px-5 border-b border-[#E4E4E7]">
+          <span className="text-[17px] font-semibold tracking-[-0.03em]">
+            mais<span className="font-black text-[#EE5C13]">sub</span>
+          </span>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="p-1 text-[#6B7280] hover:text-[#0A0A0A] transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="px-5 py-6">
+          {[{ href: '/', label: 'Início' }, ...NAV].map(l => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-between py-4 border-b border-[#F4F4F5] text-[15px] font-medium text-[#0A0A0A] hover:text-[#EE5C13] transition-colors"
+            >
+              {l.label}
+              <ArrowRight size={14} className="text-[#9CA3AF]" />
+            </Link>
+          ))}
+
+          <div className="mt-6 space-y-3">
+            <Link href="/cardapio" onClick={() => setMobileOpen(false)}>
+              <button className="w-full bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-semibold py-3.5 rounded-full text-[15px] transition-colors">
+                Pedir agora
+              </button>
+            </Link>
+            <a
+              href="https://wa.me/5511999999999"
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full border border-[#E4E4E7] text-[#6B7280] font-medium py-3.5 rounded-full text-[15px] hover:border-[#0A0A0A] hover:text-[#0A0A0A] transition-colors"
+            >
+              WhatsApp
+            </a>
           </div>
         </nav>
       </div>
-    </header>
+    </>
   )
 }

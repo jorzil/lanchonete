@@ -1,9 +1,218 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
-
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+
+@layer base {
+  :root {
+    /* Design tokens */
+    --font-inter: 'Inter', sans-serif;
+    --color-bg: #FAFAFA;
+    --color-surface: #FFFFFF;
+    --color-border: #E4E4E7;
+    --color-text: #0A0A0A;
+    --color-text-2: #6B7280;
+    --color-text-3: #9CA3AF;
+    --color-accent: #EE5C13;
+    --color-dark: #011a33;
+
+    /* Shadcn tokens */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 20 86% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 4%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 20 86% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 20 86% 50%;
+    --radius: 0.75rem;
+    --sidebar-background: 213 87% 22%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 20 86% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 87% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 213 87% 30%;
+    --sidebar-ring: 20 86% 50%;
+  }
+
+  * { border-color: hsl(var(--border)); }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  /* Inter numeric tabular */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up-sm {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-fade-in        { animation: fade-in 0.5s ease forwards; }
+.animate-slide-up       { animation: slide-up 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-slide-up-sm    { animation: slide-up-sm 0.4s ease forwards; }
+.animate-ticker         { animation: ticker 28s linear infinite; }
+.animate-pulse-dot      { animation: pulse-dot 2s ease-in-out infinite; }
+
+.animation-delay-100  { animation-delay: 100ms; }
+.animation-delay-200  { animation-delay: 200ms; }
+.animation-delay-300  { animation-delay: 300ms; }
+.animation-delay-400  { animation-delay: 400ms; }
+.animation-delay-500  { animation-delay: 500ms; }
+.animation-delay-600  { animation-delay: 600ms; }
+.animation-delay-700  { animation-delay: 700ms; }
+.animation-delay-800  { animation-delay: 800ms; }
+
+/* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── STEP CONNECTOR (sandwich builder) ──────────────────────────────────── */
+.step-connector {
+  flex: 1; height: 2px;
+  background: rgba(255,255,255,0.15);
+  position: relative; overflow: hidden;
+}
+.step-connector.done { background: #EE5C13; }
+.step-connector.active::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, #EE5C13, transparent);
+}
+
+/* ─── LIQUID GLASS (header & hero overlays) ───────────────────────────────── */
+.liquid-glass {
+  background: rgba(255,255,255,0.01);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.10);
+  position: relative;
+  overflow: hidden;
+}
+.liquid-glass::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.45) 0%,
+    rgba(255,255,255,0.15) 20%,
+    rgba(255,255,255,0) 40%,
+    rgba(255,255,255,0) 60%,
+    rgba(255,255,255,0.15) 80%,
+    rgba(255,255,255,0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.liquid-glass-strong {
+  background: rgba(255,255,255,0.01);
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
+  box-shadow: 4px 4px 4px rgba(0,0,0,0.05), inset 0 1px 1px rgba(255,255,255,0.15);
+  position: relative; overflow: hidden;
+}
+.liquid-glass-strong::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit; padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.50) 0%,
+    rgba(255,255,255,0.20) 20%,
+    rgba(255,255,255,0) 40%,
+    rgba(255,255,255,0) 60%,
+    rgba(255,255,255,0.20) 80%,
+    rgba(255,255,255,0.50) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none; z-index: 1;
+}
+
+.liquid-glass-orange {
+  background: rgba(238,92,19,0.30);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 1px 1px rgba(255,200,150,0.25), 0 4px 24px rgba(238,92,19,0.25);
+  position: relative; overflow: hidden;
+}
+.liquid-glass-orange::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit; padding: 1.4px;
+  background: linear-gradient(180deg,
+    rgba(255,180,100,0.60) 0%,
+    rgba(255,140,60,0.20) 25%,
+    rgba(255,100,30,0) 50%,
+    rgba(255,140,60,0.20) 75%,
+    rgba(255,180,100,0.60) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none; z-index: 1;
+}
+
+/* ─── PRODUCT CARD IMAGE ZOOM ─────────────────────────────────────────────── */
+.card-img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+.group:hover .card-img { transform: scale(1.06); }
+
+/* ─── CATEGORY PILL ACTIVE ────────────────────────────────────────────────── */
+.cat-pill {
+  transition: all 0.2s ease;
+  cursor: pointer; user-select: none;
+  white-space: nowrap;
+}
+
+/* ─── PRINT ───────────────────────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+}
+
 
 @layer utilities {
   .text-balance {
