@@ -148,23 +148,32 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden max-h-[95vh] flex flex-col rounded-3xl border-0 shadow-2xl">
 
-        {/* ── Header ── */}
-        <DialogHeader className="px-6 pt-5 pb-4 shrink-0" style={{ background: '#0B2C5C' }}>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-white text-xl font-black flex items-center gap-2">
-              <span>🥖</span>
-              <span>Monte Seu Sub</span>
+        {/* ── Header Premium ── */}
+        <DialogHeader className="px-6 pt-6 pb-5 shrink-0 bg-gradient-to-r from-[#0B2C5C] via-[#163A6E] to-[#0A2452] border-b-2 border-[#FF6B1A]">
+          <div className="flex items-center justify-between mb-5">
+            <DialogTitle className="text-white text-2xl font-black flex items-center gap-3">
+              <span className="text-3xl">🥖</span>
+              <div className="flex flex-col">
+                <span>Monte Seu Sub</span>
+                <span className="text-xs font-normal text-white/60">Personalize do seu jeito</span>
+              </div>
             </DialogTitle>
-            <button
-              onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center text-white"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:flex flex-col items-end">
+                <p className="text-xs text-white/60 font-medium">Total</p>
+                <p className="text-3xl font-black text-[#FF6B1A] leading-none">{formatCurrency(total)}</p>
+              </div>
+              <button
+                onClick={handleClose}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-[#EE5C13] hover:scale-110 transition-all flex items-center justify-center text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
-          {/* Step pills */}
-          <div className="mt-4 flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+          {/* Step progress bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-2">
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center gap-1.5 shrink-0">
                 <button
@@ -218,38 +227,36 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
               <p className="text-gray-500 text-sm">{STEPS[step - 1].description}</p>
             </div>
 
-            {/* Step 1 — Size */}
+            {/* Step 1 — Size (Premium Cards) */}
             {step === 1 && (
               <div className="grid grid-cols-2 gap-4">
                 {MENU.sizes.map((size) => (
                   <button
                     key={size.key}
                     onClick={() => setCustomization((prev) => ({ ...prev, size: size.key as SizeOption }))}
-                    className={`relative p-5 rounded-2xl border-2 text-left transition-all hover:scale-[1.02] overflow-hidden group ${
+                    className={`relative p-6 rounded-2xl border-2 text-left transition-all hover:scale-[1.03] overflow-hidden group ${
                       customization.size === size.key
-                        ? 'border-[#EE5C13] bg-orange-50 shadow-md shadow-orange-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        ? 'border-[#EE5C13] bg-gradient-to-br from-[#FFF5EB] to-white shadow-lg shadow-orange-200/50'
+                        : 'border-gray-200 hover:border-[#EE5C13]/40 bg-white hover:shadow-md'
                     }`}
                   >
                     {customization.size === size.key && (
-                      <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-[#EE5C13] flex items-center justify-center">
-                        <Check size={11} className="text-white" />
+                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#EE5C13] flex items-center justify-center shadow-lg">
+                        <Check size={14} className="text-white" />
                       </div>
                     )}
-                    <div
-                      className={`text-5xl mb-3 transition-transform group-hover:scale-110`}
-                    >
+                    <div className="text-6xl mb-4 transition-transform group-hover:scale-125 inline-block">
                       {size.key === '15cm' ? '🥖' : '🥖🥖'}
                     </div>
-                    <div className="font-black text-gray-900 text-xl">{size.label}</div>
-                    <div className="text-[#EE5C13] font-bold text-lg mt-1">{formatCurrency(size.price)}</div>
-                    <div className="text-gray-400 text-xs mt-1 leading-snug">{size.description}</div>
+                    <div className="font-black text-gray-900 text-2xl mb-1">{size.label}</div>
+                    <div className="text-[#EE5C13] font-black text-xl mb-2">{formatCurrency(size.price)}</div>
+                    <div className="text-gray-500 text-xs leading-relaxed">{size.description}</div>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Step 2 — Meat */}
+            {/* Step 2 — Meat (Premium) */}
             {step === 2 && (
               <div className="space-y-3">
                 {MENU.meats.map((item) => {
@@ -259,18 +266,20 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     <button
                       key={item.key}
                       onClick={() => setCustomization((prev) => ({ ...prev, meat: item.key }))}
-                      className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.01] ${
-                        selected ? 'border-[#EE5C13] bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                      className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.02] ${
+                        selected
+                          ? 'border-[#EE5C13] bg-gradient-to-r from-[#FFF5EB] to-white shadow-md shadow-orange-200/30'
+                          : 'border-gray-200 bg-white hover:border-[#EE5C13]/40'
                       }`}
                     >
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-sm shrink-0`}>
+                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-md shrink-0`}>
                         🥩
                       </div>
                       <div className="flex-1">
                         <div className="font-black text-gray-900 text-base">{item.name}</div>
                       </div>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                        selected ? 'bg-[#EE5C13] border-[#EE5C13]' : 'border-gray-300'
+                        selected ? 'bg-[#EE5C13] border-[#EE5C13] scale-110 shadow-lg' : 'border-gray-300'
                       }`}>
                         {selected && <Check size={13} className="text-white" />}
                       </div>
@@ -280,32 +289,48 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
               </div>
             )}
 
-            {/* Step 3 — Cheese (multi-select) */}
+            {/* Step 3 — Cheese (multi-select premium) */}
             {step === 3 && (
               <div>
-                <p className="text-xs text-gray-400 mb-4 font-medium">
-                  Escolha um ou mais queijos — selecionando 2 ou mais, adicionamos automaticamente o adicional de Queijo em Dobro
-                </p>
+                <div className="mb-5 p-4 bg-gradient-to-r from-[#0B2C5C]/5 to-[#EE5C13]/5 rounded-xl border border-[#0B2C5C]/10">
+                  <p className="text-xs text-gray-600 font-semibold mb-1">💡 Dica</p>
+                  <p className="text-sm text-gray-700">O primeiro queijo é incluso. Adicionais são cobrados: <span className="font-bold text-[#EE5C13]">+ R$ 3,00 cada</span></p>
+                </div>
                 <div className="space-y-3">
-                  {MENU.cheeses.map((item) => {
+                  {MENU.cheeses.map((item, idx) => {
                     const selected = customization.cheeses.includes(item.key)
+                    const isFirst = selected && idx === 0
                     const grad = CHEESE_COLORS[item.key] ?? 'from-yellow-200 to-yellow-300'
+                    const cheesePrice = customization.size === '15cm' ? 3 : 5
+                    const cheeseIndex = customization.cheeses.indexOf(item.key)
+                    const isIncluded = cheeseIndex === 0
+
                     return (
                       <button
                         key={item.key}
                         onClick={() => toggleCheese(item.key)}
-                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.01] ${
-                          selected ? 'border-[#0B2C5C] bg-[#0B2C5C]/5 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.02] ${
+                          selected
+                            ? 'border-[#EE5C13] bg-gradient-to-r from-[#FFF5EB] to-white shadow-md'
+                            : 'border-gray-200 bg-white hover:border-[#EE5C13]/50'
                         }`}
                       >
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-sm shrink-0`}>
                           🧀
                         </div>
-                        <div className="flex-1">
-                          <div className="font-black text-gray-900 text-base">{item.name}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-black text-gray-900 text-base flex items-center gap-2">
+                            {item.name}
+                            {selected && isIncluded && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Incluso</span>
+                            )}
+                            {selected && !isIncluded && (
+                              <span className="text-xs bg-orange-100 text-[#EE5C13] px-2 py-0.5 rounded-full font-bold">+{formatCurrency(cheesePrice)}</span>
+                            )}
+                          </div>
                         </div>
                         <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                          selected ? 'bg-[#0B2C5C] border-[#0B2C5C]' : 'border-gray-300'
+                          selected ? 'bg-[#EE5C13] border-[#EE5C13]' : 'border-gray-300'
                         }`}>
                           {selected && <Check size={13} className="text-white" />}
                         </div>
@@ -314,37 +339,52 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   })}
                 </div>
                 {isDoubleCheese && (
-                  <div className="mt-4 flex items-center gap-2 bg-[#0B2C5C]/8 border border-[#0B2C5C]/20 rounded-xl px-4 py-3">
-                    <span className="text-lg">✨</span>
-                    <p className="text-[#0B2C5C] text-sm font-bold">Queijo em Dobro adicionado automaticamente ao seu sub!</p>
+                  <div className="mt-5 p-4 bg-gradient-to-r from-[#FF6B1A]/10 to-[#EE5C13]/10 border-l-4 border-[#FF6B1A] rounded-lg flex items-start gap-3">
+                    <span className="text-2xl shrink-0">✨</span>
+                    <div>
+                      <p className="font-bold text-[#EE5C13] text-sm">Queijo em Dobro</p>
+                      <p className="text-xs text-gray-600 mt-0.5">Adicionado automaticamente por +{formatCurrency(customization.size === '15cm' ? 3 : 5)}</p>
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Step 4 — Salads (tag-pill style) */}
+            {/* Step 4 — Salads (premium grid) */}
             {step === 4 && (
               <div>
-                <p className="text-xs text-gray-400 mb-4 font-medium">Selecione quantas quiser — toque para adicionar ou remover</p>
-                <div className="flex flex-wrap gap-2.5">
+                <p className="text-xs text-gray-500 mb-4 font-medium uppercase tracking-wide">Sem limite — escolha quantas quiser</p>
+                <div className="grid grid-cols-2 gap-3">
                   {MENU.salads.map((item) => {
                     const selected = customization.salads.includes(item.key)
+                    const isComplete = item.key === 'salada-completa'
+                    const isEmpty = customization.salads.length === 0
+
                     return (
                       <button
                         key={item.key}
                         onClick={() => toggleSalad(item.key)}
-                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full font-semibold text-sm transition-all border-2 hover:scale-105 ${
+                        className={`p-3 rounded-xl font-semibold text-sm transition-all border-2 hover:scale-105 flex flex-col items-center gap-2 ${
                           selected
-                            ? 'bg-[#EE5C13] border-[#EE5C13] text-white shadow-md shadow-orange-200'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#EE5C13]/50 hover:text-[#EE5C13]'
+                            ? isComplete
+                              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400 text-green-700 shadow-md shadow-green-100'
+                              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-[#EE5C13] text-[#EE5C13] shadow-md'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#EE5C13]/30'
                         }`}
                       >
-                        🥗 {item.name}
-                        {selected && <Check size={12} />}
+                        <span className="text-2xl">{isComplete ? '🥗✨' : '🥗'}</span>
+                        <span className="text-xs text-center leading-tight">{item.name}</span>
+                        {selected && <Check size={14} />}
                       </button>
                     )
                   })}
                 </div>
+                {customization.salads.includes('salada-completa') && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs font-bold text-green-700 mb-2">✅ Salada Completa Selecionada</p>
+                    <p className="text-xs text-green-700">Todas as saladas disponíveis incluídas no seu sub</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -474,30 +514,30 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
           </div>
         </div>
 
-        {/* ── Footer nav ── */}
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-white shrink-0">
+        {/* ── Footer nav (Premium) ── */}
+        <div className="px-6 py-4 border-t-2 border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white shrink-0">
           <Button
             variant="outline"
             onClick={() => setStep((s) => Math.max(1, s - 1))}
             disabled={step === 1}
-            className="rounded-full border-2 border-gray-200 text-gray-700 hover:border-gray-300 font-bold px-5 h-11 flex items-center gap-1.5"
+            className="rounded-full border-2 border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50 font-bold px-5 h-11 flex items-center gap-1.5 transition-all disabled:opacity-30"
           >
             <ChevronLeft size={16} />
             Voltar
           </Button>
 
           <div className="text-center">
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">
-              Etapa {step}/{STEPS.length}
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
+              Etapa {step} de {STEPS.length}
             </p>
-            <p className="font-black text-[#EE5C13] text-sm">{STEPS[step - 1].title}</p>
+            <p className="font-black text-gray-900 text-sm">{STEPS[step - 1].title}</p>
           </div>
 
           {step < STEPS.length ? (
             <Button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
-              className="rounded-full bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-black px-6 h-11 flex items-center gap-1.5 shadow-md shadow-orange-400/20 disabled:opacity-40 btn-ripple"
+              className="rounded-full bg-gradient-to-r from-[#EE5C13] to-[#FF6B1A] hover:shadow-lg hover:scale-105 text-white font-black px-6 h-11 flex items-center gap-1.5 shadow-md shadow-orange-400/30 disabled:opacity-40 transition-all"
             >
               Próximo <ChevronRight size={16} />
             </Button>
@@ -505,7 +545,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             <Button
               onClick={handleAddToCart}
               disabled={!canProceed()}
-              className="rounded-full bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-black px-6 h-11 shadow-md shadow-orange-400/20 disabled:opacity-40 btn-ripple"
+              className="rounded-full bg-gradient-to-r from-[#10B981] to-emerald-500 hover:shadow-lg hover:scale-105 text-white font-black px-6 h-11 shadow-md shadow-green-400/30 disabled:opacity-40 transition-all"
             >
               Adicionar 🛒
             </Button>
