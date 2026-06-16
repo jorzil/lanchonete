@@ -45,41 +45,43 @@ export function CartPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0A2452] border-white/8 text-white">
-        <SheetHeader className="px-6 py-4 border-b border-[#EE5C13]/25 bg-gradient-to-r from-[#0A2452] to-[#1A1024]">
-          <SheetTitle className="text-white flex items-center gap-2">
-            <ShoppingBag size={20} className="text-[#EE5C13]" />
-            Meu Carrinho
-            {itemCount > 0 && <Badge className="ml-2 bg-[#EE5C13] text-white border-0">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</Badge>}
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-gradient-to-b from-[#FFFFFF] to-[#F9F9F9] border-l-4 border-l-[#EE5C13] text-gray-900 shadow-2xl">
+        <SheetHeader className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-[#0B2C5C] via-[#163A6E] to-[#0A2452]">
+          <SheetTitle className="text-white flex items-center gap-3">
+            <div className="p-2 bg-[#FF6B1A] rounded-lg">
+              <ShoppingBag size={20} className="text-white" />
+            </div>
+            <span className="text-lg font-black">Meu Carrinho</span>
+            {itemCount > 0 && <Badge className="ml-auto bg-[#FF6B1A] text-white border-0 font-bold text-xs px-2.5 py-1">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</Badge>}
           </SheetTitle>
         </SheetHeader>
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="text-7xl mb-4">🥖</div>
-            <h3 className="text-xl font-bold text-white mb-2">Seu carrinho está vazio</h3>
-            <p className="text-white/35 mb-6">Adicione subs deliciosos ao seu pedido!</p>
+            <div className="text-7xl mb-4 animate-bounce">🥖</div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Seu carrinho está vazio</h3>
+            <p className="text-gray-500 mb-6 text-sm">Adicione subs deliciosos ao seu pedido!</p>
             <Link href="/cardapio" onClick={closeCart}>
-              <Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-6 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button>
+              <Button className="bg-gradient-to-r from-[#EE5C13] to-[#FF6B1A] hover:shadow-lg hover:scale-105 text-white rounded-full px-6 font-bold shadow-md transition-all">Ver Cardápio</Button>
             </Link>
           </div>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
               {items.map((item) => (
-                <div key={item.id} className="bg-white/[0.04] rounded-xl border border-white/8 border-l-2 border-l-[#EE5C13] p-4">
+                <div key={item.id} className="bg-white rounded-xl border-2 border-gray-200 hover:border-[#EE5C13] hover:shadow-md transition-all p-4 group">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 bg-[#EE5C13]/10 rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-white text-sm leading-tight">{item.name}</h4>
-                      {item.customization && <p className="text-xs text-white/35 mt-1 leading-relaxed">{customizationSummary(item.customization)}</p>}
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-[#EE5C13] font-bold text-sm">{formatCurrency(item.price * item.quantity)}</span>
+                      <h4 className="font-bold text-gray-900 text-sm leading-tight">{item.name}</h4>
+                      {item.customization && <p className="text-xs text-gray-600 mt-1 leading-relaxed">{customizationSummary(item.customization)}</p>}
+                      <div className="flex items-center justify-between mt-3">
+                        <span className="text-[#EE5C13] font-black text-lg">{formatCurrency(item.price * item.quantity)}</span>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full border border-white/12 flex items-center justify-center hover:bg-white/8 transition-colors text-white/70"><Minus size={12} /></button>
-                          <span className="w-6 text-center text-sm font-medium text-white">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full border border-white/12 flex items-center justify-center hover:bg-white/8 transition-colors text-white/70"><Plus size={12} /></button>
-                          <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors ml-1"><Trash2 size={12} /></button>
+                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-[#EE5C13] transition-all text-gray-700"><Minus size={12} /></button>
+                          <span className="w-6 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full border-2 border-[#EE5C13] flex items-center justify-center hover:bg-orange-50 transition-all text-[#EE5C13] font-bold"><Plus size={12} /></button>
+                          <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-red-500 hover:bg-red-50 flex items-center justify-center transition-all ml-1"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     </div>
@@ -88,16 +90,16 @@ export function CartPanel() {
               ))}
             </div>
 
-            <div className="px-4 pb-6 pt-4 border-t border-[#EE5C13]/20 space-y-4 bg-[#071A3D]">
+            <div className="px-4 pb-6 pt-4 border-t-2 border-gray-200 space-y-4 bg-gradient-to-b from-gray-50 to-white">
               <div>
-                <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Tipo de pedido</p>
+                <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-3">Tipo de Pedido</p>
                 <div className="flex gap-2">
                   {(['entrega', 'retirada'] as const).map((type) => (
                     <button key={type} onClick={() => handleOrderType(type)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all ${
-                        orderType === type ? 'border-[#EE5C13] bg-[#EE5C13]/10 text-[#EE5C13]' : 'border-white/10 text-white/50 hover:border-white/20'
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-105 ${
+                        orderType === type ? 'border-[#EE5C13] bg-orange-50 text-[#EE5C13] shadow-md' : 'border-gray-300 text-gray-700 hover:border-[#EE5C13]/50'
                       }`}>
-                      {type === 'entrega' ? <Truck size={15} /> : <Store size={15} />}
+                      {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
                       {type === 'entrega' ? 'Entrega' : 'Retirada'}
                     </button>
                   ))}
@@ -105,36 +107,41 @@ export function CartPanel() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Cupom de desconto</p>
+                <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-3">Cupom de Desconto</p>
                 {coupon ? (
-                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
-                      <Tag size={14} />
-                      {coupon.code} ({coupon.type === 'percentage' ? `${coupon.discount}%` : formatCurrency(coupon.discount)} off)
+                  <div className="flex items-center justify-between bg-green-50 border-2 border-green-300 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2 text-green-700 text-sm font-bold">
+                      <Tag size={16} />
+                      {coupon.code} ({coupon.type === 'percentage' ? `${coupon.discount}%` : formatCurrency(coupon.discount)} de desconto)
                     </div>
-                    <button onClick={removeCoupon} className="text-red-400 hover:text-red-300 text-xs">Remover</button>
+                    <button onClick={removeCoupon} className="text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-sm bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
-                    <Button onClick={handleApplyCoupon} variant="outline" className="border-[#EE5C13] text-[#EE5C13] hover:bg-[#EE5C13]/10 text-sm bg-transparent">Aplicar</Button>
+                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-sm bg-white border-2 border-gray-300 text-gray-900 placeholder:text-gray-400 focus-visible:ring-[#EE5C13] focus-visible:border-[#EE5C13]" />
+                    <Button onClick={handleApplyCoupon} className="border-2 border-[#EE5C13] text-[#EE5C13] hover:bg-orange-50 text-sm bg-white font-bold transition-all">Aplicar</Button>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-sm text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                {discount > 0 && <div className="flex justify-between text-sm text-emerald-400"><span>Desconto</span><span>-{formatCurrency(discount)}</span></div>}
-                <div className="flex justify-between text-sm text-white/50"><span>Taxa de entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
-                <div className="h-px bg-white/8 my-1" />
-                <div className="flex justify-between font-bold text-white text-base"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
+              <div className="space-y-2 bg-white rounded-lg border-2 border-gray-200 p-4">
+                <div className="flex justify-between text-sm text-gray-700"><span>Subtotal</span><span className="font-semibold">{formatCurrency(subtotal)}</span></div>
+                {discount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Desconto</span><span className="font-bold">-{formatCurrency(discount)}</span></div>}
+                <div className="flex justify-between text-sm text-gray-700"><span>Taxa de entrega</span><span className="font-semibold">{deliveryFee === 0 ? '✓ Grátis' : formatCurrency(deliveryFee)}</span></div>
+                <div className="h-px bg-gray-200 my-2" />
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-900 font-black text-lg">Total</span>
+                  <span className="text-4xl font-black text-[#FF6B1A]">{formatCurrency(total)}</span>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Link href="/checkout" onClick={closeCart} className="block">
-                  <Button className="w-full bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-3 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)]">Finalizar Pedido</Button>
+                  <Button className="w-full bg-gradient-to-r from-[#EE5C13] to-[#FF6B1A] hover:shadow-lg hover:scale-105 text-white font-black py-3 rounded-xl text-base transition-all">
+                    Finalizar Pedido
+                  </Button>
                 </Link>
-                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} variant="outline" className="w-full border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 rounded-full font-medium bg-transparent">
+                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} className="w-full border-2 border-green-400 text-green-700 hover:bg-green-50 rounded-xl font-black bg-white transition-all">
                   Pedir via WhatsApp
                 </Button>
               </div>
