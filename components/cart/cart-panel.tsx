@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Trash2, Plus, Minus, Tag, Truck, Store, X } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingBag, Tag, Truck, Store } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
 import { formatCartForWhatsApp, openWhatsApp } from '@/lib/whatsapp'
@@ -30,7 +31,7 @@ export function CartPanel() {
 
   const handleApplyCoupon = () => {
     const ok = applyCoupon(couponInput)
-    if (ok) { toast.success('Cupom aplicado!'); setCouponInput('') }
+    if (ok) { toast.success('Cupom aplicado com sucesso!'); setCouponInput('') }
     else toast.error('Cupom inválido ou expirado.')
   }
 
@@ -41,46 +42,42 @@ export function CartPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#FAF6EE] border-l border-[#E8E0D0] text-[#0E1F3C]">
-        <SheetHeader className="px-6 py-5 border-b border-[#E8E0D0]">
-          <div className="flex items-center justify-between gap-4">
-            <SheetTitle className="h-editorial text-[24px] text-[#0E1F3C] flex items-baseline gap-2">
-              Carrinho
-              {itemCount > 0 && <span className="text-[12px] font-normal text-[#8B95A8] tabular-nums font-sans">{itemCount.toString().padStart(2, '0')}</span>}
-            </SheetTitle>
-          </div>
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0B2C5C] border-white/8 text-white">
+        <SheetHeader className="px-6 py-4 border-b border-white/8 bg-[#163A6E]">
+          <SheetTitle className="text-white flex items-center gap-2">
+            <ShoppingBag size={20} className="text-[#EE5C13]" />
+            Meu Carrinho
+            {itemCount > 0 && <Badge className="ml-2 bg-[#EE5C13] text-white border-0">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</Badge>}
+          </SheetTitle>
         </SheetHeader>
 
         {items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
-            <h3 className="h-editorial text-[28px] text-[#0E1F3C] mb-3">Tudo vazio por aqui</h3>
-            <p className="text-[13px] text-[#8B95A8] mb-7 max-w-[240px]">Adicione subs ao carrinho para finalizar o pedido.</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-7xl mb-4">🥖</div>
+            <h3 className="text-xl font-bold text-white mb-2">Seu carrinho está vazio</h3>
+            <p className="text-white/35 mb-6">Adicione subs deliciosos ao seu pedido!</p>
             <Link href="/cardapio" onClick={closeCart}>
-              <Button className="bg-[#0E1F3C] hover:bg-[#1a2e54] text-[#FAF6EE] rounded-full px-6 h-11">Ver cardápio</Button>
+              <Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-6 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button>
             </Link>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
               {items.map((item) => (
-                <div key={item.id} className="bg-white rounded-xl border border-[#E8E0D0] p-4">
+                <div key={item.id} className="bg-[#163A6E] rounded-xl border border-white/6 p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 bg-[#F2ECDF] rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
+                    <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-[13.5px] font-medium text-[#0E1F3C] leading-tight">{item.name}</h4>
-                        <button onClick={() => removeItem(item.id)} className="text-[#8B95A8] hover:text-[#9C3D0E] transition-colors shrink-0" aria-label="Remover">
-                          <X size={14} strokeWidth={1.8} />
-                        </button>
-                      </div>
-                      {item.customization && <p className="text-[11.5px] text-[#8B95A8] mt-1 leading-relaxed">{customizationSummary(item.customization)}</p>}
-                      <div className="flex items-center justify-between mt-3">
+                      <h4 className="font-semibold text-white text-sm leading-tight">{item.name}</h4>
+                      {item.customization && <p className="text-xs text-white/35 mt-1 leading-relaxed">{customizationSummary(item.customization)}</p>}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[#EE5C13] font-bold text-sm">{formatCurrency(item.price * item.quantity)}</span>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full border border-[#E8E0D0] flex items-center justify-center hover:border-[#0E1F3C] transition-colors"><Minus size={11} strokeWidth={1.8} /></button>
-                          <span className="w-6 text-center text-[13px] font-medium tabular-nums">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full border border-[#E8E0D0] flex items-center justify-center hover:border-[#0E1F3C] transition-colors"><Plus size={11} strokeWidth={1.8} /></button>
+                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full border border-white/12 flex items-center justify-center hover:bg-white/8 transition-colors text-white/70"><Minus size={12} /></button>
+                          <span className="w-6 text-center text-sm font-medium text-white">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full border border-white/12 flex items-center justify-center hover:bg-white/8 transition-colors text-white/70"><Plus size={12} /></button>
+                          <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors ml-1"><Trash2 size={12} /></button>
                         </div>
-                        <span className="text-[13.5px] font-medium text-[#0E1F3C] tabular-nums">{formatCurrency(item.price * item.quantity)}</span>
                       </div>
                     </div>
                   </div>
@@ -88,16 +85,16 @@ export function CartPanel() {
               ))}
             </div>
 
-            <div className="px-5 pb-6 pt-5 border-t border-[#E8E0D0] space-y-5 bg-[#F2ECDF]">
+            <div className="px-4 pb-6 pt-4 border-t border-white/8 space-y-4 bg-[#0A2452]">
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#8B95A8] mb-2.5">Tipo de pedido</p>
+                <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Tipo de pedido</p>
                 <div className="flex gap-2">
                   {(['entrega', 'retirada'] as const).map((type) => (
                     <button key={type} onClick={() => handleOrderType(type)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg border text-[13px] font-medium transition-all ${
-                        orderType === type ? 'border-[#0E1F3C] bg-white text-[#0E1F3C]' : 'border-[#E8E0D0] text-[#8B95A8] hover:border-[#0E1F3C]/40'
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all ${
+                        orderType === type ? 'border-[#EE5C13] bg-[#EE5C13]/10 text-[#EE5C13]' : 'border-white/10 text-white/50 hover:border-white/20'
                       }`}>
-                      {type === 'entrega' ? <Truck size={13} strokeWidth={1.8} /> : <Store size={13} strokeWidth={1.8} />}
+                      {type === 'entrega' ? <Truck size={15} /> : <Store size={15} />}
                       {type === 'entrega' ? 'Entrega' : 'Retirada'}
                     </button>
                   ))}
@@ -105,40 +102,37 @@ export function CartPanel() {
               </div>
 
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-[#8B95A8] mb-2.5">Cupom</p>
+                <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Cupom de desconto</p>
                 {coupon ? (
-                  <div className="flex items-center justify-between bg-white border border-[#E8E0D0] rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2 text-emerald-700 text-[12.5px] font-medium">
-                      <Tag size={13} strokeWidth={1.8} />
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                      <Tag size={14} />
                       {coupon.code} ({coupon.type === 'percentage' ? `${coupon.discount}%` : formatCurrency(coupon.discount)} off)
                     </div>
-                    <button onClick={removeCoupon} className="text-[#8B95A8] hover:text-[#9C3D0E] text-[11px]">Remover</button>
+                    <button onClick={removeCoupon} className="text-red-400 hover:text-red-300 text-xs">Remover</button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-[13px] bg-white border-[#E8E0D0] text-[#0E1F3C] placeholder:text-[#8B95A8] focus-visible:ring-1 focus-visible:ring-[#0E1F3C] focus-visible:ring-offset-0" />
-                    <Button onClick={handleApplyCoupon} variant="outline" className="border-[#0E1F3C] text-[#0E1F3C] hover:bg-[#0E1F3C] hover:text-[#FAF6EE] text-[12.5px] bg-transparent">Aplicar</Button>
+                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-sm bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                    <Button onClick={handleApplyCoupon} variant="outline" className="border-[#EE5C13] text-[#EE5C13] hover:bg-[#EE5C13]/10 text-sm bg-transparent">Aplicar</Button>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2 text-[13px]">
-                <div className="flex justify-between text-[#3D4D6A]"><span>Subtotal</span><span className="tabular-nums">{formatCurrency(subtotal)}</span></div>
-                {discount > 0 && <div className="flex justify-between text-emerald-700"><span>Desconto</span><span className="tabular-nums">-{formatCurrency(discount)}</span></div>}
-                <div className="flex justify-between text-[#3D4D6A]"><span>Entrega</span><span className="tabular-nums">{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
-                <div className="h-px bg-[#E8E0D0] my-2" />
-                <div className="flex justify-between items-baseline">
-                  <span className="text-[#0E1F3C] font-medium">Total</span>
-                  <span className="h-editorial text-[#0E1F3C] text-[26px] tabular-nums">{formatCurrency(total)}</span>
-                </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-sm text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+                {discount > 0 && <div className="flex justify-between text-sm text-emerald-400"><span>Desconto</span><span>-{formatCurrency(discount)}</span></div>}
+                <div className="flex justify-between text-sm text-white/50"><span>Taxa de entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
+                <div className="h-px bg-white/8 my-1" />
+                <div className="flex justify-between font-bold text-white text-base"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
               </div>
 
               <div className="space-y-2">
                 <Link href="/checkout" onClick={closeCart} className="block">
-                  <Button className="w-full bg-[#0E1F3C] hover:bg-[#1a2e54] text-[#FAF6EE] font-medium py-6 rounded-full text-[14px]">Finalizar pedido</Button>
+                  <Button className="w-full bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-3 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)]">Finalizar Pedido</Button>
                 </Link>
-                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} variant="outline" className="w-full border-[#E8E0D0] text-[#0E1F3C] hover:bg-white rounded-full font-medium bg-transparent">
-                  Pedir pelo WhatsApp
+                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} variant="outline" className="w-full border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 rounded-full font-medium bg-transparent">
+                  Pedir via WhatsApp
                 </Button>
               </div>
             </div>
