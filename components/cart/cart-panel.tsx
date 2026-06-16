@@ -81,7 +81,7 @@ export function CartPanel() {
                           <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 hover:border-[#EE5C13] transition-all text-gray-700"><Minus size={12} /></button>
                           <span className="w-6 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
                           <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full border-2 border-[#EE5C13] flex items-center justify-center hover:bg-orange-50 transition-all text-[#EE5C13] font-bold"><Plus size={12} /></button>
-                          <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-red-500 hover:bg-red-50 flex items-center justify-center transition-all ml-1"><Trash2 size={12} /></button>
+                          <button onClick={() => removeItem(item.id)} className="w-7 h-7 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all ml-1"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     </div>

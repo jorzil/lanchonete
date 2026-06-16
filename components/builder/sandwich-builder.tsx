@@ -90,20 +90,18 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
         : [...prev.cheeses, key],
     }))
 
+  const ALL_SALAD_KEYS = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
+
   const toggleSalad = (key: string) =>
     setCustomization((prev) => {
       if (key === 'salada-completa') {
-        const allSaladKeys = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
         const isComplete = prev.salads.includes('salada-completa')
-        return { ...prev, salads: isComplete ? [] : ['salada-completa', ...allSaladKeys] }
+        return { ...prev, salads: isComplete ? [] : ['salada-completa', ...ALL_SALAD_KEYS] }
       }
-      const withoutComplete = prev.salads.filter((s) => s !== 'salada-completa')
-      return {
-        ...prev,
-        salads: prev.salads.includes(key)
-          ? withoutComplete.filter((s) => s !== key)
-          : [...withoutComplete, key],
-      }
+      const current = prev.salads.filter((s) => s !== 'salada-completa')
+      const next = current.includes(key) ? current.filter((s) => s !== key) : [...current, key]
+      const allSelected = ALL_SALAD_KEYS.every((k) => next.includes(k))
+      return { ...prev, salads: allSelected ? ['salada-completa', ...next] : next }
     })
 
   const toggleSauce = (key: string) =>
@@ -183,9 +181,9 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${
                       s.id < step
-                        ? 'bg-[#EE5C13] border-[#EE5C13] text-white'
+                        ? 'bg-[#10B981] border-[#10B981] text-white'
                         : s.id === step
-                        ? 'bg-white border-white text-[#0B2C5C]'
+                        ? 'bg-[#FF6B1A] border-[#FF6B1A] text-white scale-110 shadow-lg shadow-orange-500/30'
                         : 'bg-transparent border-white/25 text-white/30'
                     }`}
                   >
@@ -194,9 +192,9 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   <span
                     className={`text-xs font-semibold transition-colors hidden sm:inline ${
                       s.id === step
-                        ? 'text-white'
+                        ? 'text-[#FF6B1A]'
                         : s.id < step
-                        ? 'text-[#EE5C13]'
+                        ? 'text-[#10B981]'
                         : 'text-white/30'
                     }`}
                   >
@@ -204,7 +202,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   </span>
                 </button>
                 {i < STEPS.length - 1 && (
-                  <div className={`w-4 h-0.5 rounded-full shrink-0 ${i < step - 1 ? 'bg-[#EE5C13]' : 'bg-white/15'}`} />
+                  <div className={`w-4 h-0.5 rounded-full shrink-0 ${i < step - 1 ? 'bg-[#10B981]' : 'bg-white/15'}`} />
                 )}
               </div>
             ))}
@@ -215,7 +213,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
         <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row min-h-0">
 
           {/* Step content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-6 overflow-y-auto animate-slide-up-sm" key={step}>
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">{STEPS[step - 1].emoji}</span>
@@ -297,9 +295,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   <p className="text-sm text-gray-700">O primeiro queijo é incluso. Adicionais são cobrados: <span className="font-bold text-[#EE5C13]">+ R$ 3,00 cada</span></p>
                 </div>
                 <div className="space-y-3">
-                  {MENU.cheeses.map((item, idx) => {
+                  {MENU.cheeses.map((item) => {
                     const selected = customization.cheeses.includes(item.key)
-                    const isFirst = selected && idx === 0
                     const grad = CHEESE_COLORS[item.key] ?? 'from-yellow-200 to-yellow-300'
                     const cheesePrice = customization.size === '15cm' ? 3 : 5
                     const cheeseIndex = customization.cheeses.indexOf(item.key)
@@ -358,7 +355,6 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   {MENU.salads.map((item) => {
                     const selected = customization.salads.includes(item.key)
                     const isComplete = item.key === 'salada-completa'
-                    const isEmpty = customization.salads.length === 0
 
                     return (
                       <button
@@ -379,11 +375,15 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     )
                   })}
                 </div>
-                {customization.salads.includes('salada-completa') && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-xs font-bold text-green-700 mb-2">✅ Salada Completa Selecionada</p>
-                    <p className="text-xs text-green-700">Todas as saladas disponíveis incluídas no seu sub</p>
+                {customization.salads.includes('salada-completa') ? (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                    <span className="text-base">✅</span>
+                    <p className="text-xs font-bold text-green-700">Salada Completa — todas as saladas incluídas no seu sub</p>
                   </div>
+                ) : customization.salads.length > 0 && (
+                  <p className="mt-4 text-xs text-gray-400">
+                    Selecione todas para ativar a Salada Completa automaticamente
+                  </p>
                 )}
               </div>
             )}
