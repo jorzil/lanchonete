@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2 } from 'lucide-react'
+import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Separator } from '@/components/ui/separator'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
@@ -26,10 +26,10 @@ interface FormData {
 }
 
 const PAYMENT_OPTIONS = [
-  { key: 'pix' as PaymentMethod, label: 'PIX', icon: <QrCode size={20} />, description: 'Aprovação instantânea' },
-  { key: 'cartao-credito' as PaymentMethod, label: 'Cartão de Crédito', icon: <CreditCard size={20} />, description: 'Parcelamento disponível' },
-  { key: 'cartao-debito' as PaymentMethod, label: 'Cartão de Débito', icon: <CreditCard size={20} />, description: 'Débito na entrega' },
-  { key: 'dinheiro' as PaymentMethod, label: 'Dinheiro', icon: <Banknote size={20} />, description: 'Troco disponível' },
+  { key: 'pix' as PaymentMethod, label: 'PIX', icon: <QrCode size={19} />, description: 'Aprovação instantânea' },
+  { key: 'cartao-credito' as PaymentMethod, label: 'Crédito', icon: <CreditCard size={19} />, description: 'Parcelamento disponível' },
+  { key: 'cartao-debito' as PaymentMethod, label: 'Débito', icon: <CreditCard size={19} />, description: 'Débito na entrega' },
+  { key: 'dinheiro' as PaymentMethod, label: 'Dinheiro', icon: <Banknote size={19} />, description: 'Troco disponível' },
 ]
 
 function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['customization']>): string {
@@ -37,6 +37,23 @@ function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['custo
   if (c.meat) { const m = MENU.meats.find((m) => m.key === c.meat); if (m) parts.push(m.name) }
   if (c.cheese) { const ch = MENU.cheeses.find((ch) => ch.key === c.cheese); if (ch) parts.push(ch.name) }
   return parts.join(' • ')
+}
+
+function Section({ title, icon, children, delay = 0 }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="bg-[#141414] rounded-2xl p-6 border border-white/6"
+    >
+      <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
+        {icon && <span className="text-[#EE5C13]">{icon}</span>}
+        {title}
+      </h2>
+      {children}
+    </motion.div>
+  )
 }
 
 export default function CheckoutPage() {
@@ -107,12 +124,12 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <><Header />
-        <main className="pt-16 min-h-screen flex items-center justify-center">
+        <main className="pt-16 min-h-screen bg-[#0A0A0A] flex items-center justify-center">
           <div className="text-center p-8">
             <div className="text-7xl mb-4">🛒</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-3">Carrinho vazio</h2>
-            <p className="text-gray-500 mb-6">Adicione itens antes de finalizar o pedido.</p>
-            <Link href="/cardapio"><Button className="bg-[#EE5C13] hover:bg-[#d94b0d] text-white rounded-full px-8">Ver Cardápio</Button></Link>
+            <h2 className="text-2xl font-bold text-white mb-3">Carrinho vazio</h2>
+            <p className="text-white/35 mb-6">Adicione itens antes de finalizar o pedido.</p>
+            <Link href="/cardapio"><Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-8 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button></Link>
           </div>
         </main>
         <Footer /></>
@@ -121,145 +138,145 @@ export default function CheckoutPage() {
 
   return (
     <><Header />
-      <main className="pt-16 bg-gray-50 min-h-screen">
+      <main className="pt-16 bg-[#0A0A0A] min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="mb-8">
-            <Link href="/cardapio" className="flex items-center gap-2 text-gray-500 hover:text-[#EE5C13] transition-colors text-sm font-medium">
+            <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-[#EE5C13] transition-colors text-sm font-medium">
               <ArrowLeft size={16} />Voltar ao cardápio
             </Link>
-            <h1 className="text-3xl font-black text-[#023E74] mt-4">Finalizar Pedido</h1>
+            <h1 className="text-3xl font-black text-white mt-4 tracking-[-0.03em]">Finalizar Pedido</h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="grid lg:grid-cols-5 gap-8">
+          <form onSubmit={handleSubmit} className="grid lg:grid-cols-5 gap-6">
             <div className="lg:col-span-3 space-y-6">
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><User size={20} className="text-[#EE5C13]" />Seus Dados</h2>
+              <Section title="Seus Dados" icon={<User size={18} />}>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome completo *</Label>
-                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className="h-11" />
+                    <Label htmlFor="name" className="text-white/50">Nome completo *</Label>
+                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">WhatsApp *</Label>
+                    <Label htmlFor="phone" className="text-white/50">WhatsApp *</Label>
                     <div className="relative">
-                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11" />
+                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
+                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
                     </div>
                   </div>
                 </div>
-              </div>
+              </Section>
 
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="font-bold text-gray-800 text-lg mb-4">Tipo de Pedido</h2>
+              <Section title="Tipo de Pedido" delay={0.08}>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   {(['entrega', 'retirada'] as OrderType[]).map((type) => (
                     <button key={type} type="button" onClick={() => handleOrderType(type)}
-                      className={`p-4 rounded-xl border-2 font-semibold capitalize transition-all ${
-                        form.orderType === type ? 'border-[#EE5C13] bg-orange-50 text-[#EE5C13]' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      className={`p-4 rounded-xl border font-semibold capitalize transition-all flex items-center justify-center gap-2 ${
+                        form.orderType === type ? 'border-[#EE5C13] bg-[#EE5C13]/10 text-[#EE5C13]' : 'border-white/10 text-white/50 hover:border-white/20'
                       }`}>
-                      {type === 'entrega' ? '🚚 Entrega' : '🏠 Retirada'}
+                      {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
+                      {type === 'entrega' ? 'Entrega' : 'Retirada'}
                     </button>
                   ))}
                 </div>
                 {form.orderType === 'entrega' && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-2"><MapPin size={15} className="text-[#EE5C13]" />Endereço de entrega</div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 space-y-2">
-                        <Label htmlFor="cep">CEP *</Label>
-                        <div className="flex gap-2">
-                          <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className="h-11" />
-                          {loadingCep && <Loader2 size={16} className="animate-spin text-[#EE5C13] self-center" />}
-                        </div>
+                    <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-[#EE5C13]" />Endereço de entrega</div>
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="cep" className="text-white/50">CEP *</Label>
+                      <div className="flex gap-2">
+                        <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                        {loadingCep && <Loader2 size={16} className="animate-spin text-[#EE5C13] self-center" />}
                       </div>
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
                       <div className="sm:col-span-2 space-y-2">
-                        <Label htmlFor="street">Rua *</Label>
-                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className="h-11" />
+                        <Label htmlFor="street" className="text-white/50">Rua *</Label>
+                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="number">Número *</Label>
-                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11" />
+                        <Label htmlFor="number" className="text-white/50">Número *</Label>
+                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="complement">Complemento</Label>
-                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className="h-11" />
+                      <Label htmlFor="complement" className="text-white/50">Complemento</Label>
+                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
-                      <div className="space-y-2"><Label htmlFor="neighborhood">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11" /></div>
-                      <div className="space-y-2"><Label htmlFor="city">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11" /></div>
-                      <div className="space-y-2"><Label htmlFor="state">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11" /></div>
+                      <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
+                      <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
+                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
                     </div>
                   </div>
                 )}
                 {form.orderType === 'retirada' && (
-                  <div className="bg-blue-50 rounded-xl p-4 text-sm text-[#023E74]">
-                    <p className="font-semibold mb-1">📍 Endereço para retirada:</p>
+                  <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm text-white/60">
+                    <p className="font-semibold text-white mb-1">📍 Endereço para retirada:</p>
                     <p>Rua Exemplo, 123 - Bairro, Cidade - SP</p>
-                    <p className="text-gray-500 mt-1">Seg-Sex: 11h–22h | Sáb-Dom: 11h–23h</p>
+                    <p className="text-white/30 mt-1">Seg-Sex: 11h–22h | Sáb-Dom: 11h–23h</p>
                   </div>
                 )}
-              </div>
+              </Section>
 
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><CreditCard size={20} className="text-[#EE5C13]" />Forma de Pagamento</h2>
+              <Section title="Forma de Pagamento" icon={<CreditCard size={18} />} delay={0.16}>
                 <div className="grid sm:grid-cols-2 gap-3">
                   {PAYMENT_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" onClick={() => setForm((prev) => ({ ...prev, paymentMethod: opt.key }))}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${
-                        form.paymentMethod === opt.key ? 'border-[#EE5C13] bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+                      className={`p-4 rounded-xl border text-left transition-all ${
+                        form.paymentMethod === opt.key ? 'border-[#EE5C13] bg-[#EE5C13]/10' : 'border-white/10 hover:border-white/20'
                       }`}>
-                      <div className={`flex items-center gap-2 font-semibold mb-1 ${form.paymentMethod === opt.key ? 'text-[#EE5C13]' : 'text-gray-700'}`}>{opt.icon}{opt.label}</div>
-                      <p className="text-xs text-gray-500">{opt.description}</p>
+                      <div className={`flex items-center gap-2 font-semibold mb-1 ${form.paymentMethod === opt.key ? 'text-[#EE5C13]' : 'text-white/70'}`}>{opt.icon}{opt.label}</div>
+                      <p className="text-xs text-white/30">{opt.description}</p>
                     </button>
                   ))}
                 </div>
                 {form.paymentMethod === 'pix' && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-xl text-center border border-dashed border-gray-300">
+                  <div className="mt-4 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/15">
                     <div className="text-4xl mb-2">📱</div>
-                    <p className="text-sm font-medium text-gray-700">Chave PIX: <span className="text-[#EE5C13] font-bold">maissub@email.com</span></p>
-                    <p className="text-xs text-gray-500 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
+                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-[#EE5C13] font-bold">maissub@email.com</span></p>
+                    <p className="text-xs text-white/30 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
                   </div>
                 )}
-              </div>
+              </Section>
 
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="font-bold text-gray-800 text-lg mb-4">Observações</h2>
-                <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24" />
-              </div>
+              <Section title="Observações" delay={0.24}>
+                <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+              </Section>
             </div>
 
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 sticky top-24">
-                <h2 className="font-bold text-gray-800 text-lg mb-4">Resumo do Pedido</h2>
-                <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-[#141414] rounded-2xl p-6 border border-white/6 sticky top-24"
+              >
+                <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
+                <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-3">
-                      <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center text-xl shrink-0">{item.image}</div>
+                      <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-xl shrink-0">{item.image}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 text-sm leading-tight">{item.name}</p>
-                        {item.customization && <p className="text-xs text-gray-500 truncate">{customizationLabel(item.customization)}</p>}
-                        <p className="text-xs text-gray-500">x{item.quantity}</p>
+                        <p className="font-medium text-white text-sm leading-tight">{item.name}</p>
+                        {item.customization && <p className="text-xs text-white/30 truncate">{customizationLabel(item.customization)}</p>}
+                        <p className="text-xs text-white/30">x{item.quantity}</p>
                       </div>
-                      <div className="text-sm font-semibold text-gray-700 shrink-0">{formatCurrency(item.price * item.quantity)}</div>
+                      <div className="text-sm font-semibold text-white/70 shrink-0">{formatCurrency(item.price * item.quantity)}</div>
                     </div>
                   ))}
                 </div>
-                <Separator className="my-4" />
+                <div className="h-px bg-white/8 my-4" />
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                  {discount > 0 && <div className="flex justify-between text-green-600"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
-                  <div className="flex justify-between text-gray-600"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
-                  <Separator />
-                  <div className="flex justify-between font-black text-lg text-gray-800"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
+                  <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+                  {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
+                  <div className="flex justify-between text-white/50"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
+                  <div className="h-px bg-white/8 my-1" />
+                  <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full mt-6 bg-[#EE5C13] hover:bg-[#d94b0d] text-white font-bold py-4 rounded-full text-base transition-all hover:scale-[1.02] disabled:opacity-60">
+                <Button type="submit" disabled={submitting} className="w-full mt-6 bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-4 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)] disabled:opacity-60">
                   {submitting ? <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" />Processando...</span> : 'Confirmar Pedido'}
                 </Button>
-                <p className="text-center text-xs text-gray-400 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
-              </div>
+                <p className="text-center text-xs text-white/25 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
+              </motion.div>
             </div>
           </form>
         </div>
