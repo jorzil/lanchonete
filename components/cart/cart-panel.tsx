@@ -42,8 +42,8 @@ export function CartPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0A0A0A] border-white/8 text-white">
-        <SheetHeader className="px-6 py-4 border-b border-white/8 bg-[#141414]">
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0B2C5C] border-white/8 text-white">
+        <SheetHeader className="px-6 py-4 border-b border-white/8 bg-[#163A6E]">
           <SheetTitle className="text-white flex items-center gap-2">
             <ShoppingBag size={20} className="text-[#EE5C13]" />
             Meu Carrinho
@@ -64,7 +64,7 @@ export function CartPanel() {
           <>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
               {items.map((item) => (
-                <div key={item.id} className="bg-[#141414] rounded-xl border border-white/6 p-4">
+                <div key={item.id} className="bg-[#163A6E] rounded-xl border border-white/6 p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
                     <div className="flex-1 min-w-0">
@@ -85,7 +85,7 @@ export function CartPanel() {
               ))}
             </div>
 
-            <div className="px-4 pb-6 pt-4 border-t border-white/8 space-y-4 bg-[#0D0D0D]">
+            <div className="px-4 pb-6 pt-4 border-t border-white/8 space-y-4 bg-[#0A2452]">
               <div>
                 <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Tipo de pedido</p>
                 <div className="flex gap-2">

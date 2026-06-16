@@ -45,7 +45,7 @@ function Section({ title, icon, children, delay = 0 }: { title: string; icon?: R
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-[#141414] rounded-2xl p-6 border border-white/6"
+      className="bg-[#163A6E] rounded-2xl p-6 border border-white/6"
     >
       <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
         {icon && <span className="text-[#EE5C13]">{icon}</span>}
@@ -124,7 +124,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <><Header />
-        <main className="pt-16 min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <main className="pt-16 min-h-screen bg-[#0B2C5C] flex items-center justify-center">
           <div className="text-center p-8">
             <div className="text-7xl mb-4">🛒</div>
             <h2 className="text-2xl font-bold text-white mb-3">Carrinho vazio</h2>
@@ -138,7 +138,7 @@ export default function CheckoutPage() {
 
   return (
     <><Header />
-      <main className="pt-16 bg-[#0A0A0A] min-h-screen">
+      <main className="pt-16 bg-[#0B2C5C] min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="mb-8">
             <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-[#EE5C13] transition-colors text-sm font-medium">
@@ -248,7 +248,7 @@ export default function CheckoutPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-[#141414] rounded-2xl p-6 border border-white/6 sticky top-24"
+                className="bg-[#163A6E] rounded-2xl p-6 border border-white/6 sticky top-24"
               >
                 <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">

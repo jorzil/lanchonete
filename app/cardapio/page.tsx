@@ -27,8 +27,8 @@ function ProductCard({ product, onCustomize, onAdd }: {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
 
   return (
-    <div className="group flex flex-col bg-[#141414] rounded-2xl overflow-hidden border border-white/6 hover:border-[#EE5C13]/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#1a1a1a]">
+    <div className="group flex flex-col bg-[#163A6E] rounded-2xl overflow-hidden border border-white/6 hover:border-[#EE5C13]/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A2452]">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -40,7 +40,7 @@ function ProductCard({ product, onCustomize, onAdd }: {
         ) : (
           <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141414]/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#163A6E]/50 via-transparent to-transparent" />
         {product.badge && (
           <span className="absolute top-3 left-3 bg-[#EE5C13] text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
             {product.badge.label.replace(/[^\w\s]/g, '').trim()}
@@ -103,10 +103,10 @@ export default function CardapioPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0A0A0A]">
+      <main className="min-h-screen bg-[#0B2C5C]">
 
         {/* Page header */}
-        <section className="relative bg-[#0A0A0A] pt-28 pb-14 overflow-hidden">
+        <section className="relative bg-[#0B2C5C] pt-28 pb-14 overflow-hidden">
           {/* Glow */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[#EE5C13]/5 blur-[100px] rounded-full" />
@@ -149,7 +149,7 @@ export default function CardapioPage() {
         <div ref={sentinelRef} className="h-px" />
 
         {/* Filter bar */}
-        <div className={`bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/6 z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-[0_4px_30px_rgba(0,0,0,0.4)]' : ''}`}>
+        <div className={`bg-[#0B2C5C]/95 backdrop-blur-xl border-b border-white/6 z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-[0_4px_30px_rgba(0,0,0,0.4)]' : ''}`}>
           <div className="max-w-7xl mx-auto px-5 sm:px-8">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-3">
               <SlidersHorizontal size={13} className="text-white/20 shrink-0" />
@@ -227,7 +227,7 @@ export default function CardapioPage() {
         </div>
 
         {/* WhatsApp CTA */}
-        <div className="border-t border-white/6 bg-[#0D0D0D] py-12">
+        <div className="border-t border-white/6 bg-[#0A2452] py-12">
           <div className="max-w-xl mx-auto px-5 text-center">
             <p className="text-white/30 text-[13.5px] mb-5">Prefere pedir pelo WhatsApp?</p>
             <a

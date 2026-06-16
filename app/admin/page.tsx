@@ -34,7 +34,7 @@ const CHART_DATA = [
 
 function StatCard({ title, value, sub, icon, color }: { title: string; value: string; sub: string; icon: React.ReactNode; color: string }) {
   return (
-    <div className="bg-[#141414] rounded-2xl p-6 border border-white/6">
+    <div className="bg-[#163A6E] rounded-2xl p-6 border border-white/6">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-white/40 font-medium">{title}</p>
@@ -65,7 +65,7 @@ function DashboardTab({ orders }: { orders: Order[] }) {
         <StatCard title="Ticket Médio" value={formatCurrency(avgTicket || 30)} sub="Por pedido" icon={<TrendingUp size={22} className="text-[#EE5C13]" />} color="bg-[#EE5C13]/10" />
         <StatCard title="Clientes Ativos" value="128" sub="Esta semana" icon={<Users size={22} className="text-purple-400" />} color="bg-purple-500/10" />
       </div>
-      <div className="bg-[#141414] rounded-2xl border border-white/6 p-6">
+      <div className="bg-[#163A6E] rounded-2xl border border-white/6 p-6">
         <h3 className="font-bold text-white mb-4">Pedidos Recentes</h3>
         {orders.length === 0 ? <p className="text-white/30 text-sm">Nenhum pedido ainda.</p> : (
           <div className="space-y-3">
@@ -84,7 +84,7 @@ function DashboardTab({ orders }: { orders: Order[] }) {
 
 function OrdersTab({ orders, onUpdateStatus }: { orders: Order[]; onUpdateStatus: (id: string, status: OrderStatus) => void }) {
   return (
-    <div className="bg-[#141414] rounded-2xl border border-white/6 overflow-hidden">
+    <div className="bg-[#163A6E] rounded-2xl border border-white/6 overflow-hidden">
       <div className="p-6 border-b border-white/6">
         <h3 className="font-bold text-white">Todos os Pedidos</h3>
         <p className="text-sm text-white/35">{orders.length} pedidos encontrados</p>
@@ -108,7 +108,7 @@ function OrdersTab({ orders, onUpdateStatus }: { orders: Order[]; onUpdateStatus
                   <td className="px-6 py-4">
                     <Select value={order.status} onValueChange={(val) => onUpdateStatus(order.id, val as OrderStatus)}>
                       <SelectTrigger className="h-8 text-xs w-40 bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#141414] border-white/10 text-white">{ORDER_STATUSES.map((s) => <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>)}</SelectContent>
+                      <SelectContent className="bg-[#163A6E] border-white/10 text-white">{ORDER_STATUSES.map((s) => <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </td>
                 </tr>
@@ -136,14 +136,14 @@ function ProductsTab() {
   }
 
   return (
-    <div className="bg-[#141414] rounded-2xl border border-white/6 overflow-hidden">
+    <div className="bg-[#163A6E] rounded-2xl border border-white/6 overflow-hidden">
       <div className="p-6 border-b border-white/6 flex items-center justify-between">
         <div><h3 className="font-bold text-white">Produtos</h3><p className="text-sm text-white/35">{products.filter((p) => p.active).length} ativos</p></div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-4 flex items-center gap-2 shadow-[0_0_20px_rgba(238,92,19,0.3)]"><Plus size={16} />Adicionar</Button>
           </DialogTrigger>
-          <DialogContent className="bg-[#141414] border-white/10 text-white">
+          <DialogContent className="bg-[#163A6E] border-white/10 text-white">
             <DialogHeader><DialogTitle className="text-white">Novo Produto</DialogTitle></DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label className="text-white/50">Emoji/Ícone</Label><Input value={newProduct.image} onChange={(e) => setNewProduct((p) => ({ ...p, image: e.target.value }))} placeholder="🥖" className="w-20 bg-white/5 border-white/10 text-white" /></div>
@@ -154,7 +154,7 @@ function ProductsTab() {
                 <div className="space-y-2"><Label className="text-white/50">Categoria</Label>
                   <Select value={newProduct.category} onValueChange={(v) => setNewProduct((p) => ({ ...p, category: v }))}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#141414] border-white/10 text-white">
+                    <SelectContent className="bg-[#163A6E] border-white/10 text-white">
                       <SelectItem value="subs-15cm">Subs 15cm</SelectItem>
                       <SelectItem value="subs-30cm">Subs 30cm</SelectItem>
                       <SelectItem value="combos">Combos</SelectItem>
@@ -201,26 +201,26 @@ function ProductsTab() {
 function ReportsTab() {
   return (
     <div className="space-y-6">
-      <div className="bg-[#141414] rounded-2xl border border-white/6 p-6">
+      <div className="bg-[#163A6E] rounded-2xl border border-white/6 p-6">
         <h3 className="font-bold text-white mb-6">Vendas dos últimos 7 dias</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={CHART_DATA}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
             <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
             <YAxis tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
-            <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#141414', color: '#fff' }} />
+            <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#163A6E', color: '#fff' }} />
             <Bar dataKey="vendas" fill="#EE5C13" radius={[6, 6, 0, 0]} name="Pedidos" />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="bg-[#141414] rounded-2xl border border-white/6 p-6">
+      <div className="bg-[#163A6E] rounded-2xl border border-white/6 p-6">
         <h3 className="font-bold text-white mb-6">Receita dos últimos 7 dias (R$)</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={CHART_DATA}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
             <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
             <YAxis tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
-            <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#141414', color: '#fff' }} formatter={(value: number) => [formatCurrency(value), 'Receita']} />
+            <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: '#163A6E', color: '#fff' }} formatter={(value: number) => [formatCurrency(value), 'Receita']} />
             <Bar dataKey="receita" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Receita" />
           </BarChart>
         </ResponsiveContainer>
@@ -254,8 +254,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex">
-      <aside className="w-64 bg-[#0D0D0D] border-r border-white/6 text-white flex flex-col fixed h-full z-10 hidden lg:flex">
+    <div className="min-h-screen bg-[#0B2C5C] flex">
+      <aside className="w-64 bg-[#0A2452] border-r border-white/6 text-white flex flex-col fixed h-full z-10 hidden lg:flex">
         <div className="p-6 border-b border-white/6">
           <h1 className="text-xl font-black tracking-[-0.02em]">MAIS <span className="text-[#EE5C13]">SUB</span></h1>
           <p className="text-white/35 text-xs mt-0.5">Painel Administrativo</p>
@@ -274,7 +274,7 @@ export default function AdminPage() {
       </aside>
 
       <main className="lg:ml-64 flex-1 flex flex-col">
-        <header className="bg-[#0D0D0D] border-b border-white/6 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+        <header className="bg-[#0A2452] border-b border-white/6 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div>
             <h2 className="font-bold text-white">{NAV_ITEMS.find((n) => n.key === activeTab)?.label}</h2>
             <p className="text-xs text-white/30">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>

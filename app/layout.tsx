@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Bricolage_Grotesque } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanel } from '@/components/cart/cart-panel'
@@ -9,6 +9,13 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+})
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+  weight: ['400', '600', '700', '800'],
 })
 
 export const metadata: Metadata = {
@@ -24,14 +31,14 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#EE5C13',
+  themeColor: '#0B2C5C',
   width: 'device-width',
   initialScale: 1,
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html lang="pt-BR" className={`${inter.variable} ${bricolage.variable}`}>
       <body className="antialiased" suppressHydrationWarning>
         <CartProvider>
           {children}
