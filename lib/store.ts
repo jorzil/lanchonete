@@ -10,7 +10,7 @@ export interface ExtraOption { key: string; name: string; price15cm: number; pri
 export interface SubCustomization {
   size: SizeOption
   meat: string
-  cheese: string
+  cheeses: string[]
   salads: string[]
   sauces: string[]
   extras: Record<string, number>
@@ -98,6 +98,7 @@ export const MENU = {
     { key: 'azeitona', name: 'Azeitona' },
     { key: 'cenoura-ralada', name: 'Cenoura Ralada' },
     { key: 'rucula', name: 'Rúcula' },
+    { key: 'salada-completa', name: 'Salada Completa' },
   ] as SaladOption[],
   sauces: [
     { key: 'chipotle', name: 'Chipotle' },
@@ -198,6 +199,10 @@ export function calculateSubTotal(customization: SubCustomization): number {
       if (extra) extrasTotal += (customization.size === '15cm' ? extra.price15cm : extra.price30cm) * qty
     }
   }
+  if (customization.cheeses.length > 1) {
+    const queijoDobro = MENU.extras.find((e) => e.key === 'queijo-dobro')
+    if (queijoDobro) extrasTotal += customization.size === '15cm' ? queijoDobro.price15cm : queijoDobro.price30cm
+  }
   return sizePrice + extrasTotal
 }
 
@@ -213,7 +218,10 @@ export function generateWhatsAppMessage(order: Order): string {
       const c = item.customization
       lines.push(`   🥖 Tamanho: ${c.size}`)
       if (c.meat) { const meat = MENU.meats.find((m) => m.key === c.meat); lines.push(`   🥩 Carne: ${meat?.name || c.meat}`) }
-      if (c.cheese) { const cheese = MENU.cheeses.find((ch) => ch.key === c.cheese); lines.push(`   🧀 Queijo: ${cheese?.name || c.cheese}`) }
+      if (c.cheeses.length > 0) {
+        const cheeseNames = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+        lines.push(`   🧀 Queijo: ${cheeseNames}${c.cheeses.length > 1 ? ' (em dobro)' : ''}`)
+      }
       if (c.salads.length > 0) lines.push(`   🥗 Saladas: ${c.salads.map((s) => MENU.salads.find((sl) => sl.key === s)?.name || s).join(', ')}`)
       if (c.sauces.length > 0) lines.push(`   🥫 Molhos: ${c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', ')}`)
       const extraEntries = Object.entries(c.extras).filter(([, qty]) => qty > 0)

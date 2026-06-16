@@ -38,7 +38,7 @@ const CHEESE_COLORS: Record<string, string> = {
 const DEFAULT_CUSTOMIZATION: SubCustomization = {
   size: '15cm',
   meat: '',
-  cheese: '',
+  cheeses: [],
   salads: [],
   sauces: [],
   extras: {},
@@ -53,7 +53,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
 
   const canProceed = (): boolean => {
     if (step === 2) return customization.meat !== ''
-    if (step === 3) return customization.cheese !== ''
+    if (step === 3) return customization.cheeses.length > 0
     return true
   }
 
@@ -82,13 +82,29 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
     openCart()
   }
 
-  const toggleSalad = (key: string) =>
+  const toggleCheese = (key: string) =>
     setCustomization((prev) => ({
       ...prev,
-      salads: prev.salads.includes(key)
-        ? prev.salads.filter((s) => s !== key)
-        : [...prev.salads, key],
+      cheeses: prev.cheeses.includes(key)
+        ? prev.cheeses.filter((c) => c !== key)
+        : [...prev.cheeses, key],
     }))
+
+  const toggleSalad = (key: string) =>
+    setCustomization((prev) => {
+      if (key === 'salada-completa') {
+        const allSaladKeys = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
+        const isComplete = prev.salads.includes('salada-completa')
+        return { ...prev, salads: isComplete ? [] : ['salada-completa', ...allSaladKeys] }
+      }
+      const withoutComplete = prev.salads.filter((s) => s !== 'salada-completa')
+      return {
+        ...prev,
+        salads: prev.salads.includes(key)
+          ? withoutComplete.filter((s) => s !== key)
+          : [...withoutComplete, key],
+      }
+    })
 
   const toggleSauce = (key: string) =>
     setCustomization((prev) => {
@@ -103,14 +119,16 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       extras: { ...prev.extras, [key]: Math.max(0, qty) },
     }))
 
-  const selectedMeat   = MENU.meats.find((m) => m.key === customization.meat)
-  const selectedCheese = MENU.cheeses.find((ch) => ch.key === customization.cheese)
+  const selectedMeat    = MENU.meats.find((m) => m.key === customization.meat)
+  const selectedCheeses = MENU.cheeses.filter((ch) => customization.cheeses.includes(ch.key))
+  const isDoubleCheese   = customization.cheeses.length > 1
 
   /* Build ingredient preview list */
   const previewIngredients: Array<{ emoji: string; label: string }> = []
   previewIngredients.push({ emoji: '📏', label: customization.size })
-  if (selectedMeat)   previewIngredients.push({ emoji: '🥩', label: selectedMeat.name })
-  if (selectedCheese) previewIngredients.push({ emoji: '🧀', label: selectedCheese.name })
+  if (selectedMeat) previewIngredients.push({ emoji: '🥩', label: selectedMeat.name })
+  selectedCheeses.forEach((ch) => previewIngredients.push({ emoji: '🧀', label: ch.name }))
+  if (isDoubleCheese) previewIngredients.push({ emoji: '✨', label: 'Queijo em Dobro (adicional)' })
   customization.salads.forEach((s) => {
     const salad = MENU.salads.find((sl) => sl.key === s)
     if (salad) previewIngredients.push({ emoji: '🥗', label: salad.name })
@@ -131,7 +149,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden max-h-[95vh] flex flex-col rounded-3xl border-0 shadow-2xl">
 
         {/* ── Header ── */}
-        <DialogHeader className="px-6 pt-5 pb-4 shrink-0" style={{ background: '#011a33' }}>
+        <DialogHeader className="px-6 pt-5 pb-4 shrink-0" style={{ background: '#0B2C5C' }}>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-white text-xl font-black flex items-center gap-2">
               <span>🥖</span>
@@ -158,7 +176,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                       s.id < step
                         ? 'bg-[#EE5C13] border-[#EE5C13] text-white'
                         : s.id === step
-                        ? 'bg-white border-white text-[#011a33]'
+                        ? 'bg-white border-white text-[#0B2C5C]'
                         : 'bg-transparent border-white/25 text-white/30'
                     }`}
                   >
@@ -262,34 +280,45 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
               </div>
             )}
 
-            {/* Step 3 — Cheese */}
+            {/* Step 3 — Cheese (multi-select) */}
             {step === 3 && (
-              <div className="space-y-3">
-                {MENU.cheeses.map((item) => {
-                  const selected = customization.cheese === item.key
-                  const grad = CHEESE_COLORS[item.key] ?? 'from-yellow-200 to-yellow-300'
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => setCustomization((prev) => ({ ...prev, cheese: item.key }))}
-                      className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.01] ${
-                        selected ? 'border-[#EE5C13] bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-sm shrink-0`}>
-                        🧀
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-black text-gray-900 text-base">{item.name}</div>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                        selected ? 'bg-[#EE5C13] border-[#EE5C13]' : 'border-gray-300'
-                      }`}>
-                        {selected && <Check size={13} className="text-white" />}
-                      </div>
-                    </button>
-                  )
-                })}
+              <div>
+                <p className="text-xs text-gray-400 mb-4 font-medium">
+                  Escolha um ou mais queijos — selecionando 2 ou mais, adicionamos automaticamente o adicional de Queijo em Dobro
+                </p>
+                <div className="space-y-3">
+                  {MENU.cheeses.map((item) => {
+                    const selected = customization.cheeses.includes(item.key)
+                    const grad = CHEESE_COLORS[item.key] ?? 'from-yellow-200 to-yellow-300'
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => toggleCheese(item.key)}
+                        className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.01] ${
+                          selected ? 'border-[#0B2C5C] bg-[#0B2C5C]/5 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-sm shrink-0`}>
+                          🧀
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-black text-gray-900 text-base">{item.name}</div>
+                        </div>
+                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                          selected ? 'bg-[#0B2C5C] border-[#0B2C5C]' : 'border-gray-300'
+                        }`}>
+                          {selected && <Check size={13} className="text-white" />}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                {isDoubleCheese && (
+                  <div className="mt-4 flex items-center gap-2 bg-[#0B2C5C]/8 border border-[#0B2C5C]/20 rounded-xl px-4 py-3">
+                    <span className="text-lg">✨</span>
+                    <p className="text-[#0B2C5C] text-sm font-bold">Queijo em Dobro adicionado automaticamente ao seu sub!</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -406,7 +435,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
           {/* ── Preview panel ── */}
           <div
             className="lg:w-60 shrink-0 border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col"
-            style={{ background: '#011a33' }}
+            style={{ background: '#0A2452' }}
           >
             <div className="p-4 border-b border-white/10">
               <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.15em]">Seu Sub</p>

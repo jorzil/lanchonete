@@ -16,7 +16,10 @@ function customizationSummary(c: NonNullable<import('@/lib/store').CartItem['cus
   const parts: string[] = []
   parts.push(c.size)
   if (c.meat) { const meat = MENU.meats.find((m) => m.key === c.meat); if (meat) parts.push(meat.name) }
-  if (c.cheese) { const cheese = MENU.cheeses.find((ch) => ch.key === c.cheese); if (cheese) parts.push(cheese.name) }
+  if (c.cheeses && c.cheeses.length > 0) {
+    const names = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+    parts.push(c.cheeses.length > 1 ? `${names} (em dobro)` : names)
+  }
   if (c.salads.length > 0) parts.push(c.salads.map((s) => MENU.salads.find((sl) => sl.key === s)?.name || s).join(', '))
   if (c.sauces.length > 0) parts.push(c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', '))
   return parts.join(' • ')
@@ -42,8 +45,8 @@ export function CartPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0B2C5C] border-white/8 text-white">
-        <SheetHeader className="px-6 py-4 border-b border-white/8 bg-[#163A6E]">
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-[#0A2452] border-white/8 text-white">
+        <SheetHeader className="px-6 py-4 border-b border-[#EE5C13]/25 bg-gradient-to-r from-[#0A2452] to-[#1A1024]">
           <SheetTitle className="text-white flex items-center gap-2">
             <ShoppingBag size={20} className="text-[#EE5C13]" />
             Meu Carrinho
@@ -64,9 +67,9 @@ export function CartPanel() {
           <>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar">
               {items.map((item) => (
-                <div key={item.id} className="bg-[#163A6E] rounded-xl border border-white/6 p-4">
+                <div key={item.id} className="bg-white/[0.04] rounded-xl border border-white/8 border-l-2 border-l-[#EE5C13] p-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
+                    <div className="w-12 h-12 bg-[#EE5C13]/10 rounded-lg flex items-center justify-center text-2xl shrink-0">{item.image}</div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-white text-sm leading-tight">{item.name}</h4>
                       {item.customization && <p className="text-xs text-white/35 mt-1 leading-relaxed">{customizationSummary(item.customization)}</p>}
@@ -85,7 +88,7 @@ export function CartPanel() {
               ))}
             </div>
 
-            <div className="px-4 pb-6 pt-4 border-t border-white/8 space-y-4 bg-[#0A2452]">
+            <div className="px-4 pb-6 pt-4 border-t border-[#EE5C13]/20 space-y-4 bg-[#071A3D]">
               <div>
                 <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-2">Tipo de pedido</p>
                 <div className="flex gap-2">

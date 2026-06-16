@@ -18,7 +18,10 @@ export function generateOrderMessage(order: Order): string {
       const c = item.customization
       lines.push(`   🥖 Tamanho: ${c.size}`)
       if (c.meat) { const meat = MENU.meats.find((m) => m.key === c.meat); lines.push(`   🥩 Carne: ${meat?.name || c.meat}`) }
-      if (c.cheese) { const cheese = MENU.cheeses.find((ch) => ch.key === c.cheese); lines.push(`   🧀 Queijo: ${cheese?.name || c.cheese}`) }
+      if (c.cheeses && c.cheeses.length > 0) {
+        const cheeseNames = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+        lines.push(`   🧀 Queijo: ${cheeseNames}${c.cheeses.length > 1 ? ' (em dobro)' : ''}`)
+      }
       if (c.salads && c.salads.length > 0) { lines.push(`   🥗 Saladas: ${c.salads.map((s) => MENU.salads.find((sl) => sl.key === s)?.name || s).join(', ')}`) } else { lines.push('   🥗 Saladas: Sem salada') }
       if (c.sauces && c.sauces.length > 0) { lines.push(`   🥫 Molhos: ${c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', ')}`) } else { lines.push('   🥫 Molhos: Sem molho') }
       const extras = Object.entries(c.extras || {}).filter(([, qty]) => qty > 0)
@@ -79,7 +82,10 @@ export function formatCartForWhatsApp(items: CartItem[], total: number, address?
       const c = item.customization
       lines.push(`  Tamanho: ${c.size}`)
       if (c.meat) { const meat = MENU.meats.find((m) => m.key === c.meat); lines.push(`  🥩 ${meat?.name || c.meat}`) }
-      if (c.cheese) { const cheese = MENU.cheeses.find((ch) => ch.key === c.cheese); lines.push(`  🧀 ${cheese?.name || c.cheese}`) }
+      if (c.cheeses && c.cheeses.length > 0) {
+        const cheeseNames = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+        lines.push(`  🧀 ${cheeseNames}${c.cheeses.length > 1 ? ' (em dobro)' : ''}`)
+      }
     }
   })
   lines.push('')

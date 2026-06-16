@@ -35,7 +35,10 @@ const PAYMENT_OPTIONS = [
 function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['customization']>): string {
   const parts: string[] = [c.size]
   if (c.meat) { const m = MENU.meats.find((m) => m.key === c.meat); if (m) parts.push(m.name) }
-  if (c.cheese) { const ch = MENU.cheeses.find((ch) => ch.key === c.cheese); if (ch) parts.push(ch.name) }
+  if (c.cheeses && c.cheeses.length > 0) {
+    const names = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+    parts.push(c.cheeses.length > 1 ? `${names} (em dobro)` : names)
+  }
   return parts.join(' • ')
 }
 
