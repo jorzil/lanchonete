@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,10 +26,10 @@ interface FormData {
 }
 
 const PAYMENT_OPTIONS = [
-  { key: 'pix' as PaymentMethod, label: 'PIX', icon: <QrCode size={19} />, description: 'Aprovação instantânea' },
-  { key: 'cartao-credito' as PaymentMethod, label: 'Crédito', icon: <CreditCard size={19} />, description: 'Parcelamento disponível' },
-  { key: 'cartao-debito' as PaymentMethod, label: 'Débito', icon: <CreditCard size={19} />, description: 'Débito na entrega' },
-  { key: 'dinheiro' as PaymentMethod, label: 'Dinheiro', icon: <Banknote size={19} />, description: 'Troco disponível' },
+  { key: 'pix' as PaymentMethod, label: 'PIX', icon: QrCode, description: 'Aprovação instantânea' },
+  { key: 'cartao-credito' as PaymentMethod, label: 'Crédito', icon: CreditCard, description: 'Parcelamento disponível' },
+  { key: 'cartao-debito' as PaymentMethod, label: 'Débito', icon: CreditCard, description: 'Débito na entrega' },
+  { key: 'dinheiro' as PaymentMethod, label: 'Dinheiro', icon: Banknote, description: 'Troco disponível' },
 ]
 
 function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['customization']>): string {
@@ -39,22 +39,29 @@ function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['custo
   return parts.join(' • ')
 }
 
-function Section({ title, icon, children, delay = 0 }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
+function Card({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-[#163A6E] rounded-2xl p-6 border border-white/6"
+      className="bg-white border border-[#E8E0D0] rounded-2xl p-7"
     >
-      <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
-        {icon && <span className="text-[#EE5C13]">{icon}</span>}
-        {title}
-      </h2>
       {children}
     </motion.div>
   )
 }
+
+function SectionTitle({ step, title }: { step: string; title: string }) {
+  return (
+    <div className="mb-6 flex items-baseline gap-3">
+      <span className="text-[11px] font-medium tabular-nums text-[#EE5C13] tracking-wider">{step}</span>
+      <h2 className="h-editorial text-[#0E1F3C] text-[22px]">{title}</h2>
+    </div>
+  )
+}
+
+const inputClass = 'h-11 bg-white border-[#E8E0D0] text-[#0E1F3C] placeholder:text-[#8B95A8] focus-visible:ring-1 focus-visible:ring-[#0E1F3C] focus-visible:ring-offset-0 focus-visible:border-[#0E1F3C]'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -124,12 +131,13 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <><Header />
-        <main className="pt-16 min-h-screen bg-[#0B2C5C] flex items-center justify-center">
-          <div className="text-center p-8">
-            <div className="text-7xl mb-4">🛒</div>
-            <h2 className="text-2xl font-bold text-white mb-3">Carrinho vazio</h2>
-            <p className="text-white/35 mb-6">Adicione itens antes de finalizar o pedido.</p>
-            <Link href="/cardapio"><Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-8 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button></Link>
+        <main className="pt-[72px] min-h-screen bg-[#FAF6EE] flex items-center justify-center">
+          <div className="text-center p-8 max-w-sm">
+            <h2 className="h-editorial text-[40px] text-[#0E1F3C] mb-3">Carrinho vazio</h2>
+            <p className="text-[14px] text-[#8B95A8] mb-7">Adicione itens antes de finalizar o pedido.</p>
+            <Link href="/cardapio">
+              <Button className="bg-[#0E1F3C] hover:bg-[#1a2e54] text-[#FAF6EE] rounded-full px-7 h-11">Ver Cardápio</Button>
+            </Link>
           </div>
         </main>
         <Footer /></>
@@ -138,144 +146,158 @@ export default function CheckoutPage() {
 
   return (
     <><Header />
-      <main className="pt-16 bg-[#0B2C5C] min-h-screen">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="mb-8">
-            <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-[#EE5C13] transition-colors text-sm font-medium">
-              <ArrowLeft size={16} />Voltar ao cardápio
+      <main className="pt-[72px] bg-[#FAF6EE] min-h-screen">
+        <div className="max-w-[1180px] mx-auto px-6 sm:px-10 py-14">
+          <div className="mb-10">
+            <Link href="/cardapio" className="inline-flex items-center gap-2 text-[#8B95A8] hover:text-[#0E1F3C] transition-colors text-[13px] font-medium">
+              <ArrowLeft size={14} strokeWidth={1.8} />Voltar ao cardápio
             </Link>
-            <h1 className="text-3xl font-black text-white mt-4 tracking-[-0.03em]">Finalizar Pedido</h1>
+            <h1 className="h-editorial mt-6 text-[#0E1F3C] text-[44px] sm:text-[56px]">Finalizar pedido</h1>
           </div>
 
           <form onSubmit={handleSubmit} className="grid lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-3 space-y-6">
-              <Section title="Seus Dados" icon={<User size={18} />}>
+            <div className="lg:col-span-3 space-y-5">
+              <Card>
+                <SectionTitle step="01" title="Seus dados" />
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-white/50">Nome completo *</Label>
-                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-[12px] font-medium text-[#3D4D6A]">Nome completo *</Label>
+                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className={inputClass} />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-white/50">WhatsApp *</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone" className="text-[12px] font-medium text-[#3D4D6A]">WhatsApp *</Label>
                     <div className="relative">
-                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
-                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                      <Phone size={14} strokeWidth={1.8} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B95A8]" />
+                      <Input id="phone" placeholder="(33) 99999-9999" value={form.phone} onChange={set('phone')} required className={`${inputClass} pl-9`} />
                     </div>
                   </div>
                 </div>
-              </Section>
+              </Card>
 
-              <Section title="Tipo de Pedido" delay={0.08}>
+              <Card delay={0.05}>
+                <SectionTitle step="02" title="Tipo de pedido" />
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   {(['entrega', 'retirada'] as OrderType[]).map((type) => (
                     <button key={type} type="button" onClick={() => handleOrderType(type)}
-                      className={`p-4 rounded-xl border font-semibold capitalize transition-all flex items-center justify-center gap-2 ${
-                        form.orderType === type ? 'border-[#EE5C13] bg-[#EE5C13]/10 text-[#EE5C13]' : 'border-white/10 text-white/50 hover:border-white/20'
+                      className={`p-4 rounded-xl border text-left transition-all flex items-center gap-3 ${
+                        form.orderType === type ? 'border-[#0E1F3C] bg-[#0E1F3C]/[0.025]' : 'border-[#E8E0D0] hover:border-[#0E1F3C]/40'
                       }`}>
-                      {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
-                      {type === 'entrega' ? 'Entrega' : 'Retirada'}
+                      {type === 'entrega' ? <Truck size={16} strokeWidth={1.8} className="text-[#EE5C13]" /> : <Store size={16} strokeWidth={1.8} className="text-[#EE5C13]" />}
+                      <span className="font-medium text-[14px] text-[#0E1F3C]">{type === 'entrega' ? 'Entrega' : 'Retirada'}</span>
                     </button>
                   ))}
                 </div>
                 {form.orderType === 'entrega' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-[#EE5C13]" />Endereço de entrega</div>
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="cep" className="text-white/50">CEP *</Label>
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center gap-2 text-[12px] text-[#8B95A8]"><MapPin size={13} strokeWidth={1.8} className="text-[#EE5C13]" />Endereço de entrega</div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cep" className="text-[12px] font-medium text-[#3D4D6A]">CEP *</Label>
                       <div className="flex gap-2">
-                        <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                        <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className={inputClass} />
                         {loadingCep && <Loader2 size={16} className="animate-spin text-[#EE5C13] self-center" />}
                       </div>
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2 space-y-2">
-                        <Label htmlFor="street" className="text-white/50">Rua *</Label>
-                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <Label htmlFor="street" className="text-[12px] font-medium text-[#3D4D6A]">Rua *</Label>
+                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className={inputClass} />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="number" className="text-white/50">Número *</Label>
-                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                      <div className="space-y-1.5">
+                        <Label htmlFor="number" className="text-[12px] font-medium text-[#3D4D6A]">Número *</Label>
+                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className={inputClass} />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="complement" className="text-white/50">Complemento</Label>
-                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="complement" className="text-[12px] font-medium text-[#3D4D6A]">Complemento</Label>
+                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className={inputClass} />
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
-                      <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
-                      <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
-                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
+                      <div className="space-y-1.5"><Label htmlFor="neighborhood" className="text-[12px] font-medium text-[#3D4D6A]">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className={inputClass} /></div>
+                      <div className="space-y-1.5"><Label htmlFor="city" className="text-[12px] font-medium text-[#3D4D6A]">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className={inputClass} /></div>
+                      <div className="space-y-1.5"><Label htmlFor="state" className="text-[12px] font-medium text-[#3D4D6A]">UF</Label><Input id="state" placeholder="MG" value={form.state} onChange={set('state')} maxLength={2} className={inputClass} /></div>
                     </div>
                   </div>
                 )}
                 {form.orderType === 'retirada' && (
-                  <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm text-white/60">
-                    <p className="font-semibold text-white mb-1">📍 Endereço para retirada:</p>
-                    <p>Rua Exemplo, 123 - Bairro, Cidade - SP</p>
-                    <p className="text-white/30 mt-1">Seg-Sex: 11h–22h | Sáb-Dom: 11h–23h</p>
+                  <div className="bg-[#F2ECDF] border border-[#E8E0D0] rounded-xl p-4 text-[13px] text-[#3D4D6A]">
+                    <p className="font-medium text-[#0E1F3C] mb-1">Endereço para retirada</p>
+                    <p>Rua Exemplo, 123 — Centro, Governador Valadares/MG</p>
+                    <p className="text-[#8B95A8] mt-1">Seg-Sex 11h–22h · Sáb-Dom 11h–23h</p>
                   </div>
                 )}
-              </Section>
+              </Card>
 
-              <Section title="Forma de Pagamento" icon={<CreditCard size={18} />} delay={0.16}>
+              <Card delay={0.1}>
+                <SectionTitle step="03" title="Pagamento" />
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {PAYMENT_OPTIONS.map((opt) => (
-                    <button key={opt.key} type="button" onClick={() => setForm((prev) => ({ ...prev, paymentMethod: opt.key }))}
-                      className={`p-4 rounded-xl border text-left transition-all ${
-                        form.paymentMethod === opt.key ? 'border-[#EE5C13] bg-[#EE5C13]/10' : 'border-white/10 hover:border-white/20'
-                      }`}>
-                      <div className={`flex items-center gap-2 font-semibold mb-1 ${form.paymentMethod === opt.key ? 'text-[#EE5C13]' : 'text-white/70'}`}>{opt.icon}{opt.label}</div>
-                      <p className="text-xs text-white/30">{opt.description}</p>
-                    </button>
-                  ))}
+                  {PAYMENT_OPTIONS.map((opt) => {
+                    const Icon = opt.icon
+                    const active = form.paymentMethod === opt.key
+                    return (
+                      <button key={opt.key} type="button" onClick={() => setForm((prev) => ({ ...prev, paymentMethod: opt.key }))}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          active ? 'border-[#0E1F3C] bg-[#0E1F3C]/[0.025]' : 'border-[#E8E0D0] hover:border-[#0E1F3C]/40'
+                        }`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon size={16} strokeWidth={1.8} className="text-[#EE5C13]" />
+                          <span className="font-medium text-[14px] text-[#0E1F3C]">{opt.label}</span>
+                        </div>
+                        <p className="text-[12px] text-[#8B95A8]">{opt.description}</p>
+                      </button>
+                    )
+                  })}
                 </div>
                 {form.paymentMethod === 'pix' && (
-                  <div className="mt-4 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/15">
-                    <div className="text-4xl mb-2">📱</div>
-                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-[#EE5C13] font-bold">maissub@email.com</span></p>
-                    <p className="text-xs text-white/30 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
+                  <div className="mt-4 p-4 bg-[#F2ECDF] rounded-xl text-center border border-dashed border-[#E8E0D0]">
+                    <p className="text-[12px] uppercase tracking-wider text-[#8B95A8] mb-2">Chave PIX</p>
+                    <p className="text-[14px] font-medium text-[#0E1F3C]">maissub@email.com</p>
+                    <p className="text-[11.5px] text-[#8B95A8] mt-2">Confirme o pagamento enviando o comprovante no WhatsApp</p>
                   </div>
                 )}
-              </Section>
+              </Card>
 
-              <Section title="Observações" delay={0.24}>
-                <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
-              </Section>
+              <Card delay={0.15}>
+                <SectionTitle step="04" title="Observações" />
+                <Textarea placeholder="Alguma observação para seu pedido?" value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white border-[#E8E0D0] text-[#0E1F3C] placeholder:text-[#8B95A8] focus-visible:ring-1 focus-visible:ring-[#0E1F3C] focus-visible:ring-offset-0 focus-visible:border-[#0E1F3C]" />
+              </Card>
             </div>
 
             <div className="lg:col-span-2">
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-[#163A6E] rounded-2xl p-6 border border-white/6 sticky top-24"
+                transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-white border border-[#E8E0D0] rounded-2xl p-7 sticky top-[92px]"
               >
-                <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
-                <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">
+                <h2 className="h-editorial text-[#0E1F3C] text-[22px] mb-5">Resumo</h2>
+                <div className="space-y-4 max-h-64 overflow-y-auto mb-5 custom-scrollbar pr-1">
                   {items.map((item) => (
                     <div key={item.id} className="flex gap-3">
-                      <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-xl shrink-0">{item.image}</div>
+                      <div className="w-11 h-11 bg-[#F2ECDF] rounded-lg flex items-center justify-center text-xl shrink-0">{item.image}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white text-sm leading-tight">{item.name}</p>
-                        {item.customization && <p className="text-xs text-white/30 truncate">{customizationLabel(item.customization)}</p>}
-                        <p className="text-xs text-white/30">x{item.quantity}</p>
+                        <p className="text-[13px] font-medium text-[#0E1F3C] leading-tight">{item.name}</p>
+                        {item.customization && <p className="text-[11.5px] text-[#8B95A8] truncate mt-0.5">{customizationLabel(item.customization)}</p>}
+                        <p className="text-[11.5px] text-[#8B95A8] mt-0.5">× {item.quantity}</p>
                       </div>
-                      <div className="text-sm font-semibold text-white/70 shrink-0">{formatCurrency(item.price * item.quantity)}</div>
+                      <div className="text-[13px] font-medium text-[#0E1F3C] tabular-nums shrink-0">{formatCurrency(item.price * item.quantity)}</div>
                     </div>
                   ))}
                 </div>
-                <div className="h-px bg-white/8 my-4" />
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                  {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
-                  <div className="flex justify-between text-white/50"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
-                  <div className="h-px bg-white/8 my-1" />
-                  <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
+                <div className="h-px bg-[#E8E0D0] my-5" />
+                <div className="space-y-2.5 text-[13px]">
+                  <div className="flex justify-between text-[#3D4D6A]"><span>Subtotal</span><span className="tabular-nums">{formatCurrency(subtotal)}</span></div>
+                  {discount > 0 && <div className="flex justify-between text-emerald-700"><span>Desconto ({coupon?.code})</span><span className="tabular-nums">-{formatCurrency(discount)}</span></div>}
+                  <div className="flex justify-between text-[#3D4D6A]"><span>Entrega</span><span className="tabular-nums">{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
+                  <div className="h-px bg-[#E8E0D0] my-2" />
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[#0E1F3C] font-medium">Total</span>
+                    <span className="h-editorial text-[#0E1F3C] text-[28px] tabular-nums">{formatCurrency(total)}</span>
+                  </div>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full mt-6 bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-4 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)] disabled:opacity-60">
-                  {submitting ? <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" />Processando...</span> : 'Confirmar Pedido'}
+                <Button type="submit" disabled={submitting} className="w-full mt-7 bg-[#0E1F3C] hover:bg-[#1a2e54] text-[#FAF6EE] font-medium py-6 rounded-full text-[14px] disabled:opacity-60">
+                  {submitting ? <span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin" />Processando…</span> : 'Confirmar pedido'}
                 </Button>
-                <p className="text-center text-xs text-white/25 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
+                <p className="text-center text-[11.5px] text-[#8B95A8] mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
               </motion.div>
             </div>
           </form>

@@ -12,6 +12,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -37,22 +38,13 @@ const config: Config = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        orange: {
-          DEFAULT: '#EE5C13',
-          50: '#fef3ee', 100: '#fde4d5', 200: '#fbc5aa', 300: '#f89e74',
-          400: '#f4703c', 500: '#EE5C13', 600: '#d94b0d', 700: '#b33b0f',
-          800: '#8f3014', 900: '#742a14',
-        },
-        'dark-blue': {
-          DEFAULT: '#023E74',
-          50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
-          400: '#60a5fa', 500: '#3b82f6', 600: '#0359A2', 700: '#023E74',
-          800: '#1e3a5f', 900: '#1e2f4d',
-        },
-        'medium-blue': {
-          DEFAULT: '#0359A2',
-          50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
-          400: '#60a5fa', 500: '#0359A2', 600: '#024785', 700: '#023E74',
+        ink: { DEFAULT: '#0E1F3C', soft: '#3D4D6A', faint: '#8B95A8' },
+        paper: { DEFAULT: '#FAF6EE', 2: '#F2ECDF' },
+        brand: {
+          orange: '#EE5C13',
+          'orange-soft': '#FCE7D7',
+          'orange-deep': '#9C3D0E',
+          navy: '#0E1F3C',
         },
       },
       borderRadius: {
