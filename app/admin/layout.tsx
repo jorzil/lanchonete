@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   ShoppingBag,
+  ShoppingCart,
   Package,
   Users,
   BarChart3,
@@ -22,6 +23,7 @@ import { isAuthenticated, logout, getCurrentUser, type AdminUser } from "@/lib/a
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
+  { href: "/admin/pdv", label: "PDV", icon: ShoppingCart },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
   { href: "/admin/clientes", label: "Clientes", icon: Users },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3 },
@@ -31,6 +33,7 @@ const NAV_ITEMS = [
 const BREADCRUMBS: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/pedidos": "Pedidos",
+  "/admin/pdv": "PDV",
   "/admin/produtos": "Produtos",
   "/admin/clientes": "Clientes",
   "/admin/relatorios": "Relatórios",

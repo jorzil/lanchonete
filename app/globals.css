@@ -55,6 +55,43 @@
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 217 30% 30%;
     --sidebar-ring: 20 86% 50%;
+
+    /* ─── BRAND REFINADA ─────────────────────────────────────────────────── */
+    --brand-navy: #0C2D5E;        /* ligeiramente mais rico */
+    --brand-orange: #F05A14;       /* mais quente, menos saturado */
+    --brand-orange-hover: #E04A04;
+
+    /* ─── ADMIN TOKENS (não afetam o site público) ───────────────────────── */
+    --admin-bg: #F8F9FB;           /* gray quase branco como Stripe */
+    --admin-surface: #FFFFFF;
+    --admin-surface-2: #F1F3F5;
+    --admin-border: #E5E7EB;
+    --admin-border-2: #D1D5DB;
+    --admin-text: #111827;
+    --admin-text-2: #6B7280;
+    --admin-text-3: #9CA3AF;
+    --admin-accent: #F05A14;       /* orange da marca */
+    --admin-accent-hover: #E04A04;
+    --admin-success: #059669;
+    --admin-warning: #D97706;
+    --admin-danger: #DC2626;
+    --admin-info: #2563EB;
+
+    /* ─── STATUS TOKENS ──────────────────────────────────────────────────── */
+    --status-new-bg: #EFF6FF;
+    --status-new-text: #1D4ED8;
+    --status-confirmed-bg: #FEFCE8;
+    --status-confirmed-text: #92400E;
+    --status-preparing-bg: #FFF7ED;
+    --status-preparing-text: #C2410C;
+    --status-ready-bg: #F0FDF4;
+    --status-ready-text: #166534;
+    --status-delivery-bg: #EEF2FF;
+    --status-delivery-text: #3730A3;
+    --status-delivered-bg: #F0FDF4;
+    --status-delivered-text: #14532D;
+    --status-cancelled-bg: #FEF2F2;
+    --status-cancelled-text: #991B1B;
   }
 
   * { border-color: hsl(var(--border)); }

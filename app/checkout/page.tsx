@@ -14,6 +14,7 @@ import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, generateOrderNumber, MENU, type PaymentMethod, type Order } from '@/lib/store'
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
+import { addOrder } from '@/lib/orders-storage'
 import { toast } from 'sonner'
 
 type OrderType = 'entrega' | 'retirada'
@@ -116,7 +117,7 @@ export default function CheckoutPage() {
       paymentMethod: form.paymentMethod, subtotal, deliveryFee, discount, total,
       status: 'novo', notes: form.notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     }
-    try { const existing: Order[] = JSON.parse(localStorage.getItem('mais-sub-orders') || '[]'); existing.unshift(order); localStorage.setItem('mais-sub-orders', JSON.stringify(existing)) } catch { /* ignore */ }
+    addOrder(order)
     const msg = generateOrderMessage(order)
     openWhatsApp(msg)
     clearCart()

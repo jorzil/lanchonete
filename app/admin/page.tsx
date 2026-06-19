@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import {
   TrendingUp,
   TrendingDown,
@@ -8,6 +9,11 @@ import {
   DollarSign,
   Receipt,
   CalendarDays,
+  Bell,
+  ShoppingCart,
+  Package,
+  Settings,
+  ArrowRight,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -24,7 +30,8 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatCurrency, type Order } from "@/lib/store"
-import { MOCK_ORDERS, STATUS_LABELS, STATUS_STYLES } from "@/lib/mock-orders"
+import { STATUS_LABELS, STATUS_STYLES } from "@/lib/mock-orders"
+import { loadOrders } from "@/lib/orders-storage"
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
@@ -48,12 +55,14 @@ function KpiCard({
   sub,
   growth,
   icon: Icon,
+  empty,
 }: {
   title: string
   value: string
   sub?: string
   growth?: number
   icon: React.ElementType
+  empty?: boolean
 }) {
   const up = (growth ?? 0) >= 0
   return (
@@ -61,14 +70,18 @@ function KpiCard({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="mt-1 text-xs text-gray-400">{sub}</p>}
+          <p className="mt-2 text-2xl font-bold text-gray-900">{empty ? "—" : value}</p>
+          {empty ? (
+            <p className="mt-1 text-xs text-gray-400">Sem pedidos ainda</p>
+          ) : (
+            sub && <p className="mt-1 text-xs text-gray-400">{sub}</p>
+          )}
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EE5C13]/10">
           <Icon className="h-5 w-5 text-[#EE5C13]" />
         </div>
       </div>
-      {growth !== undefined && (
+      {!empty && growth !== undefined && (
         <div className="mt-3 flex items-center gap-1 text-xs">
           <span
             className={cn(
@@ -86,9 +99,25 @@ function KpiCard({
   )
 }
 
+const QUICK_LINKS = [
+  { href: "/admin/pedidos", label: "Ver Pedidos", icon: ShoppingBag },
+  { href: "/admin/pdv", label: "PDV", icon: ShoppingCart },
+  { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+]
+
 export default function AdminDashboard() {
+  const [orders, setOrders] = useState<Order[]>([])
+
+  useEffect(() => {
+    setOrders(loadOrders())
+  }, [])
+
+  const hasOrders = orders.length > 0
+  const newCount = useMemo(() => orders.filter((o) => o.status === "novo").length, [orders])
+
   const stats = useMemo(() => {
-    const valid = MOCK_ORDERS.filter((o) => o.status !== "cancelado")
+    const valid = orders.filter((o) => o.status !== "cancelado")
     const now = new Date()
     const today = startOfToday()
     const weekAgo = new Date(today)
@@ -107,7 +136,6 @@ export default function AdminDashboard() {
     const monthRevenue = sum(monthOrders)
     const ticket = monthOrders.length ? monthRevenue / monthOrders.length : 0
 
-    // Vendas por dia da semana (últimos 7 dias)
     const byDay: { day: string; pedidos: number; faturamento: number }[] = []
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today)
@@ -120,8 +148,10 @@ export default function AdminDashboard() {
       })
     }
 
-    // Faturamento por mês (últimos 6 meses) — base mock determinística
-    const monthlyBase = [4820, 5310, 4990, 6120, 5870, monthRevenue || 6450]
+    // Faturamento por mês (últimos 6 meses).
+    // Os 5 primeiros meses usam uma base sintética apenas para dar contexto
+    // visual ao gráfico; o mês atual reflete os dados reais.
+    const monthlyBase = [4820, 5310, 4990, 6120, 5870, monthRevenue]
     const monthLabels: string[] = []
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -140,14 +170,14 @@ export default function AdminDashboard() {
       byDay,
       byMonth,
     }
-  }, [])
+  }, [orders])
 
   const recentOrders = useMemo(
     () =>
-      [...MOCK_ORDERS]
+      [...orders]
         .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
         .slice(0, 6),
-    [],
+    [orders],
   )
 
   return (
@@ -157,6 +187,17 @@ export default function AdminDashboard() {
         <p className="text-sm text-gray-500">Visão geral da operação da Mais Sub</p>
       </div>
 
+      {newCount > 0 && (
+        <Link
+          href="/admin/pedidos"
+          className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-100"
+        >
+          <Bell className="h-4 w-4 shrink-0" />
+          🔔 {newCount} pedido(s) novo(s) aguardando confirmação
+          <ArrowRight className="ml-auto h-4 w-4" />
+        </Link>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
@@ -165,6 +206,7 @@ export default function AdminDashboard() {
           sub={`${stats.weekCount} na semana · ${stats.monthCount} no mês`}
           growth={12.5}
           icon={ShoppingBag}
+          empty={!hasOrders}
         />
         <KpiCard
           title="Faturamento hoje"
@@ -172,20 +214,43 @@ export default function AdminDashboard() {
           sub={`Semana: ${formatCurrency(stats.weekRevenue)}`}
           growth={8.3}
           icon={DollarSign}
+          empty={!hasOrders}
         />
         <KpiCard
           title="Faturamento no mês"
           value={formatCurrency(stats.monthRevenue)}
           growth={15.2}
           icon={CalendarDays}
+          empty={!hasOrders}
         />
         <KpiCard
           title="Ticket médio"
           value={formatCurrency(stats.ticket)}
           growth={-2.1}
           icon={Receipt}
+          empty={!hasOrders}
         />
       </div>
+
+      {/* Acesso rápido */}
+      <Card className="p-5">
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Acesso rápido</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {QUICK_LINKS.map((link) => {
+            const Icon = link.icon
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:border-[#EE5C13]/40 hover:bg-[#EE5C13]/5 hover:text-[#EE5C13]"
+              >
+                <Icon className="h-4 w-4" />
+                {link.label}
+              </Link>
+            )
+          })}
+        </div>
+      </Card>
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -210,10 +275,13 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="mb-4 text-sm font-semibold text-gray-900">
+          <h3 className="mb-1 text-sm font-semibold text-gray-900">
             Faturamento por mês (últimos 6 meses)
           </h3>
-          <div className="h-64 w-full">
+          <p className="mb-4 text-xs text-gray-400">
+            Meses anteriores são ilustrativos; o mês atual usa dados reais.
+          </p>
+          <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.byMonth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <defs>
@@ -272,6 +340,13 @@ export default function AdminDashboard() {
                   </td>
                 </tr>
               ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-5 py-10 text-center text-gray-400">
+                    Sem pedidos ainda. Os pedidos do site aparecerão aqui.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
