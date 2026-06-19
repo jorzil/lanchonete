@@ -23,10 +23,10 @@ const fadeUp = (delay = 0) => ({
 // ─── HERO ─────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative bg-[#0B2C5C] overflow-hidden">
+    <section className="relative bg-navy overflow-hidden">
       {/* Subtle glow only */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[700px] h-[500px] bg-[#EE5C13]/10 blur-[160px] rounded-full" />
+        <div className="absolute top-0 right-0 w-[700px] h-[500px] bg-brand/10 blur-[160px] rounded-full" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-24">
@@ -37,10 +37,10 @@ function Hero() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 bg-[#EE5C13]/15 border border-[#EE5C13]/30 rounded-full px-3.5 py-1.5 mb-7"
+              className="inline-flex items-center gap-2 bg-brand/15 border border-brand/30 rounded-full px-3.5 py-1.5 mb-7"
             >
-              <span className="w-1.5 h-1.5 bg-[#EE5C13] rounded-full animate-pulse" />
-              <span className="text-[#EE5C13] text-[11.5px] font-bold tracking-[0.16em] uppercase">Aberto agora · Gov. Valadares</span>
+              <span className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+              <span className="text-brand text-[11.5px] font-bold tracking-[0.16em] uppercase">Aberto agora · Gov. Valadares</span>
             </motion.div>
 
             <motion.h1
@@ -50,7 +50,7 @@ function Hero() {
               className="font-display font-extrabold text-white text-[56px] sm:text-[72px] lg:text-[88px] leading-[0.95] tracking-[-0.04em] mb-6"
             >
               Monte seu sub<br />
-              em <span className="text-[#EE5C13]">2 minutos.</span>
+              em <span className="text-brand">2 minutos.</span>
             </motion.h1>
 
             <motion.p
@@ -69,7 +69,7 @@ function Hero() {
               className="flex flex-col sm:flex-row gap-3 mb-12"
             >
               <Link href="/cardapio" className="block">
-                <button className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#EE5C13] hover:bg-[#FF6B1A] text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_8px_30px_rgba(238,92,19,0.45)]">
+                <button className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_8px_30px_rgba(238,92,19,0.45)]">
                   Começar pedido
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </button>
@@ -90,14 +90,14 @@ function Hero() {
             >
               <div className="flex items-center gap-2">
                 <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-[#EE5C13] text-[#EE5C13]" />)}
+                  {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-[#EE5C13] text-brand" />)}
                 </div>
                 <span className="text-white font-semibold text-[13px] tabular-nums">4.9</span>
                 <span className="text-white/40 text-[12.5px]">+2.000 avaliações</span>
               </div>
               <div className="h-4 w-px bg-white/15" />
               <div className="flex items-center gap-2">
-                <Clock size={12} className="text-[#EE5C13]" />
+                <Clock size={12} className="text-brand" />
                 <span className="text-white font-semibold text-[13px] tabular-nums">~28min</span>
                 <span className="text-white/40 text-[12.5px]">tempo médio</span>
               </div>
@@ -119,7 +119,7 @@ function Hero() {
                 className="object-cover"
                 sizes="(max-width:1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B2C5C]/40 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/40 via-transparent to-transparent" />
             </div>
 
             {/* M sticker accent */}
@@ -137,9 +137,9 @@ function Hero() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.95 }}
-              className="absolute -bottom-5 -left-3 sm:-left-6 bg-white text-[#0B2C5C] rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.3)]"
+              className="absolute -bottom-5 -left-3 sm:-left-6 bg-white text-navy rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.3)]"
             >
-              <p className="text-[10px] uppercase tracking-[0.18em] text-[#0B2C5C]/55 font-bold mb-1">A partir de</p>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-navy/55 font-bold mb-1">A partir de</p>
               <p className="font-display font-extrabold text-[28px] leading-none tabular-nums tracking-[-0.03em]">R$ 21,90</p>
             </motion.div>
           </motion.div>
@@ -170,16 +170,16 @@ function CategoryNav() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-[#163A6E] hover:bg-[#1B4480] border border-white/10 hover:border-[#EE5C13]/50 rounded-2xl p-5 flex items-center gap-4 transition-all"
+              className="relative bg-navy-surface hover:bg-[#1B4480] border border-white/10 hover:border-brand/50 rounded-2xl p-5 flex items-center gap-4 transition-all"
             >
-              <div className="relative w-14 h-14 lg:w-16 lg:h-16 shrink-0 rounded-xl overflow-hidden bg-[#0A2452]">
+              <div className="relative w-14 h-14 lg:w-16 lg:h-16 shrink-0 rounded-xl overflow-hidden bg-navy-deep">
                 <Image src={cat.img} alt={cat.label} fill className="object-cover" sizes="64px" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-[14px] lg:text-[15px] leading-tight">{cat.label}</p>
                 <p className="text-white/45 text-[11.5px] mt-0.5 tabular-nums">{cat.count} {cat.count === 1 ? 'opção' : 'opções'}</p>
               </div>
-              <ArrowUpRight size={16} className="text-white/30 group-hover:text-[#EE5C13] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
+              <ArrowUpRight size={16} className="text-white/30 group-hover:text-brand group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
             </motion.div>
           </Link>
         ))}
@@ -197,17 +197,17 @@ function HowItWorks() {
     { n: '04', icon: Flame,    title: 'Finalize com extras', desc: 'Bacon, presunto, peito de peru ou queijo em dobro pra turbinar.' },
   ]
   return (
-    <section className="bg-[#0A2452] py-24 lg:py-32 pt-32 lg:pt-44 border-y border-white/6" id="como-funciona">
+    <section className="bg-navy-deep py-24 lg:py-32 pt-32 lg:pt-44 border-y border-white/6" id="como-funciona">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div {...fadeUp()} className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14">
           <div>
-            <p className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Como funciona</p>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Como funciona</p>
             <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] max-w-[520px]">
               Do seu jeito,<br />em 4 passos simples.
             </h2>
           </div>
           <Link href="/cardapio">
-            <button className="inline-flex items-center gap-2 bg-[#EE5C13] hover:bg-[#FF6B1A] text-white font-bold px-6 py-3 rounded-full text-[13.5px] transition-colors shadow-[0_6px_24px_rgba(238,92,19,0.4)]">
+            <button className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-6 py-3 rounded-full text-[13.5px] transition-colors shadow-[0_6px_24px_rgba(238,92,19,0.4)]">
               Começar agora
               <ArrowRight size={14} />
             </button>
@@ -219,12 +219,12 @@ function HowItWorks() {
             <motion.div
               key={step.n}
               {...fadeUp(i * 0.08)}
-              className="relative bg-[#163A6E] border border-white/8 rounded-2xl p-6 hover:border-[#EE5C13]/40 transition-colors"
+              className="relative bg-navy-surface border border-white/8 rounded-2xl p-6 hover:border-brand/40 transition-colors"
             >
               <div className="flex items-center justify-between mb-6">
-                <span className="text-[#EE5C13] font-display font-extrabold text-[14px] tabular-nums tracking-wider">{step.n}</span>
-                <div className="w-10 h-10 bg-[#EE5C13]/12 rounded-xl flex items-center justify-center">
-                  <step.icon size={18} className="text-[#EE5C13]" />
+                <span className="text-brand font-display font-extrabold text-[14px] tabular-nums tracking-wider">{step.n}</span>
+                <div className="w-10 h-10 bg-brand/12 rounded-xl flex items-center justify-center">
+                  <step.icon size={18} className="text-brand" />
                 </div>
               </div>
               <p className="text-white font-bold text-[15px] leading-tight mb-2">{step.title}</p>
@@ -243,15 +243,15 @@ function ProductCard({ product, onCustomize, onAdd }: {
 }) {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
   return (
-    <div className="group flex flex-col bg-[#163A6E] rounded-2xl overflow-hidden border border-white/8 hover:border-[#EE5C13]/45 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-400">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A2452]">
+    <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/8 hover:border-brand/45 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-400">
+      <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
         {product.imageUrl ? (
           <Image src={product.imageUrl} alt={product.name} fill className="object-cover card-img" sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,300px" />
         ) : (
           <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
         )}
         {product.badge && (
-          <span className="absolute top-3 left-3 bg-[#EE5C13] text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+          <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
             {product.badge.label.replace(/[^\w\s]/g, '').trim()}
           </span>
         )}
@@ -266,7 +266,7 @@ function ProductCard({ product, onCustomize, onAdd }: {
           </div>
           <button
             onClick={() => isSub ? onCustomize(product) : onAdd(product)}
-            className="flex items-center gap-1 bg-[#EE5C13] hover:bg-[#FF6B1A] text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all"
+            className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all"
           >
             {isSub ? 'Montar' : 'Adicionar'}
           </button>
@@ -284,11 +284,11 @@ function FeaturedSection() {
   const featured = PRODUCTS.filter(p => p.active && (p.category === 'subs-15cm' || p.category === 'subs-30cm')).slice(0, 4)
 
   return (
-    <section className="bg-[#0B2C5C] py-24 lg:py-32">
+    <section className="bg-navy py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
           <div>
-            <p className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Mais pedidos</p>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Mais pedidos</p>
             <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
               Os subs queridos<br />pela galera.
             </h2>
@@ -318,7 +318,7 @@ function FeaturedSection() {
 // ─── PROMO BANNER ─────────────────────────────────────────────────────────────
 function PromoBanner() {
   return (
-    <section className="bg-[#EE5C13] py-16 lg:py-20 relative overflow-hidden">
+    <section className="bg-brand py-16 lg:py-20 relative overflow-hidden">
       {/* Pattern from packaging */}
       <div
         className="absolute inset-0 opacity-[0.15] pointer-events-none"
@@ -342,13 +342,13 @@ function PromoBanner() {
           </div>
           <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col gap-3">
             <Link href="/cardapio" className="block">
-              <button className="w-full inline-flex items-center justify-center gap-2 bg-[#0B2C5C] hover:bg-[#163A6E] text-white font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors shadow-[0_8px_24px_rgba(11,44,92,0.35)]">
+              <button className="w-full inline-flex items-center justify-center gap-2 bg-navy hover:bg-navy-surface text-white font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors shadow-[0_8px_24px_rgba(11,44,92,0.35)]">
                 Pedir agora
                 <ArrowRight size={15} />
               </button>
             </Link>
             <a href="https://wa.me/5533999999999" target="_blank" rel="noopener noreferrer" className="block">
-              <button className="w-full inline-flex items-center justify-center gap-2 bg-white/95 hover:bg-white text-[#0B2C5C] font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors">
+              <button className="w-full inline-flex items-center justify-center gap-2 bg-white/95 hover:bg-white text-navy font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors">
                 Falar no WhatsApp
               </button>
             </a>
@@ -364,11 +364,11 @@ function CombosSection() {
   const { addItem } = useCart()
   const combos = PRODUCTS.filter(p => p.active && p.category === 'combos')
   return (
-    <section className="bg-[#0B2C5C] py-24 lg:py-32">
+    <section className="bg-navy py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
           <div>
-            <p className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Combos</p>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Combos</p>
             <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
               Mais sabor<br />pelo mesmo preço.
             </h2>
@@ -383,15 +383,15 @@ function CombosSection() {
             <motion.article
               key={combo.id}
               {...fadeUp(i * 0.08)}
-              className={`relative rounded-2xl overflow-hidden border border-white/8 hover:border-[#EE5C13]/40 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-300 ${i === 0 ? 'sm:col-span-2' : ''}`}
+              className={`relative rounded-2xl overflow-hidden border border-white/8 hover:border-brand/40 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-300 ${i === 0 ? 'sm:col-span-2' : ''}`}
             >
-              <div className={`relative overflow-hidden bg-[#163A6E] ${i === 0 ? 'aspect-[16/8]' : 'aspect-[4/3]'}`}>
+              <div className={`relative overflow-hidden bg-navy-surface ${i === 0 ? 'aspect-[16/8]' : 'aspect-[4/3]'}`}>
                 {combo.imageUrl && (
                   <Image src={combo.imageUrl} alt={combo.name} fill className="object-cover card-img" sizes="600px" />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2C5C]/85 via-[#0B2C5C]/25 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/25 to-transparent" />
                 {combo.badge && (
-                  <span className="absolute top-3 left-3 bg-[#EE5C13] text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+                  <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
                     {combo.badge.label.replace(/[^\w\s]/g, '').trim()}
                   </span>
                 )}
@@ -404,7 +404,7 @@ function CombosSection() {
                     <p className="text-white font-display font-extrabold text-[22px] tabular-nums leading-none tracking-[-0.03em]">{formatCurrency(combo.price)}</p>
                     <button
                       onClick={() => { addItem({ productId: combo.id, name: combo.name, price: combo.price, quantity: 1, image: combo.image }); toast.success(`${combo.name} adicionado!`) }}
-                      className="bg-[#EE5C13] hover:bg-[#FF6B1A] text-white text-[12px] font-bold px-4 py-2 rounded-full transition-colors"
+                      className="bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-colors"
                     >
                       Adicionar
                     </button>
@@ -422,7 +422,7 @@ function CombosSection() {
 // ─── BRAND ────────────────────────────────────────────────────────────────────
 function BrandSection() {
   return (
-    <section className="bg-[#0A2452] py-24 lg:py-32" id="sobre">
+    <section className="bg-navy-deep py-24 lg:py-32" id="sobre">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <motion.div {...fadeUp()} className="relative">
@@ -432,12 +432,12 @@ function BrandSection() {
                 alt="Mais Sub artesanal"
                 fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A2452]/50 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/50 to-transparent" />
             </div>
             <div className="absolute -top-4 -left-4 rotate-[-12deg]">
               <MBadge size={72} />
             </div>
-            <div className="absolute -bottom-5 right-4 sm:right-8 bg-[#EE5C13] text-white rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(238,92,19,0.4)]">
+            <div className="absolute -bottom-5 right-4 sm:right-8 bg-brand text-white rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(238,92,19,0.4)]">
               <p className="text-[10px] uppercase tracking-[0.18em] text-white/85 font-bold mb-1">Avaliação</p>
               <div className="flex items-center gap-2">
                 <p className="font-display font-extrabold text-[26px] leading-none tabular-nums tracking-[-0.03em]">4.9</p>
@@ -450,7 +450,7 @@ function BrandSection() {
           </motion.div>
 
           <div>
-            <motion.p {...fadeUp(0.05)} className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-4">A marca</motion.p>
+            <motion.p {...fadeUp(0.05)} className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">A marca</motion.p>
             <motion.h2 {...fadeUp(0.12)} className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-6">
               Subs feitos<br />com cuidado.
             </motion.h2>
@@ -464,7 +464,7 @@ function BrandSection() {
                 { t: 'Ingredientes frescos', d: 'Saladas repostas toda manhã.' },
                 { t: 'Entrega em ~28 min', d: 'Quentinho na sua porta em Gov. Valadares.' },
               ].map((p, i) => (
-                <motion.div key={p.t} {...fadeUp(0.24 + i * 0.06)} className="border-l border-[#EE5C13] pl-4">
+                <motion.div key={p.t} {...fadeUp(0.24 + i * 0.06)} className="border-l border-brand pl-4">
                   <p className="font-bold text-white text-[14px] mb-1">{p.t}</p>
                   <p className="text-white/45 text-[12.5px] leading-relaxed">{p.d}</p>
                 </motion.div>
@@ -472,7 +472,7 @@ function BrandSection() {
             </div>
             <motion.div {...fadeUp(0.5)} className="mt-10">
               <Link href="/cardapio">
-                <button className="group inline-flex items-center gap-2 bg-[#EE5C13] hover:bg-[#FF6B1A] text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all shadow-[0_8px_24px_rgba(238,92,19,0.35)]">
+                <button className="group inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all shadow-[0_8px_24px_rgba(238,92,19,0.35)]">
                   Fazer pedido <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
                 </button>
               </Link>
@@ -493,16 +493,16 @@ const REVIEWS = [
 
 function Reviews() {
   return (
-    <section className="bg-[#0B2C5C] py-24 lg:py-32">
+    <section className="bg-navy py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div {...fadeUp()} className="text-center mb-14">
-          <p className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Avaliações</p>
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Avaliações</p>
           <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-4">
             +2.000 clientes confirmam.
           </h2>
           <div className="inline-flex items-center gap-2">
             <div className="flex gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={16} className="fill-[#EE5C13] text-[#EE5C13]" />)}
+              {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={16} className="fill-[#EE5C13] text-brand" />)}
             </div>
             <span className="text-white font-bold text-[15px] tabular-nums">4.9</span>
             <span className="text-white/45 text-[13.5px]">de média</span>
@@ -510,13 +510,13 @@ function Reviews() {
         </motion.div>
         <div className="grid sm:grid-cols-3 gap-4">
           {REVIEWS.map((r, i) => (
-            <motion.div key={r.name} {...fadeUp(i * 0.1)} className="bg-[#163A6E] border border-white/8 rounded-2xl p-6">
+            <motion.div key={r.name} {...fadeUp(i * 0.1)} className="bg-navy-surface border border-white/8 rounded-2xl p-6">
               <div className="flex gap-0.5 mb-5">
-                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={12} className="fill-[#EE5C13] text-[#EE5C13]" />)}
+                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={12} className="fill-[#EE5C13] text-brand" />)}
               </div>
               <p className="text-white/85 text-[14px] leading-relaxed mb-6">&ldquo;{r.text}&rdquo;</p>
               <div className="pt-4 border-t border-white/8 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#EE5C13] text-white grid place-items-center text-[12px] font-bold">
+                <div className="w-9 h-9 rounded-full bg-brand text-white grid place-items-center text-[12px] font-bold">
                   {r.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
                 <div>
@@ -535,21 +535,21 @@ function Reviews() {
 // ─── CTA FINAL ────────────────────────────────────────────────────────────────
 function CtaFinal() {
   return (
-    <section className="bg-[#0A2452] pt-8 pb-24 lg:pb-32">
+    <section className="bg-navy-deep pt-8 pb-24 lg:pb-32">
       <div className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div
           {...fadeUp()}
-          className="relative overflow-hidden bg-[#0B2C5C] border border-[#EE5C13]/25 rounded-[28px] px-8 py-16 sm:px-14 sm:py-20 lg:px-20 lg:py-24"
+          className="relative overflow-hidden bg-navy border border-brand/25 rounded-[28px] px-8 py-16 sm:px-14 sm:py-20 lg:px-20 lg:py-24"
         >
           <div className="absolute -top-20 -right-16 opacity-[0.07] pointer-events-none">
             <MBadge size={400} />
           </div>
           <div className="relative grid lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7">
-              <p className="text-[11px] font-bold text-[#EE5C13] uppercase tracking-[0.22em] mb-4">Bora?</p>
+              <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">Bora?</p>
               <h2 className="font-display font-extrabold text-white text-[2.4rem] sm:text-[3.2rem] lg:text-[4rem] leading-[0.95] tracking-[-0.045em] mb-5">
                 Tá com fome?<br />
-                <span className="text-[#EE5C13]">Monte seu sub.</span>
+                <span className="text-brand">Monte seu sub.</span>
               </h2>
               <p className="text-white/55 text-[15px] max-w-[440px] leading-relaxed">
                 Em 2 minutos você personaliza tudo. A gente entrega quentinho em até 30 minutos.
@@ -557,7 +557,7 @@ function CtaFinal() {
             </div>
             <div className="lg:col-span-5 flex flex-col gap-3">
               <Link href="/cardapio" className="block">
-                <button className="group w-full inline-flex items-center justify-center gap-2 bg-[#EE5C13] hover:bg-[#FF6B1A] text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_10px_36px_rgba(238,92,19,0.5)]">
+                <button className="group w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_10px_36px_rgba(238,92,19,0.5)]">
                   Começar meu pedido
                   <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </button>
@@ -580,7 +580,7 @@ export default function HomePage() {
   return (
     <>
       <Header />
-      <main className="bg-[#0B2C5C]">
+      <main className="bg-navy">
         <Hero />
         <HowItWorks />
         <FeaturedSection />

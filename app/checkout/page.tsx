@@ -49,10 +49,10 @@ function Section({ title, icon, children, delay = 0 }: { title: string; icon?: R
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-[#163A6E] rounded-2xl p-6 border border-white/6"
+      className="bg-navy-surface rounded-2xl p-6 border border-white/6"
     >
       <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
-        {icon && <span className="text-[#EE5C13]">{icon}</span>}
+        {icon && <span className="text-brand">{icon}</span>}
         {title}
       </h2>
       {children}
@@ -128,12 +128,12 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <><Header />
-        <main className="pt-16 min-h-screen bg-[#0B2C5C] flex items-center justify-center">
+        <main className="pt-16 min-h-screen bg-navy flex items-center justify-center">
           <div className="text-center p-8">
             <div className="text-7xl mb-4">🛒</div>
             <h2 className="text-2xl font-bold text-white mb-3">Carrinho vazio</h2>
             <p className="text-white/35 mb-6">Adicione itens antes de finalizar o pedido.</p>
-            <Link href="/cardapio"><Button className="bg-[#EE5C13] hover:bg-[#ff6b1a] text-white rounded-full px-8 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button></Link>
+            <Link href="/cardapio"><Button className="bg-brand hover:bg-brand-hover text-white rounded-full px-8 shadow-[0_0_30px_rgba(238,92,19,0.3)]">Ver Cardápio</Button></Link>
           </div>
         </main>
         <Footer /></>
@@ -142,10 +142,10 @@ export default function CheckoutPage() {
 
   return (
     <><Header />
-      <main className="pt-16 bg-[#0B2C5C] min-h-screen">
+      <main className="pt-16 bg-navy min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="mb-8">
-            <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-[#EE5C13] transition-colors text-sm font-medium">
+            <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-brand transition-colors text-sm font-medium">
               <ArrowLeft size={16} />Voltar ao cardápio
             </Link>
             <h1 className="text-3xl font-black text-white mt-4 tracking-[-0.03em]">Finalizar Pedido</h1>
@@ -157,13 +157,13 @@ export default function CheckoutPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-white/50">Nome completo *</Label>
-                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                    <Input id="name" placeholder="Seu nome" value={form.name} onChange={set('name')} required className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-white/50">WhatsApp *</Label>
                     <div className="relative">
                       <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
-                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
                   </div>
                 </div>
@@ -174,7 +174,7 @@ export default function CheckoutPage() {
                   {(['entrega', 'retirada'] as OrderType[]).map((type) => (
                     <button key={type} type="button" onClick={() => handleOrderType(type)}
                       className={`p-4 rounded-xl border font-semibold capitalize transition-all flex items-center justify-center gap-2 ${
-                        form.orderType === type ? 'border-[#EE5C13] bg-[#EE5C13]/10 text-[#EE5C13]' : 'border-white/10 text-white/50 hover:border-white/20'
+                        form.orderType === type ? 'border-brand bg-brand/10 text-brand' : 'border-white/10 text-white/50 hover:border-white/20'
                       }`}>
                       {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
                       {type === 'entrega' ? 'Entrega' : 'Retirada'}
@@ -183,32 +183,32 @@ export default function CheckoutPage() {
                 </div>
                 {form.orderType === 'entrega' && (
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-[#EE5C13]" />Endereço de entrega</div>
+                    <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-brand" />Endereço de entrega</div>
                     <div className="flex-1 space-y-2">
                       <Label htmlFor="cep" className="text-white/50">CEP *</Label>
                       <div className="flex gap-2">
-                        <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
-                        {loadingCep && <Loader2 size={16} className="animate-spin text-[#EE5C13] self-center" />}
+                        <Input id="cep" placeholder="00000-000" value={form.cep} onChange={set('cep')} onBlur={() => fetchCep(form.cep)} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
+                        {loadingCep && <Loader2 size={16} className="animate-spin text-brand self-center" />}
                       </div>
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
                       <div className="sm:col-span-2 space-y-2">
                         <Label htmlFor="street" className="text-white/50">Rua *</Label>
-                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                        <Input id="street" placeholder="Nome da rua" value={form.street} onChange={set('street')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="number" className="text-white/50">Número *</Label>
-                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="complement" className="text-white/50">Complemento</Label>
-                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                      <Input id="complement" placeholder="Apto, bloco..." value={form.complement} onChange={set('complement')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
                     <div className="grid sm:grid-cols-3 gap-3">
-                      <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
-                      <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
-                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" /></div>
+                      <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                      <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
                     </div>
                   </div>
                 )}
@@ -226,9 +226,9 @@ export default function CheckoutPage() {
                   {PAYMENT_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" onClick={() => setForm((prev) => ({ ...prev, paymentMethod: opt.key }))}
                       className={`p-4 rounded-xl border text-left transition-all ${
-                        form.paymentMethod === opt.key ? 'border-[#EE5C13] bg-[#EE5C13]/10' : 'border-white/10 hover:border-white/20'
+                        form.paymentMethod === opt.key ? 'border-brand bg-brand/10' : 'border-white/10 hover:border-white/20'
                       }`}>
-                      <div className={`flex items-center gap-2 font-semibold mb-1 ${form.paymentMethod === opt.key ? 'text-[#EE5C13]' : 'text-white/70'}`}>{opt.icon}{opt.label}</div>
+                      <div className={`flex items-center gap-2 font-semibold mb-1 ${form.paymentMethod === opt.key ? 'text-brand' : 'text-white/70'}`}>{opt.icon}{opt.label}</div>
                       <p className="text-xs text-white/30">{opt.description}</p>
                     </button>
                   ))}
@@ -236,14 +236,14 @@ export default function CheckoutPage() {
                 {form.paymentMethod === 'pix' && (
                   <div className="mt-4 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/15">
                     <div className="text-4xl mb-2">📱</div>
-                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-[#EE5C13] font-bold">maissub@email.com</span></p>
+                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-brand font-bold">maissub@email.com</span></p>
                     <p className="text-xs text-white/30 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
                   </div>
                 )}
               </Section>
 
               <Section title="Observações" delay={0.24}>
-                <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-[#EE5C13]" />
+                <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
               </Section>
             </div>
 
@@ -252,7 +252,7 @@ export default function CheckoutPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-[#163A6E] rounded-2xl p-6 border border-white/6 sticky top-24"
+                className="bg-navy-surface rounded-2xl p-6 border border-white/6 sticky top-24"
               >
                 <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">
@@ -274,9 +274,9 @@ export default function CheckoutPage() {
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
                   <div className="flex justify-between text-white/50"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
                   <div className="h-px bg-white/8 my-1" />
-                  <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-[#EE5C13]">{formatCurrency(total)}</span></div>
+                  <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-brand">{formatCurrency(total)}</span></div>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full mt-6 bg-[#EE5C13] hover:bg-[#ff6b1a] text-white font-bold py-4 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)] disabled:opacity-60">
+                <Button type="submit" disabled={submitting} className="w-full mt-6 bg-brand hover:bg-brand-hover text-white font-bold py-4 rounded-full text-base transition-all shadow-[0_0_30px_rgba(238,92,19,0.3)] disabled:opacity-60">
                   {submitting ? <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" />Processando...</span> : 'Confirmar Pedido'}
                 </Button>
                 <p className="text-center text-xs text-white/25 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>

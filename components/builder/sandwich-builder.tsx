@@ -26,7 +26,7 @@ const STEPS = [
 const MEAT_COLORS: Record<string, string> = {
   'frango-cream-cheese': 'from-amber-400 to-orange-400',
   'lombo-defumado':      'from-red-500 to-red-700',
-  'carne-suprema':       'from-[#EE5C13] to-red-800',
+  'carne-suprema':       'from-brand to-red-800',
 }
 
 const CHEESE_COLORS: Record<string, string> = {
@@ -147,7 +147,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden max-h-[95vh] flex flex-col rounded-3xl border-0 shadow-2xl">
 
         {/* ── Header Premium ── */}
-        <DialogHeader className="px-6 pt-6 pb-5 shrink-0 bg-gradient-to-r from-[#0B2C5C] via-[#163A6E] to-[#0A2452] border-b-2 border-[#FF6B1A]">
+        <DialogHeader className="px-6 pt-6 pb-5 shrink-0 bg-gradient-to-r from-navy via-navy-surface to-navy-deep border-b-2 border-brand-hover">
           <div className="flex items-center justify-between mb-5">
             <DialogTitle className="text-white text-2xl font-black flex items-center gap-3">
               <span className="text-3xl">🥖</span>
@@ -159,11 +159,11 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:flex flex-col items-end">
                 <p className="text-xs text-white/60 font-medium">Total</p>
-                <p className="text-3xl font-black text-[#FF6B1A] leading-none">{formatCurrency(total)}</p>
+                <p className="text-3xl font-black text-brand-hover leading-none">{formatCurrency(total)}</p>
               </div>
               <button
                 onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-[#EE5C13] hover:scale-110 transition-all flex items-center justify-center text-white"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-brand hover:scale-110 transition-all flex items-center justify-center text-white"
               >
                 <X size={16} />
               </button>
@@ -183,7 +183,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                       s.id < step
                         ? 'bg-[#10B981] border-[#10B981] text-white'
                         : s.id === step
-                        ? 'bg-[#FF6B1A] border-[#FF6B1A] text-white scale-110 shadow-lg shadow-orange-500/30'
+                        ? 'bg-brand-hover border-brand-hover text-white scale-110 shadow-lg shadow-orange-500/30'
                         : 'bg-transparent border-white/25 text-white/30'
                     }`}
                   >
@@ -192,7 +192,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   <span
                     className={`text-xs font-semibold transition-colors hidden sm:inline ${
                       s.id === step
-                        ? 'text-[#FF6B1A]'
+                        ? 'text-brand-hover'
                         : s.id < step
                         ? 'text-[#10B981]'
                         : 'text-white/30'
@@ -234,12 +234,12 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     onClick={() => setCustomization((prev) => ({ ...prev, size: size.key as SizeOption }))}
                     className={`relative p-6 rounded-2xl border-2 text-left transition-all hover:scale-[1.03] overflow-hidden group ${
                       customization.size === size.key
-                        ? 'border-[#EE5C13] bg-gradient-to-br from-[#FFF5EB] to-white shadow-lg shadow-orange-200/50'
-                        : 'border-gray-200 hover:border-[#EE5C13]/40 bg-white hover:shadow-md'
+                        ? 'border-brand bg-gradient-to-br from-[#FFF5EB] to-white shadow-lg shadow-orange-200/50'
+                        : 'border-gray-200 hover:border-brand/40 bg-white hover:shadow-md'
                     }`}
                   >
                     {customization.size === size.key && (
-                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#EE5C13] flex items-center justify-center shadow-lg">
+                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-brand flex items-center justify-center shadow-lg">
                         <Check size={14} className="text-white" />
                       </div>
                     )}
@@ -247,7 +247,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                       {size.key === '15cm' ? '🥖' : '🥖🥖'}
                     </div>
                     <div className="font-black text-gray-900 text-2xl mb-1">{size.label}</div>
-                    <div className="text-[#EE5C13] font-black text-xl mb-2">{formatCurrency(size.price)}</div>
+                    <div className="text-brand font-black text-xl mb-2">{formatCurrency(size.price)}</div>
                     <div className="text-gray-500 text-xs leading-relaxed">{size.description}</div>
                   </button>
                 ))}
@@ -266,8 +266,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                       onClick={() => setCustomization((prev) => ({ ...prev, meat: item.key }))}
                       className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.02] ${
                         selected
-                          ? 'border-[#EE5C13] bg-gradient-to-r from-[#FFF5EB] to-white shadow-md shadow-orange-200/30'
-                          : 'border-gray-200 bg-white hover:border-[#EE5C13]/40'
+                          ? 'border-brand bg-gradient-to-r from-[#FFF5EB] to-white shadow-md shadow-orange-200/30'
+                          : 'border-gray-200 bg-white hover:border-brand/40'
                       }`}
                     >
                       <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-md shrink-0`}>
@@ -277,7 +277,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                         <div className="font-black text-gray-900 text-base">{item.name}</div>
                       </div>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                        selected ? 'bg-[#EE5C13] border-[#EE5C13] scale-110 shadow-lg' : 'border-gray-300'
+                        selected ? 'bg-brand border-brand scale-110 shadow-lg' : 'border-gray-300'
                       }`}>
                         {selected && <Check size={13} className="text-white" />}
                       </div>
@@ -290,9 +290,9 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             {/* Step 3 — Cheese (multi-select premium) */}
             {step === 3 && (
               <div>
-                <div className="mb-5 p-4 bg-gradient-to-r from-[#0B2C5C]/5 to-[#EE5C13]/5 rounded-xl border border-[#0B2C5C]/10">
+                <div className="mb-5 p-4 bg-gradient-to-r from-navy/5 to-brand/5 rounded-xl border border-navy/10">
                   <p className="text-xs text-gray-600 font-semibold mb-1">💡 Dica</p>
-                  <p className="text-sm text-gray-700">O primeiro queijo é incluso. Adicionais são cobrados: <span className="font-bold text-[#EE5C13]">+ R$ 3,00 cada</span></p>
+                  <p className="text-sm text-gray-700">O primeiro queijo é incluso. Adicionais são cobrados: <span className="font-bold text-brand">+ R$ 3,00 cada</span></p>
                 </div>
                 <div className="space-y-3">
                   {MENU.cheeses.map((item) => {
@@ -308,8 +308,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                         onClick={() => toggleCheese(item.key)}
                         className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all hover:scale-[1.02] ${
                           selected
-                            ? 'border-[#EE5C13] bg-gradient-to-r from-[#FFF5EB] to-white shadow-md'
-                            : 'border-gray-200 bg-white hover:border-[#EE5C13]/50'
+                            ? 'border-brand bg-gradient-to-r from-[#FFF5EB] to-white shadow-md'
+                            : 'border-gray-200 bg-white hover:border-brand/50'
                         }`}
                       >
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center text-2xl shadow-sm shrink-0`}>
@@ -322,12 +322,12 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Incluso</span>
                             )}
                             {selected && !isIncluded && (
-                              <span className="text-xs bg-orange-100 text-[#EE5C13] px-2 py-0.5 rounded-full font-bold">+{formatCurrency(cheesePrice)}</span>
+                              <span className="text-xs bg-orange-100 text-brand px-2 py-0.5 rounded-full font-bold">+{formatCurrency(cheesePrice)}</span>
                             )}
                           </div>
                         </div>
                         <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                          selected ? 'bg-[#EE5C13] border-[#EE5C13]' : 'border-gray-300'
+                          selected ? 'bg-brand border-brand' : 'border-gray-300'
                         }`}>
                           {selected && <Check size={13} className="text-white" />}
                         </div>
@@ -336,10 +336,10 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   })}
                 </div>
                 {isDoubleCheese && (
-                  <div className="mt-5 p-4 bg-gradient-to-r from-[#FF6B1A]/10 to-[#EE5C13]/10 border-l-4 border-[#FF6B1A] rounded-lg flex items-start gap-3">
+                  <div className="mt-5 p-4 bg-gradient-to-r from-brand-hover/10 to-brand/10 border-l-4 border-brand-hover rounded-lg flex items-start gap-3">
                     <span className="text-2xl shrink-0">✨</span>
                     <div>
-                      <p className="font-bold text-[#EE5C13] text-sm">Queijo em Dobro</p>
+                      <p className="font-bold text-brand text-sm">Queijo em Dobro</p>
                       <p className="text-xs text-gray-600 mt-0.5">Adicionado automaticamente por +{formatCurrency(customization.size === '15cm' ? 3 : 5)}</p>
                     </div>
                   </div>
@@ -364,8 +364,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                           selected
                             ? isComplete
                               ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400 text-green-700 shadow-md shadow-green-100'
-                              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-[#EE5C13] text-[#EE5C13] shadow-md'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#EE5C13]/30'
+                              : 'bg-gradient-to-br from-orange-50 to-amber-50 border-brand text-brand shadow-md'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-brand/30'
                         }`}
                       >
                         <span className="text-2xl">{isComplete ? '🥗✨' : '🥗'}</span>
@@ -394,7 +394,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-xs text-gray-400 font-medium">Selecione até {MENU.maxSauces} molhos</p>
                   <span className={`text-sm font-black tabular-nums transition-colors ${
-                    customization.sauces.length >= MENU.maxSauces ? 'text-[#EE5C13]' : 'text-gray-400'
+                    customization.sauces.length >= MENU.maxSauces ? 'text-brand' : 'text-gray-400'
                   }`}>
                     {customization.sauces.length}/{MENU.maxSauces}
                   </span>
@@ -412,8 +412,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                           disabled
                             ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
                             : selected
-                            ? 'bg-[#EE5C13] border-[#EE5C13] text-white shadow-md shadow-orange-200 hover:scale-105'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-[#EE5C13]/50 hover:text-[#EE5C13] hover:scale-105'
+                            ? 'bg-brand border-brand text-white shadow-md shadow-orange-200 hover:scale-105'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-brand/50 hover:text-brand hover:scale-105'
                         }`}
                       >
                         🥫 {item.name}
@@ -435,7 +435,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     <div
                       key={extra.key}
                       className={`p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${
-                        qty > 0 ? 'border-[#EE5C13] bg-orange-50' : 'border-gray-200 bg-white'
+                        qty > 0 ? 'border-brand bg-orange-50' : 'border-gray-200 bg-white'
                       }`}
                     >
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-2xl shrink-0">
@@ -443,7 +443,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-black text-gray-900 text-sm">{extra.name}</div>
-                        <div className="text-[#EE5C13] text-xs font-bold mt-0.5">
+                        <div className="text-brand text-xs font-bold mt-0.5">
                           +{formatCurrency(price)} por unidade
                         </div>
                       </div>
@@ -460,7 +460,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                         </span>
                         <button
                           onClick={() => setExtra(extra.key, qty + 1)}
-                          className="w-8 h-8 rounded-full border-2 border-[#EE5C13] text-[#EE5C13] flex items-center justify-center hover:bg-orange-50 transition-all"
+                          className="w-8 h-8 rounded-full border-2 border-brand text-brand flex items-center justify-center hover:bg-orange-50 transition-all"
                         >
                           <Plus size={12} />
                         </button>
@@ -507,7 +507,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             {/* Price */}
             <div className="p-4 border-t border-white/10">
               <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1">Total</p>
-              <p className="text-[#EE5C13] font-black text-3xl leading-none price-highlight">
+              <p className="text-brand font-black text-3xl leading-none price-highlight">
                 {formatCurrency(total)}
               </p>
             </div>
@@ -537,7 +537,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             <Button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
-              className="rounded-full bg-gradient-to-r from-[#EE5C13] to-[#FF6B1A] hover:shadow-lg hover:scale-105 text-white font-black px-6 h-11 flex items-center gap-1.5 shadow-md shadow-orange-400/30 disabled:opacity-40 transition-all"
+              className="rounded-full bg-gradient-to-r from-brand to-brand-hover hover:shadow-lg hover:scale-105 text-white font-black px-6 h-11 flex items-center gap-1.5 shadow-md shadow-orange-400/30 disabled:opacity-40 transition-all"
             >
               Próximo <ChevronRight size={16} />
             </Button>

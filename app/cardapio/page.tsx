@@ -27,8 +27,8 @@ function ProductCard({ product, onCustomize, onAdd }: {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
 
   return (
-    <div className="group flex flex-col bg-[#163A6E] rounded-2xl overflow-hidden border border-white/6 hover:border-[#EE5C13]/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#0A2452]">
+    <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/6 hover:border-brand/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
+      <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
@@ -40,9 +40,9 @@ function ProductCard({ product, onCustomize, onAdd }: {
         ) : (
           <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#163A6E]/50 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy-surface/50 via-transparent to-transparent" />
         {product.badge && (
-          <span className="absolute top-3 left-3 bg-[#EE5C13] text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+          <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
             {product.badge.label.replace(/[^\w\s]/g, '').trim()}
           </span>
         )}
@@ -60,7 +60,7 @@ function ProductCard({ product, onCustomize, onAdd }: {
           </div>
           <button
             onClick={() => isSub ? onCustomize(product) : onAdd(product)}
-            className="flex items-center gap-1.5 bg-white/6 hover:bg-[#EE5C13] border border-white/10 hover:border-[#EE5C13] text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
+            className="flex items-center gap-1.5 bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
             {isSub ? 'Personalizar' : 'Adicionar'}
           </button>
@@ -103,13 +103,13 @@ export default function CardapioPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#0B2C5C]">
+      <main className="min-h-screen bg-navy">
 
         {/* Page header */}
-        <section className="relative bg-[#0B2C5C] pt-28 pb-14 overflow-hidden">
+        <section className="relative bg-navy pt-28 pb-14 overflow-hidden">
           {/* Glow */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-[#EE5C13]/5 blur-[100px] rounded-full" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-brand/5 blur-[100px] rounded-full" />
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px]" />
           </div>
 
@@ -119,7 +119,7 @@ export default function CardapioPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
             >
-              <p className="text-[11px] font-semibold text-[#EE5C13] uppercase tracking-[0.22em] mb-3">Mais Sub</p>
+              <p className="text-[11px] font-semibold text-brand uppercase tracking-[0.22em] mb-3">Mais Sub</p>
               <h1 className="text-[2.8rem] sm:text-[3.8rem] font-black text-white leading-[1.04] tracking-[-0.045em] mb-5">
                 Cardápio
               </h1>
@@ -134,7 +134,7 @@ export default function CardapioPage() {
                   placeholder="Buscar no cardápio…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-full bg-white/6 border border-white/10 text-white placeholder-white/25 text-[14px] outline-none focus:border-[#EE5C13]/40 focus:bg-white/8 transition-all"
+                  className="w-full h-11 pl-10 pr-9 rounded-full bg-white/6 border border-white/10 text-white placeholder-white/25 text-[14px] outline-none focus:border-brand/40 focus:bg-white/8 transition-all"
                 />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
@@ -149,7 +149,7 @@ export default function CardapioPage() {
         <div ref={sentinelRef} className="h-px" />
 
         {/* Filter bar */}
-        <div className={`bg-[#0B2C5C]/95 backdrop-blur-xl border-b border-white/6 z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-[0_4px_30px_rgba(0,0,0,0.4)]' : ''}`}>
+        <div className={`bg-navy/95 backdrop-blur-xl border-b border-white/6 z-40 transition-shadow ${sticky ? 'sticky top-16 shadow-[0_4px_30px_rgba(0,0,0,0.4)]' : ''}`}>
           <div className="max-w-7xl mx-auto px-5 sm:px-8">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-3">
               <SlidersHorizontal size={13} className="text-white/20 shrink-0" />
@@ -159,7 +159,7 @@ export default function CardapioPage() {
                   onClick={() => setActive(cat.key)}
                   className={`cat-pill shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all ${
                     active === cat.key
-                      ? 'bg-[#EE5C13] text-white shadow-[0_0_20px_rgba(238,92,19,0.3)]'
+                      ? 'bg-brand text-white shadow-[0_0_20px_rgba(238,92,19,0.3)]'
                       : 'text-white/35 hover:bg-white/6 hover:text-white border border-white/8'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function CardapioPage() {
         </div>
 
         {/* WhatsApp CTA */}
-        <div className="border-t border-white/6 bg-[#0A2452] py-12">
+        <div className="border-t border-white/6 bg-navy-deep py-12">
           <div className="max-w-xl mx-auto px-5 text-center">
             <p className="text-white/30 text-[13.5px] mb-5">Prefere pedir pelo WhatsApp?</p>
             <a
