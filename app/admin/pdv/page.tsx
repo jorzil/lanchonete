@@ -11,6 +11,10 @@ import {
   CreditCard,
   CheckCircle2,
   ShoppingCart,
+  Lock,
+  Unlock,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,6 +39,14 @@ import {
 } from "@/lib/store"
 import { addOrder } from "@/lib/orders-storage"
 import { consumeStockForProduct } from "@/lib/recipes-storage"
+import { getCurrentUser } from "@/lib/admin-auth"
+import {
+  getOpenSession, openCash, closeCash, addCashMovement, registerCashSale, getSummary,
+  type CashSession,
+} from "@/lib/cash-register-storage"
+import { Label } from "@/components/ui/label"
+import { DialogFooter } from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 type Category = "subs-15cm" | "subs-30cm" | "combos" | "bebidas"
 type DiscountType = "percentage" | "fixed"
@@ -66,6 +78,55 @@ export default function PdvPage() {
   const [discountValue, setDiscountValue] = useState("")
   const [received, setReceived] = useState("")
   const [confirmed, setConfirmed] = useState<Order | null>(null)
+
+  // ─── Caixa ───
+  const [session, setSession] = useState<CashSession | null>(null)
+  const [openCashModal, setOpenCashModal] = useState(false)
+  const [closeCashModal, setCloseCashModal] = useState(false)
+  const [movModal, setMovModal] = useState<null | "sangria" | "suprimento">(null)
+  const [cashInput, setCashInput] = useState("")
+  const [movInput, setMovInput] = useState("")
+  const [movNote, setMovNote] = useState("")
+
+  useEffect(() => { setSession(getOpenSession()) }, [])
+
+  const summary = useMemo(() => (session ? getSummary(session) : null), [session])
+
+  function handleOpenCash() {
+    const amount = parseFloat(cashInput) || 0
+    const user = getCurrentUser()
+    setSession(openCash(amount, user?.name ?? "Operador"))
+    setCashInput("")
+    setOpenCashModal(false)
+    toast.success("Caixa aberto")
+  }
+
+  function handleCloseCash() {
+    const counted = parseFloat(cashInput) || 0
+    const closed = closeCash(counted)
+    if (closed) {
+      const s = getSummary(closed)
+      const diff = counted - s.expectedCash
+      toast.success("Caixa fechado", {
+        description: `Esperado ${formatCurrency(s.expectedCash)} · Contado ${formatCurrency(counted)} · Diferença ${formatCurrency(diff)}`,
+      })
+    }
+    setSession(null)
+    setCashInput("")
+    setCloseCashModal(false)
+  }
+
+  function handleMovement() {
+    if (!movModal) return
+    const amount = parseFloat(movInput) || 0
+    if (amount <= 0) return
+    const updated = addCashMovement(movModal, amount, { note: movNote.trim() || undefined })
+    setSession(updated ? { ...updated } : null)
+    setMovInput("")
+    setMovNote("")
+    setMovModal(null)
+    toast.success(movModal === "sangria" ? "Sangria registrada" : "Suprimento registrado")
+  }
 
   // Relógio do header (atualiza a cada minuto)
   useEffect(() => {
@@ -149,6 +210,11 @@ export default function PdvPage() {
 
   function finishSale() {
     if (items.length === 0) return
+    if (!getOpenSession()) {
+      toast.error("Abra o caixa antes de registrar vendas.")
+      setOpenCashModal(true)
+      return
+    }
     const nowIso = new Date().toISOString()
     const order: Order = {
       id: `pdv-${Date.now()}`,
@@ -169,6 +235,9 @@ export default function PdvPage() {
     addOrder(order)
     // Baixa automática de estoque conforme as fichas técnicas
     items.forEach((i) => consumeStockForProduct(i.productId, i.quantity))
+    // Registra a venda no caixa
+    registerCashSale(total, payment)
+    setSession(getOpenSession())
     setConfirmed(order)
   }
 
@@ -195,10 +264,36 @@ export default function PdvPage() {
               : "—"}
           </p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600/10">
-          <ShoppingCart className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-center gap-2">
+          {session ? (
+            <>
+              <div className="hidden text-right sm:block">
+                <p className="text-xs text-gray-400">Caixa aberto</p>
+                <p className="text-sm font-bold text-emerald-600">{summary ? formatCurrency(summary.expectedCash) : "—"}</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setMovModal("suprimento")} title="Suprimento">
+                <ArrowDownCircle className="h-4 w-4 text-emerald-600" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setMovModal("sangria")} title="Sangria">
+                <ArrowUpCircle className="h-4 w-4 text-red-600" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { setCashInput(""); setCloseCashModal(true) }}>
+                <Lock className="mr-1 h-4 w-4" /> Fechar caixa
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" onClick={() => { setCashInput(""); setOpenCashModal(true) }} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              <Unlock className="mr-1 h-4 w-4" /> Abrir caixa
+            </Button>
+          )}
         </div>
       </div>
+
+      {!session && (
+        <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 lg:px-8">
+          <Lock className="h-4 w-4" /> Caixa fechado — abra o caixa para registrar vendas.
+        </div>
+      )}
 
       <div className="flex flex-col lg:h-[calc(100vh-8.5rem)] lg:flex-row">
         {/* ─── ESQUERDA: Catálogo ─────────────────────────────── */}
@@ -492,6 +587,87 @@ export default function PdvPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal abrir caixa */}
+      <Dialog open={openCashModal} onOpenChange={setOpenCashModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600"><Unlock className="h-5 w-5" /> Abrir caixa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Fundo de troco (R$)</Label>
+            <Input type="number" min="0" step="any" value={cashInput} onChange={(e) => setCashInput(e.target.value)} placeholder="0,00" autoFocus />
+            <p className="text-xs text-gray-400">Valor em dinheiro disponível na gaveta no início do turno.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenCashModal(false)}>Cancelar</Button>
+            <Button onClick={handleOpenCash} className="bg-emerald-600 text-white hover:bg-emerald-700">Abrir caixa</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal fechar caixa */}
+      <Dialog open={closeCashModal} onOpenChange={setCloseCashModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-[#EE5C13]" /> Fechar caixa</DialogTitle>
+          </DialogHeader>
+          {summary && (
+            <div className="mb-3 space-y-1.5 rounded-lg bg-gray-50 p-4 text-sm">
+              <Row label="Abertura (troco)" value={summary.openingAmount} />
+              <Row label="Vendas em dinheiro" value={summary.cashSales} />
+              <Row label="Suprimentos" value={summary.suprimentos} />
+              <Row label="Sangrias" value={-summary.sangrias} />
+              <div className="my-1 h-px bg-gray-200" />
+              <Row label="Esperado em caixa" value={summary.expectedCash} strong />
+              <div className="pt-1 text-xs text-gray-400">Outras formas de pagamento: {formatCurrency(summary.otherSales)}</div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Valor contado na gaveta (R$)</Label>
+            <Input type="number" min="0" step="any" value={cashInput} onChange={(e) => setCashInput(e.target.value)} placeholder="0,00" autoFocus />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloseCashModal(false)}>Cancelar</Button>
+            <Button onClick={handleCloseCash} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">Confirmar fechamento</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal sangria / suprimento */}
+      <Dialog open={!!movModal} onOpenChange={(o) => !o && setMovModal(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {movModal === "sangria" ? <ArrowUpCircle className="h-5 w-5 text-red-600" /> : <ArrowDownCircle className="h-5 w-5 text-emerald-600" />}
+              {movModal === "sangria" ? "Sangria (retirada)" : "Suprimento (entrada)"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input type="number" min="0" step="any" value={movInput} onChange={(e) => setMovInput(e.target.value)} placeholder="0,00" autoFocus />
+            </div>
+            <div className="space-y-2">
+              <Label>Motivo (opcional)</Label>
+              <Input value={movNote} onChange={(e) => setMovNote(e.target.value)} placeholder="Ex.: troco, pagamento fornecedor..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMovModal(null)}>Cancelar</Button>
+            <Button onClick={handleMovement} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function Row({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between ${strong ? "font-bold text-gray-900" : "text-gray-600"}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{formatCurrency(value)}</span>
     </div>
   )
 }
