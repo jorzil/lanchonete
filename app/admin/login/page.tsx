@@ -103,8 +103,13 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 rounded-lg bg-gray-50 px-3 py-2 text-center text-xs text-gray-500">
-            Acesso demo: <strong>admin@maissub.com.br</strong> / <strong>admin123</strong>
+          <div className="mt-6 space-y-1 rounded-lg bg-gray-50 px-3 py-3 text-xs text-gray-500">
+            <p className="mb-1 font-semibold text-gray-600">Contas demo (senha = papel + 123):</p>
+            <p><strong>admin@maissub.com.br</strong> · admin123</p>
+            <p><strong>gerente@maissub.com.br</strong> · gerente123</p>
+            <p><strong>atendente@maissub.com.br</strong> · atendente123</p>
+            <p><strong>estoque@maissub.com.br</strong> · estoque123</p>
+            <p><strong>cozinha@maissub.com.br</strong> · cozinha123</p>
           </div>
         </div>
 

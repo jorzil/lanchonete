@@ -1,23 +1,74 @@
-// ==================== ADMIN AUTH (localStorage) ====================
-// Autenticação simples baseada em localStorage. Sem NextAuth.
+// ==================== ADMIN AUTH + RBAC (localStorage) ====================
+// Autenticação multi-nível baseada em localStorage. Sem NextAuth.
 
 const TOKEN_KEY = "admin_token"
 const USER_KEY = "admin_user"
 
-const DEFAULT_CREDENTIALS = {
-  email: "admin@maissub.com.br",
-  password: "admin123",
-  name: "Administrador",
+// ---------- Papéis (roles) ----------
+export type Role = "admin" | "gerente" | "atendente" | "estoque" | "cozinha"
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Administrador",
+  gerente: "Gerente",
+  atendente: "Atendente",
+  estoque: "Estoque",
+  cozinha: "Cozinha",
+}
+
+// ---------- Módulos do sistema ----------
+export type ModuleKey =
+  | "dashboard"
+  | "pedidos"
+  | "pdv"
+  | "produtos"
+  | "estoque"
+  | "compras"
+  | "financeiro"
+  | "clientes"
+  | "relatorios"
+  | "configuracoes"
+
+// Permissões por papel: quais módulos cada papel pode acessar.
+export const ROLE_PERMISSIONS: Record<Role, ModuleKey[]> = {
+  admin: [
+    "dashboard", "pedidos", "pdv", "produtos", "estoque",
+    "compras", "financeiro", "clientes", "relatorios", "configuracoes",
+  ],
+  gerente: [
+    "dashboard", "pedidos", "pdv", "produtos", "estoque",
+    "compras", "financeiro", "clientes", "relatorios",
+  ],
+  atendente: ["dashboard", "pedidos", "pdv", "clientes"],
+  estoque: ["dashboard", "estoque", "compras", "produtos"],
+  cozinha: ["dashboard", "pedidos"],
 }
 
 export interface AdminUser {
   email: string
   name: string
+  role: Role
 }
+
+interface StoredAccount extends AdminUser {
+  password: string
+}
+
+// Contas padrão (seed). Em produção viriam de um backend.
+const DEFAULT_ACCOUNTS: StoredAccount[] = [
+  { email: "admin@maissub.com.br", password: "admin123", name: "Administrador", role: "admin" },
+  { email: "gerente@maissub.com.br", password: "gerente123", name: "Gerente", role: "gerente" },
+  { email: "atendente@maissub.com.br", password: "atendente123", name: "Atendente", role: "atendente" },
+  { email: "estoque@maissub.com.br", password: "estoque123", name: "Estoque", role: "estoque" },
+  { email: "cozinha@maissub.com.br", password: "cozinha123", name: "Cozinha", role: "cozinha" },
+]
 
 export interface LoginResult {
   ok: boolean
   error?: string
+}
+
+function findAccount(email: string): StoredAccount | undefined {
+  return DEFAULT_ACCOUNTS.find((a) => a.email === email)
 }
 
 /** Realiza login. Em sucesso grava token + usuário no localStorage. */
@@ -28,10 +79,8 @@ export function login(email: string, password: string): LoginResult {
     return { ok: false, error: "Preencha email e senha." }
   }
 
-  if (
-    normalizedEmail !== DEFAULT_CREDENTIALS.email ||
-    password !== DEFAULT_CREDENTIALS.password
-  ) {
+  const account = findAccount(normalizedEmail)
+  if (!account || account.password !== password) {
     return { ok: false, error: "Email ou senha incorretos." }
   }
 
@@ -40,7 +89,7 @@ export function login(email: string, password: string): LoginResult {
     localStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem(
       USER_KEY,
-      JSON.stringify({ email: normalizedEmail, name: DEFAULT_CREDENTIALS.name }),
+      JSON.stringify({ email: account.email, name: account.name, role: account.role } satisfies AdminUser),
     )
   } catch {
     return { ok: false, error: "Não foi possível salvar a sessão." }
@@ -73,8 +122,25 @@ export function getCurrentUser(): AdminUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as AdminUser
+    const parsed = JSON.parse(raw) as Partial<AdminUser>
+    // Compatibilidade com sessões antigas sem role.
+    return {
+      email: parsed.email ?? "",
+      name: parsed.name ?? "Administrador",
+      role: (parsed.role as Role) ?? "admin",
+    }
   } catch {
     return null
   }
+}
+
+/** Verifica se um papel tem acesso a um módulo. */
+export function canAccess(role: Role | undefined, module: ModuleKey): boolean {
+  if (!role) return false
+  return ROLE_PERMISSIONS[role]?.includes(module) ?? false
+}
+
+/** Lista (somente leitura) das contas seed — usada na tela de login para dicas. */
+export function listDemoAccounts(): Array<Pick<AdminUser, "email" | "role">> {
+  return DEFAULT_ACCOUNTS.map((a) => ({ email: a.email, role: a.role }))
 }

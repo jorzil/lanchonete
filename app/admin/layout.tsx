@@ -8,6 +8,9 @@ import {
   ShoppingBag,
   ShoppingCart,
   Package,
+  Boxes,
+  Truck,
+  Wallet,
   Users,
   BarChart3,
   Settings,
@@ -18,16 +21,27 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
-import { isAuthenticated, logout, getCurrentUser, type AdminUser } from "@/lib/admin-auth"
+import {
+  isAuthenticated,
+  logout,
+  getCurrentUser,
+  canAccess,
+  ROLE_LABELS,
+  type AdminUser,
+  type ModuleKey,
+} from "@/lib/admin-auth"
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
-  { href: "/admin/pdv", label: "PDV", icon: ShoppingCart },
-  { href: "/admin/produtos", label: "Produtos", icon: Package },
-  { href: "/admin/clientes", label: "Clientes", icon: Users },
-  { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3 },
-  { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; module: ModuleKey }[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
+  { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag, module: "pedidos" },
+  { href: "/admin/pdv", label: "PDV", icon: ShoppingCart, module: "pdv" },
+  { href: "/admin/produtos", label: "Produtos", icon: Package, module: "produtos" },
+  { href: "/admin/estoque", label: "Estoque", icon: Boxes, module: "estoque" },
+  { href: "/admin/compras", label: "Compras", icon: Truck, module: "compras" },
+  { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
+  { href: "/admin/clientes", label: "Clientes", icon: Users, module: "clientes" },
+  { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
+  { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
 ]
 
 const BREADCRUMBS: Record<string, string> = {
@@ -35,6 +49,9 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/pedidos": "Pedidos",
   "/admin/pdv": "PDV",
   "/admin/produtos": "Produtos",
+  "/admin/estoque": "Estoque",
+  "/admin/compras": "Compras",
+  "/admin/financeiro": "Financeiro",
   "/admin/clientes": "Clientes",
   "/admin/relatorios": "Relatórios",
   "/admin/configuracoes": "Configurações",
@@ -42,13 +59,16 @@ const BREADCRUMBS: Record<string, string> = {
 
 function SidebarContent({
   pathname,
+  user,
   onNavigate,
   onLogout,
 }: {
   pathname: string
+  user: AdminUser | null
   onNavigate?: () => void
   onLogout: () => void
 }) {
+  const items = NAV_ITEMS.filter((item) => canAccess(user?.role, item.module))
   return (
     <div className="flex h-full flex-col bg-white">
       <div className="flex items-center gap-3 border-b border-gray-200 px-6 py-5">
@@ -59,12 +79,12 @@ function SidebarContent({
           <p className="text-sm font-bold leading-tight text-gray-900">
             Mais <span className="text-[#EE5C13]">Sub</span>
           </p>
-          <p className="text-xs text-gray-400">Admin</p>
+          <p className="text-xs text-gray-400">ERP</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {items.map((item) => {
           const active = pathname === item.href
           const Icon = item.icon
           return (
@@ -117,7 +137,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace("/admin/login")
       return
     }
-    setUser(getCurrentUser())
+    const current = getCurrentUser()
+    setUser(current)
+
+    // Bloqueio por papel: se a rota atual não é permitida, manda pro dashboard.
+    const matched = NAV_ITEMS.find((i) => i.href === pathname)
+    if (matched && current && !canAccess(current.role, matched.module)) {
+      router.replace("/admin")
+      return
+    }
     setChecked(true)
   }, [pathname, isLoginPage, router])
 
@@ -141,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* Sidebar fixa (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-gray-200 lg:block">
-        <SidebarContent pathname={pathname} onLogout={handleLogout} />
+        <SidebarContent pathname={pathname} user={user} onLogout={handleLogout} />
       </aside>
 
       {/* Sidebar mobile */}
@@ -150,6 +178,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <SidebarContent
             pathname={pathname}
+            user={user}
             onNavigate={() => setMobileOpen(false)}
             onLogout={handleLogout}
           />
@@ -169,7 +198,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-400">Admin</span>
+              <span className="text-gray-400">ERP</span>
               <span className="text-gray-300">/</span>
               <span className="font-medium text-gray-900">
                 {BREADCRUMBS[pathname] ?? "Página"}
@@ -180,7 +209,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium text-gray-900">{user?.name ?? "Administrador"}</p>
-              <p className="text-xs text-gray-400">{user?.email}</p>
+              <p className="text-xs text-gray-400">{user ? ROLE_LABELS[user.role] : ""}</p>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EE5C13] text-sm font-semibold text-white">
               {(user?.name ?? "A").charAt(0).toUpperCase()}
