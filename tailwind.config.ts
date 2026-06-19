@@ -43,6 +43,17 @@ const config: Config = {
           400: '#f4703c', 500: '#EE5C13', 600: '#d94b0d', 700: '#b33b0f',
           800: '#8f3014', 900: '#742a14',
         },
+        /* ─── Tokens semânticos da marca (Design System) ─────────────────── */
+        brand: {
+          DEFAULT: '#EE5C13',
+          hover: '#FF6B1A',
+          fg: '#FFFFFF',
+        },
+        navy: {
+          DEFAULT: '#0B2C5C',
+          surface: '#163A6E',
+          deep: '#0A2452',
+        },
         'dark-blue': {
           DEFAULT: '#023E74',
           50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
@@ -59,6 +70,12 @@ const config: Config = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      boxShadow: {
+        'ds-sm': 'var(--shadow-sm)',
+        'ds-md': 'var(--shadow-md)',
+        'ds-lg': 'var(--shadow-lg)',
+        'ds-brand': 'var(--shadow-brand)',
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },
