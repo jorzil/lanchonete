@@ -4,7 +4,7 @@ import { MaisSubMark, MBadge } from '@/components/brand/logo'
 
 export function Footer() {
   return (
-    <footer className="relative bg-[#0A2452] border-t border-white/8 overflow-hidden">
+    <footer className="relative bg-navy-deep border-t border-white/8 overflow-hidden">
       {/* Decorative big M */}
       <div className="absolute -right-12 -top-12 opacity-[0.04] pointer-events-none">
         <MBadge size={320} />
@@ -21,7 +21,7 @@ export function Footer() {
             Subs artesanais com ingredientes selecionados. Do seu jeito.
           </p>
           <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-[#EE5C13]/12 hover:bg-[#EE5C13] border border-[#EE5C13]/30 hover:border-[#EE5C13] text-[#EE5C13] hover:text-white text-[12.5px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
+            className="inline-flex items-center gap-2 bg-brand/12 hover:bg-brand border border-brand/30 hover:border-brand text-brand hover:text-white text-[12.5px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
             <Phone size={13} />
             WhatsApp
           </a>
@@ -70,21 +70,21 @@ export function Footer() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 mb-5">Contato</p>
           <ul className="space-y-3.5 mb-7">
             <li className="flex items-start gap-2.5 text-[13px] text-white/45">
-              <MapPin size={14} className="text-[#EE5C13] mt-0.5 shrink-0" />
+              <MapPin size={14} className="text-brand mt-0.5 shrink-0" />
               <span>Governador Valadares · MG</span>
             </li>
             <li className="flex items-start gap-2.5 text-[13px] text-white/45">
-              <Clock size={14} className="text-[#EE5C13] mt-0.5 shrink-0" />
+              <Clock size={14} className="text-brand mt-0.5 shrink-0" />
               <span>Seg–Sex 11h–22h · Sáb–Dom 11h–23h</span>
             </li>
             <li className="flex items-center gap-2.5 text-[13px] text-white/45">
-              <Phone size={14} className="text-[#EE5C13] shrink-0" />
+              <Phone size={14} className="text-brand shrink-0" />
               <a href="https://wa.me/5511999999999" className="hover:text-white transition-colors">(33) 99999-9999</a>
             </li>
           </ul>
           <div className="flex gap-2">
             <a href="https://www.instagram.com/maissub.gv/" target="_blank" rel="noopener noreferrer"
-              className="w-9 h-9 rounded-full bg-white/6 hover:bg-[#EE5C13] flex items-center justify-center transition-all duration-200 text-white/55 hover:text-white">
+              className="w-9 h-9 rounded-full bg-white/6 hover:bg-brand flex items-center justify-center transition-all duration-200 text-white/55 hover:text-white">
               <Instagram size={15} />
             </a>
           </div>
