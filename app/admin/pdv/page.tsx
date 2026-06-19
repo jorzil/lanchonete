@@ -34,6 +34,7 @@ import {
   type PaymentMethod,
 } from "@/lib/store"
 import { addOrder } from "@/lib/orders-storage"
+import { consumeStockForProduct } from "@/lib/recipes-storage"
 
 type Category = "subs-15cm" | "subs-30cm" | "combos" | "bebidas"
 type DiscountType = "percentage" | "fixed"
@@ -166,6 +167,8 @@ export default function PdvPage() {
       updatedAt: nowIso,
     }
     addOrder(order)
+    // Baixa automática de estoque conforme as fichas técnicas
+    items.forEach((i) => consumeStockForProduct(i.productId, i.quantity))
     setConfirmed(order)
   }
 
