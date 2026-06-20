@@ -29,7 +29,8 @@ export function generateWhatsAppMessage(order: Order): string {
     lines.push(`\n${i + 1}. *${item.name}* x${item.quantity}`)
     if (item.customization) {
       const c = item.customization
-      lines.push(`   🥖 Tamanho: ${c.size}`)
+      lines.push(`   📏 Tamanho: ${c.size}`)
+      if (c.bread)         { const b = MENU.breads.find((x) => x.key === c.bread); lines.push(`   🍞 Pão: ${b?.name || c.bread}`) }
       if (c.meat)          { const m = MENU.meats.find((x) => x.key === c.meat);   lines.push(`   🥩 Carne: ${m?.name || c.meat}`) }
       if (c.cheeses.length) { const n = c.cheeses.map((k) => MENU.cheeses.find((x) => x.key === k)?.name || k).join(', '); lines.push(`   🧀 Queijo: ${n}${c.cheeses.length > 1 ? ' (em dobro)' : ''}`) }
       if (c.salads.length)  lines.push(`   🥗 Saladas: ${c.salads.map((k) => MENU.salads.find((x) => x.key === k)?.name || k).join(', ')}`)

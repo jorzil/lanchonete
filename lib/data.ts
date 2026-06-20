@@ -2,7 +2,8 @@
 // Safe to import from Server Components and Client Components alike.
 
 export type SizeOption = '15cm' | '30cm'
-export interface MeatOption   { key: string; name: string }
+export interface BreadOption  { key: string; name: string; description: string; emoji: string }
+export interface MeatOption   { key: string; name: string; description: string; emoji: string }
 export interface CheeseOption { key: string; name: string }
 export interface SaladOption  { key: string; name: string }
 export interface SauceOption  { key: string; name: string }
@@ -10,6 +11,7 @@ export interface ExtraOption  { key: string; name: string; price15cm: number; pr
 
 export interface SubCustomization {
   size: SizeOption
+  bread: string
   meat: string
   cheeses: string[]
   salads: string[]
@@ -65,10 +67,15 @@ export const MENU = {
     { key: '15cm' as SizeOption, label: '15cm', price: 21.9, description: 'Perfeito para um lanche individual' },
     { key: '30cm' as SizeOption, label: '30cm', price: 37.9, description: 'Ideal para quem tem mais fome' },
   ],
+  breads: [
+    { key: 'tradicional',  name: 'Tradicional',   description: 'Pão clássico, macio e levemente tostado',         emoji: '🍞' },
+    { key: 'gergelim',     name: 'Com Gergelim',  description: 'Pão com gergelim crocante por fora, macio por dentro', emoji: '🥖' },
+    { key: '4-queijos',    name: '4 Queijos',     description: 'Pão recheado com blend especial de 4 queijos',     emoji: '🧀' },
+  ] as BreadOption[],
   meats: [
-    { key: 'frango-cream-cheese', name: 'Frango com Cream Cheese' },
-    { key: 'lombo-defumado',      name: 'Lombo Defumado' },
-    { key: 'carne-suprema',       name: 'Carne Suprema com Requeijão' },
+    { key: 'frango-cream-cheese', name: 'Frango com Cream Cheese',    description: 'Frango grelhado com cream cheese cremoso',    emoji: '🍗' },
+    { key: 'carne-suprema',       name: 'Carne Suprema com Requeijão',description: 'Carne bovina premium com requeijão especial', emoji: '🥩' },
+    { key: 'lombo-defumado',      name: 'Lombo Defumado',             description: 'Lombo suíno defumado artesanalmente',         emoji: '🥓' },
   ] as MeatOption[],
   cheeses: [
     { key: 'mussarela',      name: 'Mussarela' },
@@ -78,11 +85,9 @@ export const MENU = {
   salads: [
     { key: 'alface',          name: 'Alface' },
     { key: 'tomate',          name: 'Tomate' },
-    { key: 'picles',          name: 'Picles' },
-    { key: 'pimentao',        name: 'Pimentão' },
     { key: 'cebola-roxa',     name: 'Cebola Roxa' },
+    { key: 'picles',          name: 'Picles' },
     { key: 'azeitona',        name: 'Azeitona' },
-    { key: 'cenoura-ralada',  name: 'Cenoura Ralada' },
     { key: 'rucula',          name: 'Rúcula' },
     { key: 'salada-completa', name: 'Salada Completa' },
   ] as SaladOption[],
@@ -132,7 +137,8 @@ const _extrasMap = new Map(MENU.extras.map((e) => [e.key, e]))
 export function calculateSubTotal(customization: SubCustomization): number {
   const is15 = customization.size === '15cm'
   let total = is15 ? 21.9 : 37.9
-  for (const [key, qty] of Object.entries(customization.extras)) {
+  const extras = customization.extras ?? {}
+  for (const [key, qty] of Object.entries(extras)) {
     if (qty > 0) {
       const e = _extrasMap.get(key)
       if (e) total += (is15 ? e.price15cm : e.price30cm) * qty
