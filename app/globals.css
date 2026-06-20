@@ -208,9 +208,11 @@
 }
 
 /* ─── ADMIN THEME OVERRIDE ───────────────────────────────────────────────────
-   Sobrescreve os tokens shadcn/ui (que herdam o tema navy do site público)
-   para valores claros dentro do painel admin. Aplicado via classe no layout.
+   Sobrescreve os tokens shadcn/ui para valores claros no painel admin.
+   Aplicado no wrapper do layout E nos portais Radix (Dialog, Sheet, etc.)
+   que renderizam fora do DOM do layout.
    ──────────────────────────────────────────────────────────────────────────── */
+[data-admin-portal],
 .admin-theme {
   --background: 0 0% 96%;          /* gray-50 */
   --foreground: 222 47% 11%;       /* gray-900 */

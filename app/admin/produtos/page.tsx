@@ -145,7 +145,7 @@ export default function ProdutosPage() {
 
       {/* Modal de edição/criação */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+        <DialogContent className="admin-theme max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{isNew ? "Novo produto" : "Editar produto"}</DialogTitle>
           </DialogHeader>

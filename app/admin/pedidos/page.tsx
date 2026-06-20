@@ -230,7 +230,7 @@ export default function PedidosPage() {
 
       {/* Modal detalhe */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="admin-theme max-h-[90vh] overflow-y-auto sm:max-w-lg">
           {selected && (
             <>
               <DialogHeader>

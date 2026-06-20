@@ -150,7 +150,7 @@ export default function ComprasPage() {
 
       {/* Modal nova compra */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-theme max-w-2xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-[#EE5C13]" /> Nova compra</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

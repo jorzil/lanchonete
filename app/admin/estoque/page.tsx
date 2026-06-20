@@ -252,7 +252,7 @@ export default function EstoquePage() {
 
       {/* Modal ingrediente */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="admin-theme max-w-lg">
           <DialogHeader><DialogTitle>{editing ? "Editar ingrediente" : "Novo ingrediente"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -294,7 +294,7 @@ export default function EstoquePage() {
 
       {/* Modal movimentação */}
       <Dialog open={movOpen} onOpenChange={setMovOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="admin-theme max-w-md">
           <DialogHeader><DialogTitle>{MOVEMENT_LABELS[movType]} — {movTarget?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -322,7 +322,7 @@ export default function EstoquePage() {
 
       {/* Modal fornecedor */}
       <Dialog open={supOpen} onOpenChange={setSupOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="admin-theme max-w-md">
           <DialogHeader><DialogTitle>Novo fornecedor</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Nome</Label><Input value={supName} onChange={(e) => setSupName(e.target.value)} /></div>
@@ -337,7 +337,7 @@ export default function EstoquePage() {
 
       {/* Modal histórico */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-theme max-w-2xl">
           <DialogHeader><DialogTitle>Histórico de movimentações</DialogTitle></DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto">
             {movements.length === 0 ? (

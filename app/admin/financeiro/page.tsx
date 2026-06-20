@@ -193,7 +193,7 @@ export default function FinanceiroPage() {
 
       {/* Modal lançamento */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="admin-theme max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {kind === "receita" ? <TrendingUp className="h-5 w-5 text-emerald-600" /> : <TrendingDown className="h-5 w-5 text-red-600" />}
