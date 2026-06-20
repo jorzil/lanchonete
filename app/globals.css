@@ -207,6 +207,32 @@
   .rounded-ds-xl { border-radius: var(--radius-xl); }
 }
 
+/* ─── ADMIN THEME OVERRIDE ───────────────────────────────────────────────────
+   Sobrescreve os tokens shadcn/ui (que herdam o tema navy do site público)
+   para valores claros dentro do painel admin. Aplicado via classe no layout.
+   ──────────────────────────────────────────────────────────────────────────── */
+.admin-theme {
+  --background: 0 0% 96%;          /* gray-50 */
+  --foreground: 222 47% 11%;       /* gray-900 */
+  --card: 0 0% 100%;               /* white */
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 20 86% 50%;           /* orange */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;        /* gray-100 */
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;  /* gray-500 */
+  --accent: 220 14% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 13% 91%;           /* gray-200 */
+  --input: 220 13% 91%;
+  --ring: 20 86% 50%;
+}
+
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .font-display { font-family: var(--font-display); }

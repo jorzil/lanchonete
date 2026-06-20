@@ -286,8 +286,8 @@ export default function AdminDashboard() {
               <AreaChart data={stats.byMonth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0B2C5C" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#0B2C5C" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#EE5C13" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#EE5C13" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
@@ -300,7 +300,7 @@ export default function AdminDashboard() {
                 <Area
                   type="monotone"
                   dataKey="faturamento"
-                  stroke="#163A6E"
+                  stroke="#EE5C13"
                   strokeWidth={2}
                   fill="url(#rev)"
                 />

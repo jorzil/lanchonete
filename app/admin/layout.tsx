@@ -177,14 +177,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!checked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
+      <div className="admin-theme flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-400">
         Carregando...
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-theme min-h-screen bg-gray-50">
       {/* Sidebar fixa (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-gray-200 lg:block">
         <SidebarContent pathname={pathname} user={user} onLogout={handleLogout} />
