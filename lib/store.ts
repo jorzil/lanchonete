@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 
+// Cached formatter — creating Intl.NumberFormat is expensive (~2ms), reuse one instance
+const _currencyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
 export type SizeOption = '15cm' | '30cm'
 export interface MeatOption { key: string; name: string }
 export interface CheeseOption { key: string; name: string }
@@ -181,7 +184,7 @@ export const PRODUCTS: Product[] = [
 ]
 
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  return _currencyFmt.format(value)
 }
 
 export function generateOrderNumber(): string {
@@ -190,18 +193,22 @@ export function generateOrderNumber(): string {
   return `MS-${timestamp}-${random}`
 }
 
+// Pre-built Map for O(1) extra lookups (avoids .find() in a hot loop)
+const _extrasMap = new Map(MENU.extras.map((e) => [e.key, e]))
+
 export function calculateSubTotal(customization: SubCustomization): number {
-  const sizePrice = customization.size === '15cm' ? 21.9 : 37.9
+  const is15 = customization.size === '15cm'
+  const sizePrice = is15 ? 21.9 : 37.9
   let extrasTotal = 0
   for (const [key, qty] of Object.entries(customization.extras)) {
     if (qty > 0) {
-      const extra = MENU.extras.find((e) => e.key === key)
-      if (extra) extrasTotal += (customization.size === '15cm' ? extra.price15cm : extra.price30cm) * qty
+      const extra = _extrasMap.get(key)
+      if (extra) extrasTotal += (is15 ? extra.price15cm : extra.price30cm) * qty
     }
   }
   if (customization.cheeses.length > 1) {
-    const queijoDobro = MENU.extras.find((e) => e.key === 'queijo-dobro')
-    if (queijoDobro) extrasTotal += customization.size === '15cm' ? queijoDobro.price15cm : queijoDobro.price30cm
+    const queijoDobro = _extrasMap.get('queijo-dobro')
+    if (queijoDobro) extrasTotal += is15 ? queijoDobro.price15cm : queijoDobro.price30cm
   }
   return sizePrice + extrasTotal
 }

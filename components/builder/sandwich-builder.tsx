@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { X, Check, Plus, Minus, ChevronRight, ChevronLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -44,12 +44,23 @@ const DEFAULT_CUSTOMIZATION: SubCustomization = {
   extras: {},
 }
 
+// Pre-computed outside component — never changes, no need to recompute on each render
+const ALL_SALAD_KEYS = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
+const ALL_SALAD_SET  = new Set(ALL_SALAD_KEYS)
+
+// O(1) lookup Maps for preview ingredient building
+const _meatMap   = new Map(MENU.meats.map((m) => [m.key, m]))
+const _cheeseMap = new Map(MENU.cheeses.map((c) => [c.key, c]))
+const _saladMap  = new Map(MENU.salads.map((s) => [s.key, s]))
+const _sauceMap  = new Map(MENU.sauces.map((s) => [s.key, s]))
+const _extraMap  = new Map(MENU.extras.map((e) => [e.key, e]))
+
 export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps) {
   const { addItem, openCart } = useCart()
   const [step, setStep] = useState(1)
   const [customization, setCustomization] = useState<SubCustomization>({ ...DEFAULT_CUSTOMIZATION })
 
-  const total = calculateSubTotal(customization)
+  const total = useMemo(() => calculateSubTotal(customization), [customization])
 
   const canProceed = (): boolean => {
     if (step === 2) return customization.meat !== ''
@@ -83,14 +94,11 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
   }
 
   const toggleCheese = (key: string) =>
-    setCustomization((prev) => ({
-      ...prev,
-      cheeses: prev.cheeses.includes(key)
-        ? prev.cheeses.filter((c) => c !== key)
-        : [...prev.cheeses, key],
-    }))
-
-  const ALL_SALAD_KEYS = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
+    setCustomization((prev) => {
+      const set = new Set(prev.cheeses)
+      set.has(key) ? set.delete(key) : set.add(key)
+      return { ...prev, cheeses: [...set] }
+    })
 
   const toggleSalad = (key: string) =>
     setCustomization((prev) => {
@@ -99,16 +107,19 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
         return { ...prev, salads: isComplete ? [] : ['salada-completa', ...ALL_SALAD_KEYS] }
       }
       const current = prev.salads.filter((s) => s !== 'salada-completa')
-      const next = current.includes(key) ? current.filter((s) => s !== key) : [...current, key]
-      const allSelected = ALL_SALAD_KEYS.every((k) => next.includes(k))
+      const set = new Set(current)
+      set.has(key) ? set.delete(key) : set.add(key)
+      const next = [...set]
+      const allSelected = ALL_SALAD_KEYS.every((k) => set.has(k))
       return { ...prev, salads: allSelected ? ['salada-completa', ...next] : next }
     })
 
   const toggleSauce = (key: string) =>
     setCustomization((prev) => {
-      if (prev.sauces.includes(key)) return { ...prev, sauces: prev.sauces.filter((s) => s !== key) }
-      if (prev.sauces.length >= MENU.maxSauces) return prev
-      return { ...prev, sauces: [...prev.sauces, key] }
+      const set = new Set(prev.sauces)
+      if (set.has(key)) { set.delete(key); return { ...prev, sauces: [...set] } }
+      if (set.size >= MENU.maxSauces) return prev
+      return { ...prev, sauces: [...set, key] }
     })
 
   const setExtra = (key: string, qty: number) =>
@@ -117,30 +128,34 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       extras: { ...prev.extras, [key]: Math.max(0, qty) },
     }))
 
-  const selectedMeat    = MENU.meats.find((m) => m.key === customization.meat)
-  const selectedCheeses = MENU.cheeses.filter((ch) => customization.cheeses.includes(ch.key))
-  const isDoubleCheese   = customization.cheeses.length > 1
+  const isDoubleCheese = customization.cheeses.length > 1
 
-  /* Build ingredient preview list */
-  const previewIngredients: Array<{ emoji: string; label: string }> = []
-  previewIngredients.push({ emoji: '📏', label: customization.size })
-  if (selectedMeat) previewIngredients.push({ emoji: '🥩', label: selectedMeat.name })
-  selectedCheeses.forEach((ch) => previewIngredients.push({ emoji: '🧀', label: ch.name }))
-  if (isDoubleCheese) previewIngredients.push({ emoji: '✨', label: 'Queijo em Dobro (adicional)' })
-  customization.salads.forEach((s) => {
-    const salad = MENU.salads.find((sl) => sl.key === s)
-    if (salad) previewIngredients.push({ emoji: '🥗', label: salad.name })
-  })
-  customization.sauces.forEach((s) => {
-    const sauce = MENU.sauces.find((sc) => sc.key === s)
-    if (sauce) previewIngredients.push({ emoji: '🥫', label: sauce.name })
-  })
-  Object.entries(customization.extras).forEach(([key, qty]) => {
-    if (qty > 0) {
-      const extra = MENU.extras.find((e) => e.key === key)
-      if (extra) previewIngredients.push({ emoji: '➕', label: `${extra.name} ×${qty}` })
-    }
-  })
+  const previewIngredients = useMemo(() => {
+    const list: Array<{ emoji: string; label: string }> = []
+    list.push({ emoji: '📏', label: customization.size })
+    const meat = _meatMap.get(customization.meat)
+    if (meat) list.push({ emoji: '🥩', label: meat.name })
+    customization.cheeses.forEach((ck) => {
+      const ch = _cheeseMap.get(ck)
+      if (ch) list.push({ emoji: '🧀', label: ch.name })
+    })
+    if (isDoubleCheese) list.push({ emoji: '✨', label: 'Queijo em Dobro (adicional)' })
+    customization.salads.forEach((s) => {
+      const salad = _saladMap.get(s)
+      if (salad) list.push({ emoji: '🥗', label: salad.name })
+    })
+    customization.sauces.forEach((s) => {
+      const sauce = _sauceMap.get(s)
+      if (sauce) list.push({ emoji: '🥫', label: sauce.name })
+    })
+    Object.entries(customization.extras).forEach(([key, qty]) => {
+      if (qty > 0) {
+        const extra = _extraMap.get(key)
+        if (extra) list.push({ emoji: '➕', label: `${extra.name} ×${qty}` })
+      }
+    })
+    return list
+  }, [customization, isDoubleCheese])
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>

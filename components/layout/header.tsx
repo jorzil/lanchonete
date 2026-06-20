@@ -18,7 +18,16 @@ export function Header() {
   const { itemCount, openCart } = useCart()
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60)
+    let ticking = false
+    const fn = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 60)
+          ticking = false
+        })
+        ticking = true
+      }
+    }
     window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
   }, [])

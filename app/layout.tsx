@@ -29,7 +29,9 @@ export const metadata: Metadata = {
     title: 'Mais Sub — O Sub Mais Gostoso Da Cidade',
     description: 'Delivery de subs artesanais. Ingredientes frescos, personalize seu lanche.',
     type: 'website',
+    locale: 'pt_BR',
   },
+  robots: { index: true, follow: true },
 }
 
 export const viewport: Viewport = {
@@ -41,6 +43,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${bricolage.variable}`}>
+      <head>
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+      </head>
       <body className="antialiased" suppressHydrationWarning>
         <CartProvider>
           {children}

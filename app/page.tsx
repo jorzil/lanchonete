@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, memo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -101,14 +101,19 @@ function Hero() {
   )
 }
 
+// Pre-computed category data (PRODUCTS is static, no need to recompute)
+const CATEGORY_NAV = [
+  { key: 'subs-15cm', label: 'Subs 15cm', img: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'subs-30cm', label: 'Subs 30cm', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
+  { key: 'combos',    label: 'Combos',    img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
+  { key: 'bebidas',   label: 'Bebidas',   img: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
+]
+
+const FEATURED_PRODUCTS = PRODUCTS.filter(p => p.active && (p.category === 'subs-15cm' || p.category === 'subs-30cm')).slice(0, 4)
+
 // ─── CATEGORY NAV ─────────────────────────────────────────────────────────────
 function CategoryNav() {
-  const cats = [
-    { key: 'subs-15cm', label: 'Subs 15cm', img: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
-    { key: 'subs-30cm', label: 'Subs 30cm', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
-    { key: 'combos',    label: 'Combos',    img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
-    { key: 'bebidas',   label: 'Bebidas',   img: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
-  ]
+  const cats = CATEGORY_NAV
   return (
     <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pb-10 lg:pb-0 lg:-mb-14 lg:translate-y-14">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
@@ -184,7 +189,7 @@ function HowItWorks() {
 }
 
 // ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
-function ProductCard({ product, onCustomize, onAdd }: {
+const ProductCard = memo(function ProductCard({ product, onCustomize, onAdd }: {
   product: Product; onCustomize: (p: Product) => void; onAdd: (p: Product) => void
 }) {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
@@ -220,14 +225,19 @@ function ProductCard({ product, onCustomize, onAdd }: {
       </div>
     </div>
   )
-}
+})
 
 // ─── FEATURED ─────────────────────────────────────────────────────────────────
 function FeaturedSection() {
   const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
   const [builderOpen, setBuilderOpen] = useState(false)
   const { addItem } = useCart()
-  const featured = PRODUCTS.filter(p => p.active && (p.category === 'subs-15cm' || p.category === 'subs-30cm')).slice(0, 4)
+
+  const handleCustomize = useMemo(() => (pr: Product) => { setBuilderProduct(pr); setBuilderOpen(true) }, [])
+  const handleAdd = useMemo(() => (pr: Product) => {
+    addItem({ productId: pr.id, name: pr.name, price: pr.price, quantity: 1, image: pr.image })
+    toast.success(`${pr.name} adicionado!`)
+  }, [addItem])
 
   return (
     <section className="bg-navy py-24 lg:py-32">
@@ -245,13 +255,8 @@ function FeaturedSection() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {featured.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              onCustomize={pr => { setBuilderProduct(pr); setBuilderOpen(true) }}
-              onAdd={pr => { addItem({ productId: pr.id, name: pr.name, price: pr.price, quantity: 1, image: pr.image }); toast.success(`${pr.name} adicionado!`) }}
-            />
+          {FEATURED_PRODUCTS.map((p) => (
+            <ProductCard key={p.id} product={p} onCustomize={handleCustomize} onAdd={handleAdd} />
           ))}
         </div>
       </div>

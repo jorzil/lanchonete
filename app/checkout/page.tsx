@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,20 +42,15 @@ function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['custo
   return parts.join(' • ')
 }
 
-function Section({ title, icon, children, delay = 0 }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
+function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-navy-surface rounded-2xl p-6 border border-white/6"
-    >
+    <div className="animate-slide-up bg-navy-surface rounded-2xl p-6 border border-white/6">
       <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
         {icon && <span className="text-brand">{icon}</span>}
         {title}
       </h2>
       {children}
-    </motion.div>
+    </div>
   )
 }
 
@@ -248,12 +242,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-navy-surface rounded-2xl p-6 border border-white/6 sticky top-24"
-              >
+              <div className="animate-slide-up bg-navy-surface rounded-2xl p-6 border border-white/6 sticky top-24">
                 <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">
                   {items.map((item) => (
@@ -280,7 +269,7 @@ export default function CheckoutPage() {
                   {submitting ? <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" />Processando...</span> : 'Confirmar Pedido'}
                 </Button>
                 <p className="text-center text-xs text-white/25 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
-              </motion.div>
+              </div>
             </div>
           </form>
         </div>
