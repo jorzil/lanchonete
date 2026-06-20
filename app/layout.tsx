@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Bricolage_Grotesque } from 'next/font/google'
-import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
+import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
 import './globals.css'
-
-const CartPanel = dynamic(() => import('@/components/cart/cart-panel').then(m => ({ default: m.CartPanel })), { ssr: false })
 
 const inter = Inter({
   subsets: ['latin'],
@@ -50,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="antialiased" suppressHydrationWarning>
         <CartProvider>
           {children}
-          <CartPanel />
+          <CartPanelLazy />
           <Toaster position="top-center" richColors />
         </CartProvider>
       </body>
