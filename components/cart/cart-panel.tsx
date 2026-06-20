@@ -63,7 +63,7 @@ export function CartPanel() {
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="text-7xl mb-4 animate-bounce">🥖</div>
+            <div className="text-7xl mb-4">🥖</div>
             <h3 className="text-xl font-black text-gray-900 mb-2">Seu carrinho está vazio</h3>
             <p className="text-gray-500 mb-6 text-sm">Adicione subs deliciosos ao seu pedido!</p>
             <Link href="/cardapio" onClick={closeCart}>

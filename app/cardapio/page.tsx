@@ -7,7 +7,7 @@ import { Search, X, SlidersHorizontal } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
-import { PRODUCTS, formatCurrency, type Product } from '@/lib/store'
+import { PRODUCTS, formatCurrency, type Product } from '@/lib/data'
 import { toast } from 'sonner'
 
 const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
