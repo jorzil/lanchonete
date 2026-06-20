@@ -2,14 +2,16 @@
 
 import Image from 'next/image'
 import { useState, useMemo, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { Search, X, SlidersHorizontal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { SandwichBuilder } from '@/components/builder/sandwich-builder'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, type Product } from '@/lib/store'
 import { toast } from 'sonner'
+
+const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
 
 const CATS = [
   { key: 'all',       label: 'Tudo',      count: PRODUCTS.filter(p => p.active).length },

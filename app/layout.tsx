@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Bricolage_Grotesque } from 'next/font/google'
+import dynamic from 'next/dynamic'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
-import { CartPanel } from '@/components/cart/cart-panel'
 import './globals.css'
+
+const CartPanel = dynamic(() => import('@/components/cart/cart-panel').then(m => ({ default: m.CartPanel })), { ssr: false })
 
 const inter = Inter({
   subsets: ['latin'],
@@ -15,7 +17,7 @@ const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
-  weight: ['400', '600', '700', '800'],
+  weight: ['700', '800'],
 })
 
 export const metadata: Metadata = {

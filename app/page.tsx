@@ -3,15 +3,17 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import { ArrowRight, ArrowUpRight, Star, Clock, MapPin, Sparkles, Beef, Salad, Flame } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { SandwichBuilder } from '@/components/builder/sandwich-builder'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, type Product } from '@/lib/store'
 import { MaisSubWordmark, MBadge } from '@/components/brand/logo'
 import { toast } from 'sonner'
+
+const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 22 },
