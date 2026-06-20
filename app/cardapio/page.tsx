@@ -4,7 +4,6 @@ import Image from 'next/image'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { Search, X, SlidersHorizontal } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
@@ -116,11 +115,7 @@ export default function CardapioPage() {
           </div>
 
           <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-            >
+            <div className="animate-slide-up">
               <p className="text-[11px] font-semibold text-brand uppercase tracking-[0.22em] mb-3">Mais Sub</p>
               <h1 className="text-[2.8rem] sm:text-[3.8rem] font-black text-white leading-[1.04] tracking-[-0.045em] mb-5">
                 Cardápio
@@ -144,7 +139,7 @@ export default function CardapioPage() {
                   </button>
                 )}
               </div>
-            </motion.div>
+            </div>
           </div>
         </section>
 
@@ -182,50 +177,35 @@ export default function CardapioPage() {
             {search && <> para <span className="font-bold text-white/60">&ldquo;{search}&rdquo;</span></>}
           </p>
 
-          <AnimatePresence mode="wait">
-            {filtered.length > 0 ? (
-              <motion.div
-                key={active + search}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5"
-              >
-                {filtered.map((product, i) => (
-                  <motion.div
-                    key={product.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: Math.min(i * 0.04, 0.25) }}
-                  >
-                    <ProductCard
-                      product={product}
-                      onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
-                      onAdd={handleAdd}
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="empty"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="py-24 text-center"
-              >
-                <p className="text-4xl mb-4">🔍</p>
-                <h3 className="font-bold text-white text-lg mb-2">Nenhum resultado</h3>
-                <p className="text-white/35 text-[14px] mb-6">Tente outro termo ou limpe os filtros.</p>
-                <button
-                  onClick={() => { setSearch(''); setActive('all') }}
-                  className="inline-flex items-center gap-2 border border-white/12 hover:border-white/25 text-white/50 hover:text-white text-[13.5px] font-semibold px-6 py-2.5 rounded-full transition-all"
+          {filtered.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+              {filtered.map((product, i) => (
+                <div
+                  key={product.id}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}
                 >
-                  Limpar filtros
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <ProductCard
+                    product={product}
+                    onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
+                    onAdd={handleAdd}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="animate-slide-up-sm py-24 text-center">
+              <p className="text-4xl mb-4">🔍</p>
+              <h3 className="font-bold text-white text-lg mb-2">Nenhum resultado</h3>
+              <p className="text-white/35 text-[14px] mb-6">Tente outro termo ou limpe os filtros.</p>
+              <button
+                onClick={() => { setSearch(''); setActive('all') }}
+                className="inline-flex items-center gap-2 border border-white/12 hover:border-white/25 text-white/50 hover:text-white text-[13.5px] font-semibold px-6 py-2.5 rounded-full transition-all"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
 
         {/* WhatsApp CTA */}
