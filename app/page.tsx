@@ -1,1337 +1,596 @@
-"use client"
+'use client'
 
-import React, { useState, useCallback, useEffect } from "react"
-import { toast } from "sonner"
-import {
-  Sandwich,
-  ShoppingCart,
-  Package,
-  BarChart3,
-  Wallet,
-  LogOut,
-  Save,
-  Boxes,
-  ArrowDownCircle,
-  Users,
-  Menu,
-  Cloud,
-  CloudOff,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import { supabase } from "@/lib/supabase"
-import {
-  DEFAULT_PRODUCTS,
-  formatCurrency,
-  generateOrderNumber,
-  usePersistedState,
-  type Product,
-  type CartItem,
-  type Sale,
-  type StockEntry,
-  type Expense,
-  type Customer,
-  type OrderType,
-  DEFAULT_CATEGORIES,
-  type PaymentMethod,
-  type AppView,
-  type UserRole,
-} from "@/lib/store"
-import { ProductGrid } from "@/components/product-grid"
-import { CartPanel } from "@/components/cart-panel"
-import { SandwichBuilder } from "@/components/sandwich-builder"
-import { CheckoutModal } from "@/components/checkout-modal"
-import { ProductsView, StockView, ReportsView, CashierView, ExpensesView, CustomersView } from "@/components/admin-views"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { ArrowRight, ArrowUpRight, Star, Clock, MapPin, Sparkles, Beef, Salad, Flame } from 'lucide-react'
+import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
+import { SandwichBuilder } from '@/components/builder/sandwich-builder'
+import { useCart } from '@/contexts/cart-context'
+import { PRODUCTS, formatCurrency, type Product } from '@/lib/store'
+import { MaisSubWordmark, MBadge } from '@/components/brand/logo'
+import { toast } from 'sonner'
 
-type TableOrder = { tableNumber: string; cart: CartItem[]; customerName: string; customerPhone: string }
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 22 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-60px' },
+  transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const, delay },
+})
 
-// ==================== TABLES VIEW ====================
-function TablesView({
-  tableOrders,
-  onNew,
-  onEdit,
-}: {
-  tableOrders: TableOrder[]
-  onNew: (tableNumber: string) => void
-  onEdit: (tableNumber: string) => void
-}) {
-  const [newTableNumber, setNewTableNumber] = useState("")
-
-  const handleNew = (e: React.FormEvent) => {
-    e.preventDefault()
-    onNew(newTableNumber)
-    setNewTableNumber("")
-  }
-
+// ─── HERO ─────────────────────────────────────────────────────────────────────
+function Hero() {
   return (
-    <div className="p-4 md:p-6 h-full overflow-y-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-        <h2 className="text-2xl font-bold text-foreground mb-2 md:mb-0">Gerenciamento de Mesas</h2>
-        <form onSubmit={handleNew} className="flex gap-2">
-          <Input placeholder="Nº da Mesa" value={newTableNumber} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTableNumber(e.target.value)} className="w-32" />
-          <Button type="submit" className="bg-primary text-primary-foreground">Abrir</Button>
-        </form>
+    <section className="relative bg-navy overflow-hidden">
+      {/* Subtle glow only */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[700px] h-[500px] bg-brand/10 blur-[160px] rounded-full" />
       </div>
-      {tableOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground -mt-16">
-          <Users className="h-16 w-16 mb-4" />
-          <p className="text-lg font-semibold">Nenhuma mesa aberta</p>
-          <p>Use o campo acima para abrir uma nova mesa.</p>
+
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-24">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+
+          <div className="lg:col-span-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 bg-brand/15 border border-brand/30 rounded-full px-3.5 py-1.5 mb-7"
+            >
+              <span className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+              <span className="text-brand text-[11.5px] font-bold tracking-[0.16em] uppercase">Aberto agora · Gov. Valadares</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="font-display font-extrabold text-white text-[56px] sm:text-[72px] lg:text-[88px] leading-[0.95] tracking-[-0.04em] mb-6"
+            >
+              Monte seu sub<br />
+              em <span className="text-brand">2 minutos.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.32 }}
+              className="text-white/65 text-[16px] sm:text-[17px] leading-[1.55] mb-9 max-w-[480px]"
+            >
+              Escolha o tamanho, a carne, o queijo, as saladas e os molhos. Você decide cada detalhe — a gente entrega quentinho em até 30 minutos.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.45 }}
+              className="flex flex-col sm:flex-row gap-3 mb-12"
+            >
+              <Link href="/cardapio" className="block">
+                <button className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_8px_30px_rgba(238,92,19,0.45)]">
+                  Começar pedido
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                </button>
+              </Link>
+              <Link href="/cardapio" className="block">
+                <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-7 py-4 rounded-full text-[14.5px] transition-colors">
+                  Ver cardápio
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Trust signals - inline */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="flex items-center gap-6 flex-wrap"
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5">
+                  {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-[#EE5C13] text-brand" />)}
+                </div>
+                <span className="text-white font-semibold text-[13px] tabular-nums">4.9</span>
+                <span className="text-white/40 text-[12.5px]">+2.000 avaliações</span>
+              </div>
+              <div className="h-4 w-px bg-white/15" />
+              <div className="flex items-center gap-2">
+                <Clock size={12} className="text-brand" />
+                <span className="text-white font-semibold text-[13px] tabular-nums">~28min</span>
+                <span className="text-white/40 text-[12.5px]">tempo médio</span>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Hero image */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-6 relative"
+          >
+            <div className="relative aspect-[5/6] lg:aspect-[4/5] rounded-[28px] overflow-hidden border border-white/10">
+              <Image
+                src="https://images.unsplash.com/photo-1553909489-cd47e0907980?w=1200&q=92&auto=format&fit=crop"
+                alt="Sub artesanal Mais Sub"
+                fill priority
+                className="object-cover"
+                sizes="(max-width:1024px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy/40 via-transparent to-transparent" />
+            </div>
+
+            {/* M sticker accent */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
+              animate={{ opacity: 1, scale: 1, rotate: -12 }}
+              transition={{ duration: 0.6, delay: 0.85 }}
+              className="absolute -top-5 -right-3 sm:-right-6"
+            >
+              <MBadge size={92} />
+            </motion.div>
+
+            {/* Price tag */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.95 }}
+              className="absolute -bottom-5 -left-3 sm:-left-6 bg-white text-navy rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.3)]"
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] text-navy/55 font-bold mb-1">A partir de</p>
+              <p className="font-display font-extrabold text-[28px] leading-none tabular-nums tracking-[-0.03em]">R$ 21,90</p>
+            </motion.div>
+          </motion.div>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-          {tableOrders.map((order) => (
-            <button key={order.tableNumber} onClick={() => onEdit(order.tableNumber)} className="bg-card border-2 border-border rounded-xl p-4 text-center hover:bg-accent/50 hover:border-primary transition-all shadow-sm active:scale-95">
-              <p className="font-black text-2xl text-foreground mb-1">Mesa {order.tableNumber}</p>
-              <Badge variant="secondary" className="mb-2">{order.cart.length} {order.cart.length === 1 ? "item" : "itens"}</Badge>
-              <p className="text-base font-bold text-primary mt-1">{formatCurrency(order.cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0))}</p>
+      </div>
+
+      {/* Categories nav — Subway-style strip directly below hero */}
+      <CategoryNav />
+    </section>
+  )
+}
+
+// ─── CATEGORY NAV (Subway-style) ─────────────────────────────────────────────
+function CategoryNav() {
+  const cats = [
+    { key: 'subs-15cm', label: 'Subs 15cm', img: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+    { key: 'subs-30cm', label: 'Subs 30cm', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
+    { key: 'combos',    label: 'Combos',    img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
+    { key: 'bebidas',   label: 'Bebidas',   img: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
+  ]
+  return (
+    <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pb-10 lg:pb-0 lg:-mb-14 lg:translate-y-14">
+      <motion.div {...fadeUp(0.1)} className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        {cats.map((cat, i) => (
+          <Link key={cat.key} href={`/cardapio?cat=${cat.key}`} className="group">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
+              className="relative bg-navy-surface hover:bg-[#1B4480] border border-white/10 hover:border-brand/50 rounded-2xl p-5 flex items-center gap-4 transition-all"
+            >
+              <div className="relative w-14 h-14 lg:w-16 lg:h-16 shrink-0 rounded-xl overflow-hidden bg-navy-deep">
+                <Image src={cat.img} alt={cat.label} fill className="object-cover" sizes="64px" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-[14px] lg:text-[15px] leading-tight">{cat.label}</p>
+                <p className="text-white/45 text-[11.5px] mt-0.5 tabular-nums">{cat.count} {cat.count === 1 ? 'opção' : 'opções'}</p>
+              </div>
+              <ArrowUpRight size={16} className="text-white/30 group-hover:text-brand group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </motion.div>
+          </Link>
+        ))}
+      </motion.div>
+    </div>
+  )
+}
+
+// ─── HOW IT WORKS (Subway signature) ──────────────────────────────────────────
+function HowItWorks() {
+  const steps = [
+    { n: '01', icon: Sparkles, title: 'Escolha o tamanho', desc: '15cm para um lanche perfeito ou 30cm para quando a fome aperta.' },
+    { n: '02', icon: Beef,     title: 'Selecione a carne', desc: 'Frango grelhado, lombo defumado ou carne suprema premium.' },
+    { n: '03', icon: Salad,    title: 'Saladas & molhos',  desc: 'Até 8 saladas frescas e 3 molhos artesanais — totalmente livre.' },
+    { n: '04', icon: Flame,    title: 'Finalize com extras', desc: 'Bacon, presunto, peito de peru ou queijo em dobro pra turbinar.' },
+  ]
+  return (
+    <section className="bg-navy-deep py-24 lg:py-32 pt-32 lg:pt-44 border-y border-white/6" id="como-funciona">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div {...fadeUp()} className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14">
+          <div>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Como funciona</p>
+            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] max-w-[520px]">
+              Do seu jeito,<br />em 4 passos simples.
+            </h2>
+          </div>
+          <Link href="/cardapio">
+            <button className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-6 py-3 rounded-full text-[13.5px] transition-colors shadow-[0_6px_24px_rgba(238,92,19,0.4)]">
+              Começar agora
+              <ArrowRight size={14} />
             </button>
+          </Link>
+        </motion.div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          {steps.map((step, i) => (
+            <motion.div
+              key={step.n}
+              {...fadeUp(i * 0.08)}
+              className="relative bg-navy-surface border border-white/8 rounded-2xl p-6 hover:border-brand/40 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-brand font-display font-extrabold text-[14px] tabular-nums tracking-wider">{step.n}</span>
+                <div className="w-10 h-10 bg-brand/12 rounded-xl flex items-center justify-center">
+                  <step.icon size={18} className="text-brand" />
+                </div>
+              </div>
+              <p className="text-white font-bold text-[15px] leading-tight mb-2">{step.title}</p>
+              <p className="text-white/50 text-[12.5px] leading-relaxed">{step.desc}</p>
+            </motion.div>
           ))}
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   )
 }
 
-// ==================== LOGIN SCREEN ====================
-function LoginScreen({ onLogin }: { onLogin: (role: UserRole) => void }) {
-  const [role, setRole] = useState<UserRole>("attendant")
-  const [username, setUsername] = useState("admin")
-  const [password, setPassword] = useState("admin")
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (username && password) {
-      onLogin(role)
-    }
-  }
-
+// ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
+function ProductCard({ product, onCustomize, onAdd }: {
+  product: Product; onCustomize: (p: Product) => void; onAdd: (p: Product) => void
+}) {
+  const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary">
-      <div className="bg-card rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <Sandwich className="h-10 w-10 text-primary-foreground" />
+    <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/8 hover:border-brand/45 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-400">
+      <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
+        {product.imageUrl ? (
+          <Image src={product.imageUrl} alt={product.name} fill className="object-cover card-img" sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,300px" />
+        ) : (
+          <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
+        )}
+        {product.badge && (
+          <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+            {product.badge.label.replace(/[^\w\s]/g, '').trim()}
+          </span>
+        )}
+      </div>
+      <div className="p-4 flex flex-col flex-1">
+        <h3 className="font-bold text-white text-[14.5px] leading-snug mb-1">{product.name}</h3>
+        <p className="text-white/45 text-[12.5px] leading-relaxed line-clamp-2 flex-1">{product.description}</p>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
+          <div>
+            <p className="text-[9.5px] text-white/30 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
+            <p className="text-[17px] font-bold text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
           </div>
-          <h1 className="text-3xl font-black text-foreground">Movearena</h1>
-          <p className="text-muted-foreground mt-2">Sistema de Pedidos</p>
+          <button
+            onClick={() => isSub ? onCustomize(product) : onAdd(product)}
+            className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all"
+          >
+            {isSub ? 'Montar' : 'Adicionar'}
+          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">Usuario</label>
-            <Input
-              value={username}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
-              placeholder="admin"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">Senha</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              placeholder="admin"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={role === "admin" ? "default" : "outline"}
-              className={cn("flex-1", role === "admin" && "bg-accent text-accent-foreground")}
-              onClick={() => setRole("admin")}
-            >
-              Admin
-            </Button>
-            <Button
-              type="button"
-              variant={role === "attendant" ? "default" : "outline"}
-              className={cn("flex-1", role === "attendant" && "bg-accent text-accent-foreground")}
-              onClick={() => setRole("attendant")}
-            >
-              Atendente
-            </Button>
-          </div>
-          <Button type="submit" className="w-full bg-primary text-primary-foreground text-lg py-6">
-            Entrar
-          </Button>
-        </form>
       </div>
     </div>
   )
 }
 
-// ==================== UI CONSTANTS ====================
-const NAV_ITEMS: { key: AppView; label: string; icon: any }[] = [
-  { key: "pos", label: "PDV", icon: ShoppingCart },
-  { key: "products", label: "Produtos", icon: Package },
-  { key: "stock", label: "Estoque", icon: Boxes },
-  { key: "tables", label: "Mesas", icon: Users },
-  { key: "customers", label: "Clientes", icon: Users },
-  { key: "expenses", label: "Despesas", icon: ArrowDownCircle },
-  { key: "reports", label: "Relatorios", icon: BarChart3 },
-  { key: "cashier", label: "Caixa", icon: Wallet },
-]
-
-// ==================== MAIN APP ====================
-export default function MovearenaPDV() {
-  const [loggedIn, setLoggedIn] = usePersistedState<boolean>("mv_logged_in", false)
-  const [role, setRole] = usePersistedState<UserRole>("mv_user_role", "attendant")
-  const [view, setView] = usePersistedState<AppView>("mv_current_view", "pos")
-  const [isOnline, setIsOnline] = useState(true) // Simulação de status de conexão
-  
-  // -- SUPABASE STATES --
-  const [products, setProducts] = useState<Product[]>([])
-  const [sales, setSales] = useState<Sale[]>([])
-  const [stockHistory, setStockHistory] = useState<StockEntry[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [tableOrders, setTableOrders] = useState<TableOrder[]>([])
-  
-  // -- LOCAL STATES (Configurações locais) --
-  const [customExpenseCategories, setCustomExpenseCategories] = usePersistedState<string[]>("mv_expense_categories", [])
-  const [productCategories, setProductCategories] = usePersistedState<string[]>("mv_product_categories", DEFAULT_CATEGORIES)
-  
-  // -- CASHIER STATE (Now synced with DB) --
-  const [cashierSessionId, setCashierSessionId] = useState<number | null>(null)
-  const [cashierOpen, setCashierOpen] = useState(false)
-  const [cashierData, setCashierData] = useState<{
-    opening: number
-    sales: Record<string, number>
-    openedAt?: string
-  }>({
-    opening: 0,
-    sales: { money: 0, pix: 0, debit: 0, credit: 0 },
-  })
-
-  const [editingTable, setEditingTable] = usePersistedState<string | null>("mv_editing_table", null)
-
-  // -- Persisted states (saved in localStorage) --
-  const [cart, setCart] = usePersistedState<CartItem[]>("mv_cart", [])
-  const [orderType, setOrderType] = usePersistedState<OrderType>("mv_order_type", "pickup")
-  const [mobileCartOpen, setMobileCartOpen] = useState(false)
-  const [customerName, setCustomerName] = usePersistedState<string>("mv_customer_name", "")
-  const [customerPhone, setCustomerPhone] = usePersistedState<string>("mv_customer_phone", "")
-  const [deliveryAddress, setDeliveryAddress] = usePersistedState<string>("mv_delivery_address", "")
-  const [orderObservation, setOrderObservation] = usePersistedState<string>("mv_order_observation", "")
-  const [deliveryFee, setDeliveryFee] = usePersistedState<number>("mv_delivery_fee", 5.0)
-  const [showBuilder, setShowBuilder] = useState(false)
-  const [showCheckout, setShowCheckout] = useState(false)
-
-  // ++ MEMOIZED CALCULATIONS ++
-  const subtotal = React.useMemo(() => 
-    cart.reduce((sum: number, item: CartItem) => sum + item.price * item.quantity, 0),
-    [cart]
-  )
-  const totalDeliveryFee = orderType === "delivery" ? deliveryFee : 0
-  const total = subtotal + totalDeliveryFee
-
-  // ++ DATA FETCHING ++
-  const fetchData = useCallback(async () => {
-    try {
-      // Verificação explícita das variáveis de ambiente
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        throw new Error("Configuração ausente: Verifique se NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY estão no arquivo .env.local")
-      }
-
-      const { data: p, error: pError } = await supabase.from('products').select('*').order('name')
-      if (pError) throw pError
-      if (p) setProducts(p)
-
-      const { data: s, error: sError } = await supabase.from('sales').select('*').order('date', { ascending: false })
-      if (sError) throw sError
-      if (s) {
-        setSales(s.map((item: any) => ({
-          ...item,
-          deliveryFee: item.delivery_fee ?? item.deliveryFee ?? 0,
-          orderType: item.order_type ?? item.orderType ?? "pickup",
-          paymentMethod: item.payment_method ?? item.paymentMethod ?? "money",
-        })))
-      }
-
-      const { data: t, error: tError } = await supabase.from('table_orders').select('*')
-      if (tError) throw tError
-      if (t) setTableOrders(t.map((row: any) => ({
-        tableNumber: row.table_number,
-        cart: row.cart,
-        customerName: row.customer_name,
-        customerPhone: row.customer_phone
-      })))
-
-      const { data: c, error: cError } = await supabase.from('customers').select('*')
-      if (cError) throw cError
-      if (c) setCustomers(c)
-
-      const { data: e, error: eError } = await supabase.from('expenses').select('*').order('date', { ascending: false })
-      if (eError) throw eError
-      if (e) setExpenses(e)
-
-      const { data: sh, error: shError } = await supabase.from('stock_history').select('*').order('date', { ascending: false })
-      if (shError) throw shError
-      if (sh) setStockHistory(sh)
-
-      // -- FETCH CASHIER STATUS --
-      const { data: session, error: sessionError } = await supabase
-        .from('cashier_sessions')
-        .select('*')
-        .is('closed_at', null)
-        .maybeSingle()
-
-      if (session) {
-        setCashierOpen(true)
-        setCashierSessionId(session.id)
-        
-        // Calculate sales since opening
-        const sessionSales = s ? s.filter((sale: any) => new Date(sale.date) >= new Date(session.opened_at)) : []
-        const salesSummary: Record<string, number> = { money: 0, pix: 0, debit: 0, credit: 0 }
-        
-        sessionSales.forEach((sale: any) => {
-          const method = sale.paymentMethod || "money"
-          if (salesSummary[method] !== undefined) salesSummary[method] += sale.total
-          else salesSummary[method] = sale.total
-        })
-
-        setCashierData({ opening: session.opening_balance, sales: salesSummary, openedAt: session.opened_at })
-      } else {
-        setCashierOpen(false)
-        setCashierSessionId(null)
-        setCashierData({ opening: 0, sales: { money: 0, pix: 0, debit: 0, credit: 0 } })
-      }
-
-      setIsOnline(true)
-    } catch (error: any) {
-      console.error("Erro ao buscar dados:", error)
-      
-      const errorMessage = error.message || ""
-      if (errorMessage.includes("Invalid API key") || error.code === "401" || errorMessage.includes("JWT")) {
-        toast.error("Erro de Autenticação: Verifique as chaves no arquivo .env.local")
-      } else if (error.code === "42P01") {
-        toast.error("Erro: Tabelas não encontradas. Crie as tabelas no Supabase.")
-      } else if (errorMessage.toLowerCase().includes("failed to fetch")) {
-        toast.error("Erro de Conexão: Verifique a URL do Supabase no .env.local")
-      } else {
-        toast.error(`Erro ao carregar dados: ${errorMessage || "Verifique o console"}`)
-      }
-      setIsOnline(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchData()
-
-    // Inscreva-se para atualizações em tempo real (opcional, mas bom para mobile)
-    const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [fetchData])
-
-  // ++ AUTO-SAVE EFFECT ++
-  // Removido o auto-save local para evitar conflitos. 
-  // Agora salvamos explicitamente ao clicar em "Salvar" ou sair da mesa.
-
-  // Login
-  const handleLogin = useCallback((r: UserRole) => {
-    setRole(r)
-    setLoggedIn(true)
-    toast.success("Bem-vindo ao Movearena!")
-  }, [])
-
-  const handleLogout = useCallback(() => {
-    setLoggedIn(false)
-    setView("pos")
-    setCart([])
-    setCustomerName("")
-    setCustomerPhone("")
-    setDeliveryAddress("")
-    setOrderObservation("")
-    setEditingTable(null)
-    setDeliveryFee(5.0)
-    toast.info("Ate logo!")
-  }, [])
-
-  // -- Table management --
-  const handleEditTable = useCallback(
-    (tableNumber: string) => {
-      const tableOrder = tableOrders.find((t) => t.tableNumber === tableNumber)
-      if (tableOrder) {
-        setCart(tableOrder.cart)
-        setCustomerName(tableOrder.customerName)
-        setCustomerPhone(tableOrder.customerPhone)
-        setOrderType("table")
-        setEditingTable(tableNumber)
-        setView("pos")
-        toast.info(`Editando mesa ${tableNumber}.`)
-      }
-    },
-    [tableOrders]
-  )
-
-  const handleUpdateTableOrder = useCallback(async () => {
-    if (!editingTable) return
-
-    try {
-      const { error } = await supabase
-        .from('table_orders')
-        .update({
-          cart: cart,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-        })
-        .eq('table_number', editingTable)
-
-      if (error) throw new Error(error.message)
-
-      toast.success(`Mesa ${editingTable} salva!`)
-      // O Supabase Realtime vai cuidar de atualizar os dados,
-      // então apenas limpamos o estado local e mudamos de tela.
-      setCart([])
-      setCustomerName("")
-      setCustomerPhone("")
-      setEditingTable(null)
-      setOrderType("pickup")
-      setView("tables")
-    } catch (error: any) {
-      toast.error(error.message)
-    }
-  }, [editingTable, cart, customerName, customerPhone])
-
-  const handleNewTableOrder = useCallback(
-    async (tableNumber: string) => {
-      if (!tableNumber.trim()) {
-        toast.error("Por favor, insira o número da mesa.")
-        return
-      }
-
-      try {
-        const { error } = await supabase.from('table_orders').insert({
-          table_number: tableNumber,
-          cart: [],
-          customer_name: '',
-          customer_phone: '',
-        })
-
-        if (error) throw new Error(error.message)
-        
-        // A subscrição do Supabase Realtime vai atualizar a lista de mesas.
-        // Apenas entramos no modo de edição.
-        setCart([])
-        setCustomerName("")
-        setCustomerPhone("")
-        setOrderType("table")
-        setEditingTable(tableNumber)
-        setView("pos")
-        
-        toast.success(`Mesa ${tableNumber} aberta! Adicione itens ao pedido.`)
-      } catch (error: any) {
-        toast.error(error.message)
-      }
-    },
-    []
-  )
-
-  // Cart operations
-  const addProductToCart = useCallback((product: Product) => {
-    setCart((prev: CartItem[]) => {
-      const existing = prev.find((item: CartItem) => item.id === product.id && !item.isCustom)
-      if (existing) {
-        return prev.map((item: CartItem) =>
-          item.id === product.id && !item.isCustom ? { ...item, quantity: item.quantity + 1 } : item
-        )
-      }
-      return [
-        ...prev,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          cost: product.cost,
-          quantity: 1,
-          observation: "",
-          isCustom: false,
-        },
-      ]
-    })
-    toast.success(`${product.name} adicionado!`)
-  }, [])
-
-  const addCustomToCart = useCallback((item: CartItem) => {
-    setCart((prev) => [...prev, item])
-    toast.success("Lanche adicionado!")
-  }, [])
-
-  const changeQuantity = useCallback((index: number, delta: number) => {
-    setCart((prev: CartItem[]) => {
-      const newCart = [...prev]
-      newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + delta }
-      if (newCart[index].quantity <= 0) {
-        newCart.splice(index, 1)
-      }
-      return newCart
-    })
-  }, [])
-
-  const removeItem = useCallback((index: number) => {
-    setCart((prev: CartItem[]) => prev.filter((_: CartItem, i: number) => i !== index))
-  }, [])
-
-  // Checkout
-  const handleFinalize = useCallback(
-    async (method: PaymentMethod) => {
-      try {
-        const sale: Sale = {
-          id: Date.now(),
-          date: new Date().toISOString(),
-          customer: customerName || "Cliente",
-          phone: customerPhone,
-          address: orderType === "delivery" ? deliveryAddress : "",
-          orderType,
-          deliveryFee: totalDeliveryFee,
-          items: [...cart],
-          subtotal,
-          discount: { type: null, value: 0 },
-          total,
-          paymentMethod: method,
-          observation: orderObservation,
-          user: role === "admin" ? "Admin" : "Atendente",
-        }
-
-        // If it was a table order, remove it from the open tables list via API
-        if (editingTable) {
-          const { error: deleteError } = await supabase.from('table_orders').delete().eq('table_number', editingTable)
-          if (deleteError) throw deleteError
-          setEditingTable(null)
-        }
-
-        // Save Sale
-        const { error: insertError } = await supabase.from('sales').insert({
-          id: sale.id,
-          date: sale.date,
-          customer: sale.customer,
-          phone: sale.phone,
-          address: sale.address,
-          order_type: sale.orderType,
-          delivery_fee: sale.deliveryFee,
-          items: sale.items,
-          subtotal: sale.subtotal,
-          discount: sale.discount,
-          total: sale.total,
-          payment_method: sale.paymentMethod,
-          observation: sale.observation,
-          user: sale.user
-        })
-        if (insertError) throw insertError
-
-        // Deduct stock
-        for (const item of cart) {
-          if (!item.isCustom) {
-            const product = products.find(p => p.id === item.id)
-            if (product) {
-              await supabase.from('products').update({ stock: Math.max(0, product.stock - item.quantity) }).eq('id', product.id)
-            }
-          }
-        }
-
-        // Auto-save customer if name is provided
-        if (customerName.trim()) {
-          const existing = customers.find(c => c.name.toLowerCase() === customerName.trim().toLowerCase())
-          if (!existing) {
-            await supabase.from('customers').insert({
-              id: Date.now(),
-              name: customerName.trim(),
-              phone: customerPhone.trim(),
-              address: orderType === "delivery" ? deliveryAddress.trim() : "",
-            })
-          } else if (orderType === "delivery" && deliveryAddress.trim() && existing.address !== deliveryAddress.trim()) {
-             await supabase.from('customers').update({ address: deliveryAddress.trim() }).eq('id', existing.id)
-          }
-        }
-
-        // Refresh data
-        await fetchData()
-
-        setCart([])
-        setCustomerName("")
-        setCustomerPhone("")
-        setDeliveryAddress("")
-        setOrderObservation("")
-        setShowCheckout(false)
-        toast.success("Venda finalizada!")
-      } catch (error: any) {
-        console.error("Erro ao finalizar venda:", error)
-        toast.error(`Falha ao salvar a venda: ${error.message}`)
-      }
-    },
-    [cart, customerName, customerPhone, orderType, deliveryAddress, totalDeliveryFee, subtotal, total, role, editingTable, orderObservation, products, customers, setCashierData, fetchData]
-  )
-
-  const handleReprint = useCallback((sale: Sale) => {
-    if (!sale || !sale.items || sale.items.length === 0) {
-      toast.error("Venda inválida para reimpressão!");
-      return;
-    }
-
-    const orderNum = sale.id.toString().slice(-5);
-    const date = new Date(sale.date).toLocaleString("pt-BR");
-    const orderTypeLabel =
-      sale.orderType === "delivery" ? "ENTREGA"
-      : sale.orderType === "table" ? `MESA (Fechada)`
-      : "RETIRADA";
-
-    let itemsHtml = "";
-    sale.items.forEach((item: CartItem) => {
-      const itemTotal = (item.price * item.quantity).toFixed(2);
-      itemsHtml += `<tr><td style="font-weight:900;font-size:14px;padding-top:5px;">${item.quantity}x ${item.name}</td></tr>\n`;
-      if (item.observation) {
-        const obsLines = item.observation.split("\n");
-        obsLines.forEach((line: string) => {
-          if (line.trim()) {
-            itemsHtml += `<tr><td style="font-size:13px;padding-left:6px;font-weight:700;">${line.trim()}</td></tr>\n`;
-          }
-        });
-      }
-      itemsHtml += `<tr><td style="text-align:right;font-size:13px;font-weight:800;padding-bottom:3px;">R$ ${itemTotal}</td></tr>\n`;
-    });
-
-    const printWindow = window.open("", "_blank", "width=380,height=700");
-    if (printWindow) {
-      printWindow.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Reimpressão Pedido #${orderNum}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  @page { size: 58mm auto; margin: 0; }
-  @media print { html, body { width: 58mm; } }
-  body {
-    width: 54mm;
-    max-width: 54mm;
-    margin: 0 auto;
-    font-family: 'Courier New', 'Lucida Console', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 1mm;
-    overflow: hidden;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  td { vertical-align: top; padding: 0; word-wrap: break-word; overflow-wrap: break-word; }
-  .sep { border-top: 1px dashed #000; margin: 3px 0; }
-  .sep-bold { border-top: 2px solid #000; margin: 4px 0; }
-</style>
-</head><body>
-
-<table>
-  <tr><td style="text-align:center;font-size:16px;font-weight:900;letter-spacing:1px;padding-bottom:1px;">MOVEARENA</td></tr>
-  <tr><td style="text-align:center;font-size:13px;font-weight:900;">** REIMPRESSÃO **</td></tr>
-  <tr><td style="text-align:center;font-size:13px;font-weight:900;">PEDIDO #${orderNum}</td></tr>
-  <tr><td style="text-align:center;font-size:10px;font-weight:600;padding-bottom:2px;">${date}</td></tr>
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <tr><td style="font-size:11px;font-weight:900;">Cliente: ${sale.customer || "Cliente"}</td></tr>
-  ${sale.phone ? `<tr><td style="font-size:10px;font-weight:700;">Tel: ${sale.phone}</td></tr>` : ""}
-  ${sale.orderType === "delivery" ? `<tr><td style="font-size:10px;font-weight:700;">End: ${sale.address}</td></tr>` : ""}
-  <tr><td style="font-size:11px;font-weight:900;">Tipo: ${orderTypeLabel}</td></tr>
-  ${sale.observation ? `<tr><td style="font-size:11px;font-weight:900;padding-top:2px;">Obs: ${sale.observation}</td></tr>` : ""}
-</table>
-
-<div class="sep"></div>
-
-<table>
-  ${itemsHtml}
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
-  <tr>
-    <td style="font-size:11px;font-weight:700;">Subtotal:</td>
-    <td style="font-size:11px;font-weight:700;text-align:right;">R$ ${sale.subtotal.toFixed(2)}</td>
-  </tr>
-  ${sale.deliveryFee > 0 ? `<tr><td style="font-size:11px;font-weight:700;">Taxa entrega:</td><td style="font-size:11px;font-weight:700;text-align:right;">R$ ${sale.deliveryFee.toFixed(2)}</td></tr>` : ""}
-</table>
-
-<div class="sep-bold"></div>
-
-<table>
-  <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
-  <tr>
-    <td style="font-size:14px;font-weight:900;">TOTAL:</td>
-    <td style="font-size:14px;font-weight:900;text-align:right;">R$ ${sale.total.toFixed(2)}</td>
-  </tr>
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <tr><td style="text-align:center;font-size:10px;font-weight:700;padding-top:3px;">Obrigado pela preferencia!</td></tr>
-  <tr><td style="text-align:center;font-size:10px;font-weight:700;">Volte sempre!</td></tr>
-</table>
-
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},400)};<\/script>
-</body></html>`);
-      printWindow.document.close();
-    }
-    toast.success("Reimpressão enviada!");
-  }, []);
-
-  // Print
-  const handlePrint = useCallback(() => {
-    if (cart.length === 0) {
-      toast.error("Carrinho vazio!")
-      return
-    }
-
-    const orderNum = generateOrderNumber()
-    const date = new Date().toLocaleString("pt-BR")
-    const orderTypeLabel =
-      orderType === "delivery" ? "ENTREGA"
-      : editingTable ? `MESA ${editingTable}`
-      : "RETIRADA"
-
-    let itemsText = ""
-    cart.forEach((item: CartItem) => {
-      const itemTotal = (item.price * item.quantity).toFixed(2)
-      itemsText += `${item.quantity}x ${item.name}\n`
-      if (item.observation) {
-        itemsText += `   ${item.observation.replace(/\n/g, "\n   ")}\n`
-      }
-      itemsText += `   R$ ${itemTotal}\n`
-    })
-
-    let itemsHtml = ""
-    cart.forEach((item: CartItem) => {
-      const itemTotal = (item.price * item.quantity).toFixed(2)
-      itemsHtml += `<tr><td style="font-weight:900;font-size:14px;padding-top:5px;">${item.quantity}x ${item.name}</td></tr>\n`
-      if (item.observation) {
-        const obsLines = item.observation.split("\n")
-        obsLines.forEach((line: string) => {
-          if (line.trim()) {
-            itemsHtml += `<tr><td style="font-size:13px;padding-left:6px;font-weight:700;">${line.trim()}</td></tr>\n`
-          }
-        })
-      }
-      itemsHtml += `<tr><td style="text-align:right;font-size:13px;font-weight:800;padding-bottom:3px;">R$ ${itemTotal}</td></tr>\n`
-    })
-
-    const printWindow = window.open("", "_blank", "width=380,height=700")
-    if (printWindow) {
-      printWindow.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Pedido #${orderNum}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  @page { size: 58mm auto; margin: 0; }
-  @media print { html, body { width: 58mm; } }
-  body {
-    width: 54mm;
-    max-width: 54mm;
-    margin: 0 auto;
-    font-family: 'Courier New', 'Lucida Console', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 1mm;
-    overflow: hidden;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  td { vertical-align: top; padding: 0; word-wrap: break-word; overflow-wrap: break-word; }
-  .sep { border-top: 1px dashed #000; margin: 3px 0; }
-  .sep-bold { border-top: 2px solid #000; margin: 4px 0; }
-</style>
-</head><body>
-
-<table>
-  <tr><td style="text-align:center;font-size:16px;font-weight:900;letter-spacing:1px;padding-bottom:1px;">MOVEARENA</td></tr>
-  <tr><td style="text-align:center;font-size:13px;font-weight:900;">PEDIDO #${orderNum}</td></tr>
-  <tr><td style="text-align:center;font-size:10px;font-weight:600;padding-bottom:2px;">${date}</td></tr>
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <tr><td style="font-size:11px;font-weight:900;">Cliente: ${customerName || "Cliente"}</td></tr>
-  ${customerPhone ? `<tr><td style="font-size:10px;font-weight:700;">Tel: ${customerPhone}</td></tr>` : ""}
-  ${orderType === "delivery" ? `<tr><td style="font-size:10px;font-weight:700;">End: ${deliveryAddress}</td></tr>` : ""}
-  <tr><td style="font-size:11px;font-weight:900;">Tipo: ${orderTypeLabel}</td></tr>
-  ${orderObservation ? `<tr><td style="font-size:11px;font-weight:900;padding-top:2px;">Obs: ${orderObservation}</td></tr>` : ""}
-</table>
-
-<div class="sep"></div>
-
-<table>
-  ${itemsHtml}
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <colgroup><col style="width:50%"><col style="width:50%"></colgroup>
-  <tr>
-    <td style="font-size:11px;font-weight:700;">Subtotal:</td>
-    <td style="font-size:11px;font-weight:700;text-align:right;">R$ ${subtotal.toFixed(2)}</td>
-  </tr>
-  ${totalDeliveryFee > 0 ? `<tr><td style="font-size:11px;font-weight:700;">Taxa entrega:</td><td style="font-size:11px;font-weight:700;text-align:right;">R$ ${totalDeliveryFee.toFixed(2)}</td></tr>` : ""}
-</table>
-
-<div class="sep-bold"></div>
-
-<table>
-  <colgroup><col style="width:40%"><col style="width:60%"></colgroup>
-  <tr>
-    <td style="font-size:14px;font-weight:900;">TOTAL:</td>
-    <td style="font-size:14px;font-weight:900;text-align:right;">R$ ${total.toFixed(2)}</td>
-  </tr>
-</table>
-
-<div class="sep"></div>
-
-<table>
-  <tr><td style="text-align:center;font-size:10px;font-weight:700;padding-top:3px;">Obrigado pela preferencia!</td></tr>
-  <tr><td style="text-align:center;font-size:10px;font-weight:700;">Volte sempre!</td></tr>
-</table>
-
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},400)};<\/script>
-</body></html>`)
-      printWindow.document.close()
-    }
-    toast.success("Pedido enviado para impressao!")
-  }, [cart, customerName, customerPhone, deliveryAddress, orderType, subtotal, total, totalDeliveryFee, editingTable, orderObservation])
-
-  // Sales management
-  const deleteSale = useCallback(async (id: number) => {
-    const saleToDelete = sales.find(s => s.id === id)
-    if (saleToDelete) {
-      // Restore stock
-      for (const item of saleToDelete.items) {
-        if (!item.isCustom) {
-           const product = products.find(p => p.id === item.id)
-           if (product) {
-             await supabase.from('products').update({ stock: product.stock + item.quantity }).eq('id', product.id)
-           }
-        }
-      }
-    }
-    await supabase.from('sales').delete().eq('id', id)
-    fetchData()
-    toast.success("Venda excluida e estoque recomposto!")
-  }, [sales, setSales, setProducts])
-
-  const updateSale = useCallback(async (id: number, updatedData: Partial<Sale>) => {
-    await supabase.from('sales').update(updatedData).eq('id', id)
-    fetchData()
-    toast.success("Venda atualizada!")
-  }, [])
-
-  // Product management
-  const updateProduct = useCallback(async (id: number, field: string, value: string | number | boolean) => {
-    await supabase.from('products').update({ [field]: value }).eq('id', id)
-    fetchData()
-    toast.success("Produto atualizado!")
-  }, [])
-
-  const deleteProduct = useCallback(async (id: number) => {
-    if (confirm("Excluir produto?")) {
-      await supabase.from('products').delete().eq('id', id)
-      fetchData()
-      toast.success("Produto excluido!")
-    }
-  }, [])
-
-  const addProduct = useCallback(async (product: Product) => {
-    await supabase.from('products').insert(product)
-    fetchData()
-    toast.success("Produto adicionado!")
-  }, [])
-
-  const restoreProducts = useCallback(async () => {
-    if (!confirm("Deseja restaurar os produtos padrão e tentar recuperar dados antigos do dispositivo?")) return
-    
-    try {
-      // Tenta recuperar do localStorage antigo
-      const localData = localStorage.getItem("mv_products")
-      let items = [...DEFAULT_PRODUCTS]
-      
-      if (localData) {
-        try {
-          const parsed = JSON.parse(localData)
-          if (Array.isArray(parsed) && parsed.length > 0) items = parsed
-        } catch {}
-      }
-
-      const { error } = await supabase.from('products').upsert(items)
-      if (error) throw error
-      
-      fetchData()
-      toast.success("Produtos restaurados e sincronizados!")
-    } catch (e) {
-      console.error(e)
-      toast.error("Erro ao restaurar produtos.")
-    }
-  }, [fetchData])
-
-  const toggleActive = useCallback(async (id: number) => {
-    const p = products.find(x => x.id === id)
-    if (p) {
-      await supabase.from('products').update({ active: !p.active }).eq('id', id)
-      fetchData()
-    }
-  }, [products])
-
-  // Stock management
-  const adjustStock = useCallback(
-    async (productId: number, quantity: number, type: "add" | "remove" | "set", reason: string) => {
-      const product = products.find((p) => p.id === productId)
-      if (product) {
-        let newStock = product.stock
-        if (type === "add") newStock += quantity
-        else if (type === "remove") newStock = Math.max(0, product.stock - quantity)
-        else newStock = quantity
-
-        await supabase.from('products').update({ stock: newStock }).eq('id', productId)
-
-        const actualChange =
-          type === "add" ? quantity : type === "remove" ? -quantity : quantity - product.stock
-
-        await supabase.from('stock_history').insert({
-          id: Date.now(),
-          date: new Date().toISOString(),
-          productName: product.name,
-          type: type === "add" ? "Entrada" : type === "remove" ? "Saida" : "Ajuste",
-          quantity: actualChange,
-          reason,
-        })
-        fetchData()
-      }
-      toast.success("Estoque atualizado!")
-    },
-    [products]
-  )
-
-  // Cashier
-  const openCashier = useCallback(async (amount: number) => {
-    const { error } = await supabase.from('cashier_sessions').insert({
-      opening_balance: amount,
-      opened_at: new Date().toISOString()
-    })
-    
-    if (error) toast.error("Erro ao abrir caixa")
-    else {
-      toast.success("Caixa aberto!")
-      fetchData()
-    }
-  }, [])
-
-  // Expenses
-  const addExpense = useCallback(async (expense: Expense) => {
-    await supabase.from('expenses').insert(expense)
-    fetchData()
-    toast.success("Despesa registrada!")
-  }, [])
-
-  const deleteExpense = useCallback(async (id: number) => {
-    await supabase.from('expenses').delete().eq('id', id)
-    fetchData()
-    toast.success("Despesa excluida!")
-  }, [])
-
-  const editExpense = useCallback(async (updated: Expense) => {
-    await supabase.from('expenses').update(updated).eq('id', updated.id)
-    fetchData()
-    toast.success("Despesa atualizada!")
-  }, [])
-
-  const addCustomExpenseCategory = useCallback((cat: string) => {
-    setCustomExpenseCategories((prev: string[]) => prev.includes(cat) ? prev : [...prev, cat])
-  }, [])
-
-  const addProductCategory = useCallback((cat: string) => {
-    setProductCategories((prev: string[]) => prev.includes(cat.toLowerCase()) ? prev : [...prev, cat.toLowerCase()])
-  }, [])
-
-  const deleteProductCategory = useCallback((cat: string) => {
-    setProductCategories((prev: string[]) => prev.filter((c: string) => c !== cat))
-  }, [])
-
-  // Stock entry management
-  const editStockEntry = useCallback(async (updated: StockEntry) => {
-    await supabase.from('stock_history').update(updated).eq('id', updated.id)
-    fetchData()
-    toast.success("Movimentacao atualizada!")
-  }, [])
-
-  const deleteStockEntry = useCallback(async (id: number) => {
-    await supabase.from('stock_history').delete().eq('id', id)
-    fetchData()
-    toast.success("Movimentacao excluida!")
-  }, [])
-
-  // Customer management
-  const addCustomer = useCallback(async (customer: Customer) => {
-    await supabase.from('customers').insert(customer)
-    fetchData()
-    toast.success("Cliente cadastrado!")
-  }, [])
-
-  const editCustomer = useCallback(async (updated: Customer) => {
-    await supabase.from('customers').update(updated).eq('id', updated.id)
-    fetchData()
-    toast.success("Cliente atualizado!")
-  }, [])
-
-  const deleteCustomer = useCallback(async (id: number) => {
-    await supabase.from('customers').delete().eq('id', id)
-    fetchData()
-    toast.success("Cliente excluido!")
-  }, [])
-
-  const closeCashier = useCallback(async () => {
-    const totalSales = Object.values(cashierData.sales).reduce((a: number, b: number) => a + b, 0)
-    const todayExpenses = expenses
-      .filter((e: Expense) => new Date(e.date).toDateString() === new Date().toDateString())
-      .reduce((sum: number, e: Expense) => sum + e.amount, 0)
-    
-    const finalBalance = cashierData.opening + totalSales - todayExpenses
-
-    if (confirm(`Confirmar fechamento?\nSaldo Final: ${formatCurrency(finalBalance)}`)) {
-      const { error } = await supabase.from('cashier_sessions')
-        .update({ closed_at: new Date().toISOString(), final_balance: finalBalance })
-        .eq('id', cashierSessionId)
-
-      if (error) toast.error("Erro ao fechar caixa")
-      else {
-        toast.success("Caixa fechado!")
-        fetchData()
-      }
-    }
-  }, [cashierData, expenses, cashierSessionId, fetchData])
-
-  // ==================== RENDER ====================
-  if (!loggedIn) return <LoginScreen onLogin={handleLogin} />
+// ─── FEATURED ─────────────────────────────────────────────────────────────────
+function FeaturedSection() {
+  const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
+  const [builderOpen, setBuilderOpen] = useState(false)
+  const { addItem } = useCart()
+  const featured = PRODUCTS.filter(p => p.active && (p.category === 'subs-15cm' || p.category === 'subs-30cm')).slice(0, 4)
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border z-40">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Sandwich className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-black text-lg text-foreground">
-                Movearena <span className="text-primary">PRO</span>
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground capitalize">
-                  {role === "admin" ? "Administrador" : "Atendente"}
-                </span>
-                <Badge
-                  variant={cashierOpen ? "default" : "destructive"}
-                  className={cn(
-                    "text-xs",
-                    cashierOpen && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  {cashierOpen ? "CAIXA ABERTO" : "CAIXA FECHADO"}
-                </Badge>
-              </div>
-            </div>
+    <section className="bg-navy py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
+          <div>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Mais pedidos</p>
+            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
+              Os subs queridos<br />pela galera.
+            </h2>
           </div>
-          
-          {/* Indicador de Conexão (Simulado) */}
-          <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-full border border-border mr-2 md:mr-0">
-             {isOnline ? <Cloud className="h-3 w-3 text-primary" /> : <CloudOff className="h-3 w-3 text-destructive" />}
-             <span className="text-[10px] font-medium text-muted-foreground hidden sm:inline">{isOnline ? "Online" : "Offline"}</span>
-          </div>
+          <Link href="/cardapio" className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-white/55 hover:text-white transition-colors">
+            Ver cardápio completo <ArrowRight size={13} />
+          </Link>
+        </motion.div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="hidden md:flex bg-primary text-primary-foreground"
-              onClick={() => {
-                setView("pos")
-                setShowBuilder(true)
-              }}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {featured.map((p, i) => (
+            <motion.div key={p.id} {...fadeUp(i * 0.07)}>
+              <ProductCard
+                product={p}
+                onCustomize={pr => { setBuilderProduct(pr); setBuilderOpen(true) }}
+                onAdd={pr => { addItem({ productId: pr.id, name: pr.name, price: pr.price, quantity: 1, image: pr.image }); toast.success(`${pr.name} adicionado!`) }}
+              />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+      <SandwichBuilder product={builderProduct} open={builderOpen} onClose={() => setBuilderOpen(false)} />
+    </section>
+  )
+}
+
+// ─── PROMO BANNER ─────────────────────────────────────────────────────────────
+function PromoBanner() {
+  return (
+    <section className="bg-brand py-16 lg:py-20 relative overflow-hidden">
+      {/* Pattern from packaging */}
+      <div
+        className="absolute inset-0 opacity-[0.15] pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 14px 14px, #0B2C5C 3px, transparent 3.5px), radial-gradient(circle at 42px 42px, #0B2C5C 2.5px, transparent 3px)',
+          backgroundSize: '56px 56px',
+        }}
+      />
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div {...fadeUp()} className="grid lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7">
+            <p className="text-white/85 text-[11px] font-bold uppercase tracking-[0.22em] mb-3">Promoção</p>
+            <h2 className="font-display font-extrabold text-white text-[2rem] sm:text-[2.6rem] lg:text-[3.2rem] leading-[0.98] tracking-[-0.04em] mb-4">
+              Frete grátis<br />
+              acima de R$ 50.
+            </h2>
+            <p className="text-white/85 text-[15px] max-w-[420px]">
+              Em todo Governador Valadares. Válido todo dia, do almoço ao jantar.
+            </p>
+          </div>
+          <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col gap-3">
+            <Link href="/cardapio" className="block">
+              <button className="w-full inline-flex items-center justify-center gap-2 bg-navy hover:bg-navy-surface text-white font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors shadow-[0_8px_24px_rgba(11,44,92,0.35)]">
+                Pedir agora
+                <ArrowRight size={15} />
+              </button>
+            </Link>
+            <a href="https://wa.me/5533999999999" target="_blank" rel="noopener noreferrer" className="block">
+              <button className="w-full inline-flex items-center justify-center gap-2 bg-white/95 hover:bg-white text-navy font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors">
+                Falar no WhatsApp
+              </button>
+            </a>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// ─── COMBOS ───────────────────────────────────────────────────────────────────
+function CombosSection() {
+  const { addItem } = useCart()
+  const combos = PRODUCTS.filter(p => p.active && p.category === 'combos')
+  return (
+    <section className="bg-navy py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
+          <div>
+            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Combos</p>
+            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
+              Mais sabor<br />pelo mesmo preço.
+            </h2>
+          </div>
+          <Link href="/cardapio?cat=combos" className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-white/55 hover:text-white transition-colors">
+            Ver todos <ArrowRight size={13} />
+          </Link>
+        </motion.div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          {combos.map((combo, i) => (
+            <motion.article
+              key={combo.id}
+              {...fadeUp(i * 0.08)}
+              className={`relative rounded-2xl overflow-hidden border border-white/8 hover:border-brand/40 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-300 ${i === 0 ? 'sm:col-span-2' : ''}`}
             >
-              <Sandwich className="h-4 w-4 mr-2" />
-              Monte seu Lanche
-            </Button>
-
-            {/* Desktop nav */}
-            <nav className="hidden md:flex bg-muted rounded-lg p-1">
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setView(item.key)}
-                    className={cn(
-                      "px-3 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-1.5",
-                      view === item.key
-                        ? "bg-card shadow-sm text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden lg:inline">{item.label}</span>
-                  </button>
-                )
-              })}
-            </nav>
-
-            {/* Mobile nav hamburger */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-64 p-0">
-                <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-border bg-muted/50">
-                    <h3 className="font-bold text-foreground">Menu</h3>
+              <div className={`relative overflow-hidden bg-navy-surface ${i === 0 ? 'aspect-[16/8]' : 'aspect-[4/3]'}`}>
+                {combo.imageUrl && (
+                  <Image src={combo.imageUrl} alt={combo.name} fill className="object-cover card-img" sizes="600px" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/25 to-transparent" />
+                {combo.badge && (
+                  <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+                    {combo.badge.label.replace(/[^\w\s]/g, '').trim()}
+                  </span>
+                )}
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-[18px] leading-tight">{combo.name}</p>
+                    <p className="text-white/65 text-[12.5px] mt-1 line-clamp-1">{combo.description}</p>
                   </div>
-                  <nav className="flex-1 p-3 space-y-1">
-                    {NAV_ITEMS.map((item) => {
-                      const Icon = item.icon
-                      return (
-                        <button
-                          key={item.key}
-                          onClick={() => setView(item.key)}
-                          className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all",
-                            view === item.key
-                              ? "bg-primary text-primary-foreground"
-                              : "text-foreground hover:bg-muted"
-                          )}
-                        >
-                          <Icon className="h-5 w-5" />
-                          {item.label}
-                        </button>
-                      )
-                    })}
-                  </nav>
-                  <div className="p-3 border-t border-border space-y-2">
-                    <Button
-                      className="w-full bg-primary text-primary-foreground"
-                      onClick={() => {
-                        setView("pos")
-                        setShowBuilder(true)
-                      }}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <p className="text-white font-display font-extrabold text-[22px] tabular-nums leading-none tracking-[-0.03em]">{formatCurrency(combo.price)}</p>
+                    <button
+                      onClick={() => { addItem({ productId: combo.id, name: combo.name, price: combo.price, quantity: 1, image: combo.image }); toast.success(`${combo.name} adicionado!`) }}
+                      className="bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-colors"
                     >
-                      <Sandwich className="h-4 w-4 mr-2" />
-                      Monte seu Lanche
-                    </Button>
-                    <Button variant="ghost" className="w-full text-destructive" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sair
-                    </Button>
+                      Adicionar
+                    </button>
                   </div>
                 </div>
-              </SheetContent>
-            </Sheet>
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:flex text-muted-foreground hover:text-destructive">
-              <LogOut className="h-4 w-4" />
-            </Button>
+// ─── BRAND ────────────────────────────────────────────────────────────────────
+function BrandSection() {
+  return (
+    <section className="bg-navy-deep py-24 lg:py-32" id="sobre">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          <motion.div {...fadeUp()} className="relative">
+            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden border border-white/8">
+              <Image
+                src="https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=900&q=90&auto=format&fit=crop"
+                alt="Mais Sub artesanal"
+                fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/50 to-transparent" />
+            </div>
+            <div className="absolute -top-4 -left-4 rotate-[-12deg]">
+              <MBadge size={72} />
+            </div>
+            <div className="absolute -bottom-5 right-4 sm:right-8 bg-brand text-white rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(238,92,19,0.4)]">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/85 font-bold mb-1">Avaliação</p>
+              <div className="flex items-center gap-2">
+                <p className="font-display font-extrabold text-[26px] leading-none tabular-nums tracking-[-0.03em]">4.9</p>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={11} className="fill-white text-white" />)}
+                </div>
+              </div>
+              <p className="text-white/85 text-[11px] mt-1">+2.000 reviews</p>
+            </div>
+          </motion.div>
+
+          <div>
+            <motion.p {...fadeUp(0.05)} className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">A marca</motion.p>
+            <motion.h2 {...fadeUp(0.12)} className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-6">
+              Subs feitos<br />com cuidado.
+            </motion.h2>
+            <motion.p {...fadeUp(0.18)} className="text-white/55 text-[15px] leading-relaxed mb-10 max-w-md">
+              Em Governador Valadares desde o primeiro pão. Cada sub é montado na hora, com ingredientes selecionados e embalado no nosso papel azul e laranja.
+            </motion.p>
+            <div className="grid sm:grid-cols-2 gap-5">
+              {[
+                { t: 'Pão na hora', d: 'Assado todos os dias na nossa cozinha.' },
+                { t: 'Carnes selecionadas', d: 'Lombo defumado, frango grelhado, carne premium.' },
+                { t: 'Ingredientes frescos', d: 'Saladas repostas toda manhã.' },
+                { t: 'Entrega em ~28 min', d: 'Quentinho na sua porta em Gov. Valadares.' },
+              ].map((p, i) => (
+                <motion.div key={p.t} {...fadeUp(0.24 + i * 0.06)} className="border-l border-brand pl-4">
+                  <p className="font-bold text-white text-[14px] mb-1">{p.t}</p>
+                  <p className="text-white/45 text-[12.5px] leading-relaxed">{p.d}</p>
+                </motion.div>
+              ))}
+            </div>
+            <motion.div {...fadeUp(0.5)} className="mt-10">
+              <Link href="/cardapio">
+                <button className="group inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all shadow-[0_8px_24px_rgba(238,92,19,0.35)]">
+                  Fazer pedido <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </Link>
+            </motion.div>
           </div>
         </div>
-      </header>
+      </div>
+    </section>
+  )
+}
 
-      {/* Content */}
-      <main className="flex-1 overflow-hidden pb-16 md:pb-0">
-        {view === "pos" && (
-          <div className="h-full flex flex-row relative">
-            {/* Product grid - takes remaining space, scrolls internally */}
-            <div className="flex-1 min-w-0 h-full overflow-y-auto">
-              <ProductGrid
-                products={products}
-                onAddToCart={addProductToCart}
-                onStartCustomBurger={() => setShowBuilder(true)}
-              />
+// ─── REVIEWS ──────────────────────────────────────────────────────────────────
+const REVIEWS = [
+  { name: 'Ana Lima', role: 'Cliente frequente', text: 'Melhor sub da cidade, sem exagero. Chegou em 24 minutos, ainda quentinho. A personalização é surreal.' },
+  { name: 'Carlos Souza', role: 'Todo sábado', text: 'O Frango com Cream Cheese é irresistível. Peço toda semana há 4 meses. Nunca uma decepção.' },
+  { name: 'Mariana Costa', role: 'Foodie', text: 'Chipotle + Baconese é a combinação. Atendimento rápido, embalagem impecável. Meu favorito.' },
+]
+
+function Reviews() {
+  return (
+    <section className="bg-navy py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div {...fadeUp()} className="text-center mb-14">
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Avaliações</p>
+          <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-4">
+            +2.000 clientes confirmam.
+          </h2>
+          <div className="inline-flex items-center gap-2">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={16} className="fill-[#EE5C13] text-brand" />)}
             </div>
-
-            {/* Desktop cart sidebar - always visible on lg+ */}
-            <div className="hidden lg:flex h-full">
-              <CartPanel
-                cart={cart}
-                orderType={orderType}
-                onSetOrderType={setOrderType}
-                onChangeQuantity={changeQuantity}
-                onRemoveItem={removeItem}
-                onOpenCheckout={() => setShowCheckout(true)}
-                onUpdateTable={handleUpdateTableOrder}
-                editingTable={editingTable}
-                onPrintOrder={handlePrint}
-                customerName={customerName}
-                customerPhone={customerPhone}
-                deliveryAddress={deliveryAddress}
-                deliveryFee={deliveryFee}
-                onCustomerNameChange={setCustomerName}
-                onCustomerPhoneChange={setCustomerPhone}
-                onDeliveryAddressChange={setDeliveryAddress}
-                onOrderObservationChange={setOrderObservation}
-                onDeliveryFeeChange={setDeliveryFee}
-                orderObservation={orderObservation}
-                customers={customers}
-              />
-            </div>
-
-            {/* Mobile floating cart button */}
-            {cart.length > 0 && (
-              <button
-                onClick={() => setMobileCartOpen(true)}
-                className="lg:hidden fixed bottom-20 right-4 z-50 bg-primary text-primary-foreground rounded-full shadow-xl px-5 py-3 flex items-center gap-2 font-bold text-sm"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                <span>{cart.reduce((s: number, i: CartItem) => s + i.quantity, 0)} itens</span>
-                <span className="ml-1">{formatCurrency(total)}</span>
-              </button>
-            )}
-
-            {/* Mobile cart sheet */}
-            <Sheet open={mobileCartOpen} onOpenChange={setMobileCartOpen}>
-              <SheetContent side="bottom" className="h-[85vh] p-0 rounded-t-2xl lg:hidden">
-                <CartPanel
-                  cart={cart}
-                  orderType={orderType}
-                  onSetOrderType={setOrderType}
-                  onChangeQuantity={changeQuantity}
-                  onRemoveItem={removeItem}
-                  onOpenCheckout={() => { setMobileCartOpen(false); setShowCheckout(true) }}
-                  onUpdateTable={handleUpdateTableOrder}
-                  editingTable={editingTable}
-                  onPrintOrder={handlePrint}
-                  customerName={customerName}
-                  customerPhone={customerPhone}
-                  deliveryAddress={deliveryAddress}
-                  deliveryFee={deliveryFee}
-                  onCustomerNameChange={setCustomerName}
-                  onCustomerPhoneChange={setCustomerPhone}
-                  onDeliveryAddressChange={setDeliveryAddress}
-                  onOrderObservationChange={setOrderObservation}
-                  onDeliveryFeeChange={setDeliveryFee}
-                  orderObservation={orderObservation}
-                  customers={customers}
-                />
-              </SheetContent>
-            </Sheet>
+            <span className="text-white font-bold text-[15px] tabular-nums">4.9</span>
+            <span className="text-white/45 text-[13.5px]">de média</span>
           </div>
-        )}
+        </motion.div>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {REVIEWS.map((r, i) => (
+            <motion.div key={r.name} {...fadeUp(i * 0.1)} className="bg-navy-surface border border-white/8 rounded-2xl p-6">
+              <div className="flex gap-0.5 mb-5">
+                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={12} className="fill-[#EE5C13] text-brand" />)}
+              </div>
+              <p className="text-white/85 text-[14px] leading-relaxed mb-6">&ldquo;{r.text}&rdquo;</p>
+              <div className="pt-4 border-t border-white/8 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-brand text-white grid place-items-center text-[12px] font-bold">
+                  {r.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <p className="font-bold text-white text-[13px]">{r.name}</p>
+                  <p className="text-white/40 text-[11.5px]">{r.role}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
 
-        {view === "tables" && (
-          <TablesView tableOrders={tableOrders} onNew={handleNewTableOrder} onEdit={handleEditTable} />
-        )}
+// ─── CTA FINAL ────────────────────────────────────────────────────────────────
+function CtaFinal() {
+  return (
+    <section className="bg-navy-deep pt-8 pb-24 lg:pb-32">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div
+          {...fadeUp()}
+          className="relative overflow-hidden bg-navy border border-brand/25 rounded-[28px] px-8 py-16 sm:px-14 sm:py-20 lg:px-20 lg:py-24"
+        >
+          <div className="absolute -top-20 -right-16 opacity-[0.07] pointer-events-none">
+            <MBadge size={400} />
+          </div>
+          <div className="relative grid lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-7">
+              <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">Bora?</p>
+              <h2 className="font-display font-extrabold text-white text-[2.4rem] sm:text-[3.2rem] lg:text-[4rem] leading-[0.95] tracking-[-0.045em] mb-5">
+                Tá com fome?<br />
+                <span className="text-brand">Monte seu sub.</span>
+              </h2>
+              <p className="text-white/55 text-[15px] max-w-[440px] leading-relaxed">
+                Em 2 minutos você personaliza tudo. A gente entrega quentinho em até 30 minutos.
+              </p>
+            </div>
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              <Link href="/cardapio" className="block">
+                <button className="group w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_10px_36px_rgba(238,92,19,0.5)]">
+                  Começar meu pedido
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                </button>
+              </Link>
+              <a href="https://wa.me/5533999999999" target="_blank" rel="noopener noreferrer" className="block">
+                <button className="w-full inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-8 py-4 rounded-full text-[14.5px] transition-colors">
+                  Falar no WhatsApp
+                </button>
+              </a>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
 
-        {view === "products" && (
-          <ProductsView
-            products={products}
-            onUpdateProduct={updateProduct}
-            onDeleteProduct={deleteProduct}
-            onAddProduct={addProduct}
-            onToggleActive={toggleActive}
-            categories={productCategories}
-            onAddCategory={addProductCategory}
-            onDeleteCategory={deleteProductCategory}
-            onRestoreProducts={restoreProducts}
-          />
-        )}
-
-        {view === "stock" && (
-          <StockView products={products} stockHistory={stockHistory} onAdjustStock={adjustStock} onEditStockEntry={editStockEntry} onDeleteStockEntry={deleteStockEntry} />
-        )}
-
-        {view === "customers" && (
-          <CustomersView
-            customers={customers}
-            onAddCustomer={addCustomer}
-            onEditCustomer={editCustomer}
-            onDeleteCustomer={deleteCustomer}
-          />
-        )}
-
-        {view === "expenses" && (
-          <ExpensesView
-            expenses={expenses}
-            onAddExpense={addExpense}
-            onEditExpense={editExpense}
-            onDeleteExpense={deleteExpense}
-            customCategories={customExpenseCategories}
-            onAddCategory={addCustomExpenseCategory}
-          />
-        )}
-
-        {view === "reports" && (
-          <ReportsView
-            sales={sales}
-            expenses={expenses}
-            onDeleteSale={deleteSale}
-            onUpdateSale={updateSale}
-            onReprint={handleReprint}
-          />
-        )}
-
-        {view === "cashier" && (
-          <CashierView
-            cashierOpen={cashierOpen}
-            cashierData={cashierData}
-            onOpenCashier={openCashier}
-            onCloseCashier={closeCashier}
-            expenses={expenses}
-          />
-        )}
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
+export default function HomePage() {
+  return (
+    <>
+      <Header />
+      <main className="bg-navy">
+        <Hero />
+        <HowItWorks />
+        <FeaturedSection />
+        <PromoBanner />
+        <CombosSection />
+        <BrandSection />
+        <Reviews />
+        <CtaFinal />
       </main>
-
-      {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border flex items-stretch">
-        {/* Botões personalizados para fluxo de Garçom/Mobile */}
-        <button
-          onClick={() => setView("tables")}
-          className={cn(
-            "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[56px]",
-            view === "tables" ? "text-primary bg-primary/5" : "text-muted-foreground"
-          )}
-        >
-          <Users className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Mesas</span>
-        </button>
-
-        <button
-          onClick={() => setView("pos")}
-          className={cn(
-            "flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-[56px]",
-            view === "pos" ? "text-primary bg-primary/5" : "text-muted-foreground"
-          )}
-        >
-          <ShoppingCart className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Novo Pedido</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setView("pos")
-            setShowBuilder(true)
-          }}
-          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-primary min-h-[56px]"
-        >
-          <Sandwich className="h-5 w-5" />
-          <span className="text-[10px] font-semibold leading-none">Montar</span>
-        </button>
-      </nav>
-
-      {/* Modals */}
-      <SandwichBuilder open={showBuilder} onClose={() => setShowBuilder(false)} onAddToCart={addCustomToCart} />
-
-      <CheckoutModal open={showCheckout} onClose={() => setShowCheckout(false)} total={total} onFinalize={handleFinalize} />
-    </div>
+      <Footer />
+    </>
   )
 }

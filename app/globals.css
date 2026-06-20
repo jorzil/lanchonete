@@ -2,69 +2,295 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
 @layer base {
   :root {
-    --background: 0 0% 97%;
-    --foreground: 220 14% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    --primary: 160 84% 39%;
+    --font-inter: 'Inter', sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+
+    /* Brand palette */
+    --brand-navy: #0B2C5C;
+    --brand-navy-2: #163A6E;
+    --brand-navy-3: #0A2452;
+    --brand-orange: #EE5C13;
+    --brand-orange-2: #FF6B1A;
+    --brand-cream: #FDF6EC;
+
+    --color-bg: var(--brand-navy);
+    --color-surface: var(--brand-navy-2);
+    --color-border: rgba(255,255,255,0.08);
+    --color-text: #FFFFFF;
+    --color-text-2: rgba(255,255,255,0.55);
+    --color-text-3: rgba(255,255,255,0.32);
+
+    --background: 217 78% 20%;
+    --foreground: 0 0% 100%;
+    --card: 217 65% 26%;
+    --card-foreground: 0 0% 100%;
+    --popover: 217 65% 26%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 20 86% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 14% 10%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 8% 46%;
-    --accent: 45 93% 47%;
-    --accent-foreground: 220 14% 10%;
+    --secondary: 217 60% 22%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 217 60% 22%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 20 86% 50%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 160 84% 39%;
-    --chart-1: 160 84% 39%;
-    --chart-2: 45 93% 47%;
-    --chart-3: 220 70% 50%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 280 65% 60%;
+    --border: 217 30% 35%;
+    --input: 217 30% 35%;
+    --ring: 20 86% 50%;
     --radius: 0.75rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 160 84% 39%;
+    --chart-1: 20 86% 50%;
+    --chart-2: 217 78% 60%;
+    --chart-3: 280 65% 60%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 150 60% 45%;
+    --sidebar-background: 217 78% 16%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 20 86% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-accent: 217 65% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 30% 30%;
+    --sidebar-ring: 20 86% 50%;
+
+    /* ─── BRAND REFINADA ─────────────────────────────────────────────────── */
+    --brand-navy: #0C2D5E;        /* ligeiramente mais rico */
+    --brand-orange: #F05A14;       /* mais quente, menos saturado */
+    --brand-orange-hover: #E04A04;
+
+    /* ─── ADMIN TOKENS (não afetam o site público) ───────────────────────── */
+    --admin-bg: #F8F9FB;           /* gray quase branco como Stripe */
+    --admin-surface: #FFFFFF;
+    --admin-surface-2: #F1F3F5;
+    --admin-border: #E5E7EB;
+    --admin-border-2: #D1D5DB;
+    --admin-text: #111827;
+    --admin-text-2: #6B7280;
+    --admin-text-3: #9CA3AF;
+    --admin-accent: #F05A14;       /* orange da marca */
+    --admin-accent-hover: #E04A04;
+    --admin-success: #059669;
+    --admin-warning: #D97706;
+    --admin-danger: #DC2626;
+    --admin-info: #2563EB;
+
+    /* ─── STATUS TOKENS ──────────────────────────────────────────────────── */
+    --status-new-bg: #EFF6FF;
+    --status-new-text: #1D4ED8;
+    --status-confirmed-bg: #FEFCE8;
+    --status-confirmed-text: #92400E;
+    --status-preparing-bg: #FFF7ED;
+    --status-preparing-text: #C2410C;
+    --status-ready-bg: #F0FDF4;
+    --status-ready-text: #166534;
+    --status-delivery-bg: #EEF2FF;
+    --status-delivery-text: #3730A3;
+    --status-delivered-bg: #F0FDF4;
+    --status-delivered-text: #14532D;
+    --status-cancelled-bg: #FEF2F2;
+    --status-cancelled-text: #991B1B;
+
+    /* ─── DESIGN SYSTEM · ESPAÇAMENTO (múltiplos de 8) ───────────────────── */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 16px;
+    --space-4: 24px;
+    --space-5: 32px;
+    --space-6: 48px;
+    --space-7: 64px;
+    --space-8: 96px;
+
+    /* ─── DESIGN SYSTEM · RADIUS ─────────────────────────────────────────── */
+    --radius-xs: 6px;     /* badges, chips */
+    --radius-sm: 10px;    /* inputs, selects, botões pequenos */
+    --radius-md: 14px;    /* botões, cards pequenos */
+    --radius-lg: 20px;    /* cards */
+    --radius-xl: 28px;    /* modais, cards grandes */
+    --radius-full: 9999px;
+
+    /* ─── DESIGN SYSTEM · SOMBRAS ────────────────────────────────────────── */
+    --shadow-sm: 0 1px 2px rgba(11,44,92,0.06), 0 1px 3px rgba(11,44,92,0.10);
+    --shadow-md: 0 4px 12px rgba(11,44,92,0.08), 0 2px 4px rgba(11,44,92,0.06);
+    --shadow-lg: 0 12px 32px rgba(11,44,92,0.12), 0 4px 8px rgba(11,44,92,0.06);
+    --shadow-brand: 0 8px 24px rgba(240,90,20,0.25);
   }
-  * {
-    border-color: hsl(var(--border));
-  }
+
+  * { border-color: hsl(var(--border)); }
+
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+}
+
+/* ─── DESIGN SYSTEM · ESCALA TIPOGRÁFICA ──────────────────────────────────
+   Use estas classes em vez de tamanhos arbitrários (text-[13px] etc.).
+   Fluida via clamp() para responsividade automática mobile→desktop.        */
+@layer components {
+  .ds-display {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    line-height: 0.96;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+  }
+  .ds-h1 {
+    font-family: var(--font-display);
+    font-size: clamp(1.875rem, 4vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+  }
+  .ds-h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .ds-h3 {
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .ds-h4 {
+    font-size: 1rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  .ds-body {
+    font-size: 0.9375rem;   /* 15px */
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  .ds-body-sm {
+    font-size: 0.8125rem;   /* 13px */
+    line-height: 1.55;
+    font-weight: 400;
+  }
+  .ds-caption {
+    font-size: 0.75rem;     /* 12px */
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    font-weight: 500;
+  }
+  .ds-overline {
+    font-size: 0.6875rem;   /* 11px */
+    line-height: 1.3;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
   }
 }
 
+/* ─── DESIGN SYSTEM · UTILITÁRIOS DE SOMBRA/RADIUS ──────────────────────── */
+@layer utilities {
+  .shadow-ds-sm { box-shadow: var(--shadow-sm); }
+  .shadow-ds-md { box-shadow: var(--shadow-md); }
+  .shadow-ds-lg { box-shadow: var(--shadow-lg); }
+  .shadow-ds-brand { box-shadow: var(--shadow-brand); }
+  .rounded-ds-sm { border-radius: var(--radius-sm); }
+  .rounded-ds-md { border-radius: var(--radius-md); }
+  .rounded-ds-lg { border-radius: var(--radius-lg); }
+  .rounded-ds-xl { border-radius: var(--radius-xl); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .font-display { font-family: var(--font-display); }
+
+  /* Wrapper pattern - inspired by Mais Sub packaging paper */
+  .wrapper-pattern {
+    background-color: var(--brand-navy);
+    background-image:
+      radial-gradient(circle at 12px 12px, rgba(238,92,19,0.10) 2px, transparent 2.5px),
+      radial-gradient(circle at 36px 36px, rgba(238,92,19,0.06) 1.5px, transparent 2px);
+    background-size: 48px 48px, 48px 48px;
+  }
+
+  .grid-overlay {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+
+  /* Sticker shadow */
+  .sticker {
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.25));
+  }
+}
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-up-sm { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(238,92,19,0.3), 0 0 40px rgba(238,92,19,0.1); }
+  50% { box-shadow: 0 0 50px rgba(238,92,19,0.55), 0 0 100px rgba(238,92,19,0.22); }
+}
+
+.animate-fade-in     { animation: fade-in 0.5s ease forwards; }
+.animate-slide-up    { animation: slide-up 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-slide-up-sm { animation: slide-up-sm 0.4s ease forwards; }
+.animate-ticker      { animation: ticker 32s linear infinite; }
+.animate-pulse-dot   { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-glow-pulse  { animation: glow-pulse 3s ease-in-out infinite; }
+.animate-spin-slow   { animation: spin-slow 40s linear infinite; }
+.animate-float-slow  { animation: float-slow 6s ease-in-out infinite; }
+.animate-wiggle      { animation: wiggle 0.6s ease-in-out infinite; }
+
+/* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+.custom-scrollbar::-webkit-scrollbar { height: 3px; width: 3px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #EE5C13; border-radius: 4px; }
+
+/* ─── STEP CONNECTOR (sandwich builder) ──────────────────────────────────── */
+.step-connector { flex: 1; height: 2px; background: rgba(255,255,255,0.15); position: relative; overflow: hidden; }
+.step-connector.done { background: #EE5C13; }
+.step-connector.active::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #EE5C13, transparent);
+}
+
+/* ─── PRODUCT CARD IMAGE ZOOM ─────────────────────────────────────────────── */
+.card-img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+.group:hover .card-img { transform: scale(1.06); }
+
+/* ─── CATEGORY PILL ───────────────────────────────────────────────────────── */
+.cat-pill { transition: all 0.2s ease; cursor: pointer; user-select: none; white-space: nowrap; }
+
+/* ─── BRAND DISPLAY TEXT ─────────────────────────────────────────────────── */
+.display-tight {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+  line-height: 0.94;
+}
+
+/* ─── PRINT ───────────────────────────────────────────────────────────────── */
 @media print {
-  .no-print {
-    display: none !important;
-  }
-
-  body {
-    background-color: white !important;
-    color: black !important;
-  }
-
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  .no-print { display: none !important; }
+  body { background-color: white !important; color: black !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }

@@ -1,14 +1,14 @@
 import { MetadataRoute } from 'next'
- 
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Movearena PDV',
-    short_name: 'Movearena',
-    description: 'Sistema de Pedidos Movearena',
+    name: 'Mais Sub — O Sub Mais Gostoso Da Cidade',
+    short_name: 'Mais Sub',
+    description: 'Delivery de subs artesanais em até 30 minutos. Ingredientes frescos, montados do seu jeito.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#10b981',
+    background_color: '#011a33',
+    theme_color: '#EE5C13',
     icons: [
       {
         src: '/icon-192.png',
