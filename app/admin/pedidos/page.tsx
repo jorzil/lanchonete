@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -74,6 +74,15 @@ export default function PedidosPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  function deleteOrder(id: string) {
+    setOrders((prev) => {
+      const next = prev.filter((o) => o.id !== id)
+      saveOrders(next)
+      return next
+    })
+    setSelected((prev) => (prev?.id === id ? null : prev))
+  }
 
   function updateStatus(id: string, status: OrderStatus) {
     setOrders((prev) => {
@@ -183,9 +192,21 @@ export default function PedidosPage() {
                         </Select>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelected(o)}>
-                          <Eye className="mr-1 h-4 w-4" /> Detalhes
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setSelected(o)}>
+                            <Eye className="mr-1 h-4 w-4" /> Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => {
+                              if (confirm(`Excluir pedido ${o.orderNumber}?`)) deleteOrder(o.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -234,11 +255,23 @@ export default function PedidosPage() {
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {selected.orderNumber}
-                  <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[selected.status])}>
-                    {STATUS_LABELS[selected.status]}
-                  </Badge>
+                <DialogTitle className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {selected.orderNumber}
+                    <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[selected.status])}>
+                      {STATUS_LABELS[selected.status]}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => {
+                      if (confirm(`Excluir pedido ${selected.orderNumber}?`)) deleteOrder(selected.id)
+                    }}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Excluir
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
 
