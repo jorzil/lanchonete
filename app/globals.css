@@ -154,25 +154,37 @@
    ──────────────────────────────────────────────────────────────────────────── */
 [data-admin-portal],
 .admin-theme {
-  --background: 0 0% 96%;          /* gray-50 */
-  --foreground: 222 47% 11%;       /* gray-900 */
-  --card: 0 0% 100%;               /* white */
+  /* shadcn/ui token overrides */
+  --background: 0 0% 96%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
-  --primary: 20 86% 50%;           /* orange */
+  --primary: 20 86% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 14% 96%;        /* gray-100 */
+  --secondary: 220 14% 96%;
   --secondary-foreground: 222 47% 11%;
   --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;  /* gray-500 */
+  --muted-foreground: 220 9% 46%;
   --accent: 220 14% 96%;
   --accent-foreground: 222 47% 11%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 220 13% 91%;           /* gray-200 */
+  --border: 220 13% 91%;
   --input: 220 13% 91%;
   --ring: 20 86% 50%;
+
+  /* Override the global body color (white) so all text inside admin defaults to dark */
+  color: #111827;
+  background-color: #F8F9FB;
+  /* Also override the site's custom color tokens */
+  --color-text: #111827;
+  --color-text-2: #6B7280;
+  --color-text-3: #9CA3AF;
+  --color-bg: #F8F9FB;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E7EB;
 }
 
 @layer utilities {
