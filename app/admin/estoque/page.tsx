@@ -14,10 +14,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { formatCurrency } from "@/lib/store"
+import { formatCurrency, usePersistedState, PRODUCTS } from "@/lib/store"
 import {
   loadIngredients, addIngredient, updateIngredient, deleteIngredient,
   loadSuppliers, addSupplier, registerMovement, loadMovements, getInventoryStats,
+  syncProductsToInventory,
   type Ingredient, type StockUnit, type Supplier, type StockMovement, type MovementType,
 } from "@/lib/inventory-storage"
 
@@ -63,13 +64,17 @@ export default function EstoquePage() {
 
   const [historyOpen, setHistoryOpen] = useState(false)
 
+  const [products] = usePersistedState("admin_products", PRODUCTS)
+
   function refresh() {
+    // Sync products → stock before loading so new/renamed products appear immediately
+    syncProductsToInventory(products)
     setIngredients(loadIngredients())
     setSuppliers(loadSuppliers())
     setMovements(loadMovements())
   }
 
-  useEffect(() => { refresh() }, [])
+  useEffect(() => { refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => getInventoryStats(), [ingredients])
 
@@ -212,7 +217,12 @@ export default function EstoquePage() {
                   return (
                     <tr key={ing.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{ing.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">{ing.name}</p>
+                          {ing.productId && (
+                            <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full leading-none">produto</span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400">
                           {ing.supplierId ? suppliers.find((s) => s.id === ing.supplierId)?.name ?? "—" : "Sem fornecedor"}
                         </p>

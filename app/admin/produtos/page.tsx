@@ -5,6 +5,7 @@ import { Plus, Pencil, Search, Package, X, Copy } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { formatCurrency, usePersistedState, PRODUCTS, type Product } from "@/lib/store"
+import { syncProductsToInventory } from "@/lib/inventory-storage"
 
 // Extend Product locally to support cost price
 type ProductWithCost = Product & { costPrice?: number }
@@ -306,17 +307,22 @@ export default function ProdutosPage() {
       id:   `prod-${Date.now().toString(36)}`,
       name: `${p.name} (cópia)`,
     }
-    setProducts((prev) => [...prev, newProd])
+    setProducts((prev) => {
+      const next = [...prev, newProd]
+      syncProductsToInventory(next)
+      return next
+    })
   }
 
   function save() {
     if (!editing || !editing.name.trim()) return
     setProducts((prev) => {
-      if (isNew) {
-        const id = editing.id.trim() || `prod-${Date.now().toString(36)}`
-        return [...prev, { ...editing, id }]
-      }
-      return prev.map((p) => (p.id === editing.id ? editing : p))
+      const next = isNew
+        ? [...prev, { ...editing, id: editing.id.trim() || `prod-${Date.now().toString(36)}` }]
+        : prev.map((p) => (p.id === editing.id ? editing : p))
+      // Sync to inventory after every save
+      syncProductsToInventory(next)
+      return next
     })
     setOpen(false)
     setEditing(null)
