@@ -102,6 +102,14 @@ export default function EstoquePage() {
     if (!form.name.trim()) return
     if (editing) {
       updateIngredient(editing.id, form)
+      // If linked to a product, sync costPrice back to the products list
+      if (editing.productId && form.avgCost >= 0) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === editing.productId ? { ...p, costPrice: form.avgCost } as typeof p : p
+          )
+        )
+      }
     } else {
       addIngredient(form)
     }
@@ -321,11 +329,16 @@ export default function EstoquePage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NumberField label="Custo médio (R$)" value={form.avgCost} onChange={(v) => setForm({ ...form, avgCost: v })} disabled={!!editing} hint={editing ? "Atualizado por entradas" : undefined} />
+              <NumberField label="Custo unitário (R$)" value={form.avgCost} onChange={(v) => setForm({ ...form, avgCost: v })} hint={editing ? "Edita o custo diretamente" : undefined} />
               <NumberField label="Estoque inicial" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} disabled={!!editing} hint={editing ? "Use movimentações" : undefined} />
               <NumberField label="Estoque mínimo" value={form.minStock} onChange={(v) => setForm({ ...form, minStock: v })} />
               <NumberField label="Estoque ideal" value={form.idealStock} onChange={(v) => setForm({ ...form, idealStock: v })} />
             </div>
+            {editing && form.avgCost > 0 && editing.stock > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                ⚠️ Alterar o custo aqui sobrescreve o custo médio ponderado calculado pelas entradas. Use apenas para correções.
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
