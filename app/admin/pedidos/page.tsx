@@ -52,6 +52,7 @@ export default function PedidosPage() {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Order | null>(null)
+  const [toDelete, setToDelete] = useState<Order | null>(null)
 
   useEffect(() => {
     setOrders(loadOrders())
@@ -75,13 +76,16 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  function deleteOrder(id: string) {
+  function confirmDelete() {
+    if (!toDelete) return
+    const id = toDelete.id
     setOrders((prev) => {
       const next = prev.filter((o) => o.id !== id)
       saveOrders(next)
       return next
     })
     setSelected((prev) => (prev?.id === id ? null : prev))
+    setToDelete(null)
   }
 
   function updateStatus(id: string, status: OrderStatus) {
@@ -200,9 +204,7 @@ export default function PedidosPage() {
                             variant="ghost"
                             size="sm"
                             className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                            onClick={() => {
-                              if (confirm(`Excluir pedido ${o.orderNumber}?`)) deleteOrder(o.id)
-                            }}
+                            onClick={() => setToDelete(o)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -249,6 +251,36 @@ export default function PedidosPage() {
         </>
       )}
 
+      {/* Modal confirmar exclusão */}
+      {toDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+              <Trash2 className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Excluir pedido?</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              O pedido <strong>{toDelete.orderNumber}</strong> de{" "}
+              <strong>{toDelete.customer.name}</strong> será removido permanentemente.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setToDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
+                onClick={confirmDelete}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal detalhe */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -266,9 +298,7 @@ export default function PedidosPage() {
                     variant="ghost"
                     size="sm"
                     className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                    onClick={() => {
-                      if (confirm(`Excluir pedido ${selected.orderNumber}?`)) deleteOrder(selected.id)
-                    }}
+                    onClick={() => setToDelete(selected)}
                   >
                     <Trash2 className="mr-1 h-4 w-4" /> Excluir
                   </Button>
