@@ -32,7 +32,8 @@ export function CombosSection() {
             <article key={combo.id} className={`relative rounded-2xl overflow-hidden border border-white/8 hover:border-brand/40 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-300 ${i === 0 ? 'sm:col-span-2' : ''}`}>
               <div className={`relative overflow-hidden bg-navy-surface ${i === 0 ? 'aspect-[16/8]' : 'aspect-[4/3]'}`}>
                 {combo.imageUrl && (
-                  <Image src={combo.imageUrl} alt={combo.name} fill loading="lazy" className="object-cover card-img" sizes="600px" />
+                  <Image src={combo.imageUrl} alt={combo.name} fill loading="lazy" className="object-cover card-img"
+                    sizes="(max-width:640px) 100vw, (max-width:1024px) 66vw, 50vw" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/25 to-transparent" />
                 {combo.badge && (

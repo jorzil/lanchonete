@@ -108,7 +108,11 @@ function Hero() {
                 style={{ animationDelay: `${0.2 + i * 0.07}s` }}
               >
                 <div className="relative w-14 h-14 lg:w-16 lg:h-16 shrink-0 rounded-xl overflow-hidden bg-navy-deep">
-                  <Image src={cat.img} alt={cat.label} fill loading="lazy" className="object-cover" sizes="64px" />
+                  {/* First 2 pills are above-fold on mobile (2-col grid) — prioritize them */}
+                  <Image src={cat.img} alt={cat.label} fill className="object-cover"
+                    sizes="(max-width:1024px) 56px, 64px"
+                    {...(i < 2 ? { priority: true } : { loading: 'lazy' })}
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white font-bold text-[14px] lg:text-[15px] leading-tight">{cat.label}</p>
@@ -208,7 +212,8 @@ function BrandSection() {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="relative">
             <div className="relative aspect-[4/5] rounded-3xl overflow-hidden border border-white/8">
-              <Image src="https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=900&q=85&auto=format&fit=crop" alt="Mais Sub artesanal" fill loading="lazy" className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
+              {/* Not lazy — users scroll here within first 2s; lazy would delay visible content */}
+              <Image src="https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=900&q=85&auto=format&fit=crop" alt="Mais Sub artesanal" fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/50 to-transparent" />
             </div>
             <div className="absolute -top-4 -left-4 rotate-[-12deg]"><MBadge size={72} /></div>
