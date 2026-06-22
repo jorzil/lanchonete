@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Plus, Pencil, Search, AlertTriangle, PackageX, Boxes, DollarSign,
-  ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, Trash2, History,
+  ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, Trash2, History, Copy,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { formatCurrency, usePersistedState, PRODUCTS } from "@/lib/store"
+import { formatCurrency, usePersistedState, PRODUCTS, type Product } from "@/lib/store"
 import {
   loadIngredients, addIngredient, updateIngredient, deleteIngredient,
   loadSuppliers, addSupplier, registerMovement, loadMovements, getInventoryStats,
@@ -64,7 +64,7 @@ export default function EstoquePage() {
 
   const [historyOpen, setHistoryOpen] = useState(false)
 
-  const [products] = usePersistedState("admin_products", PRODUCTS)
+  const [products, setProducts] = usePersistedState<Product[]>("admin_products", PRODUCTS)
 
   function refresh() {
     // Sync products → stock before loading so new/renamed products appear immediately
@@ -112,6 +112,37 @@ export default function EstoquePage() {
   function removeIngredient(ing: Ingredient) {
     if (!confirm(`Excluir "${ing.name}"?`)) return
     deleteIngredient(ing.id)
+    refresh()
+  }
+
+  function duplicateIngredient(ing: Ingredient) {
+    const newId = `prod-${Date.now().toString(36)}`
+    const copyName = `${ing.name} (cópia)`
+
+    // If this ingredient is linked to a product, also duplicate in the products list
+    if (ing.productId) {
+      const sourceProduct = products.find((p) => p.id === ing.productId)
+      if (sourceProduct) {
+        const newProduct: Product = { ...sourceProduct, id: newId, name: copyName }
+        const nextProducts = [...products, newProduct]
+        setProducts(nextProducts)
+        // syncProductsToInventory will create the ingredient entry automatically
+        syncProductsToInventory(nextProducts)
+        refresh()
+        return
+      }
+    }
+
+    // For manual ingredients (no productId), just clone the ingredient directly
+    addIngredient({
+      name: copyName,
+      unit: ing.unit,
+      avgCost: ing.avgCost,
+      stock: 0,
+      minStock: ing.minStock,
+      idealStock: ing.idealStock,
+      supplierId: ing.supplierId,
+    })
     refresh()
   }
 
@@ -247,6 +278,7 @@ export default function EstoquePage() {
                           <IconBtn title="Entrada" onClick={() => openMovement(ing, "entrada")}><ArrowDownToLine className="h-4 w-4 text-emerald-600" /></IconBtn>
                           <IconBtn title="Saída" onClick={() => openMovement(ing, "saida")}><ArrowUpFromLine className="h-4 w-4 text-red-600" /></IconBtn>
                           <IconBtn title="Ajuste" onClick={() => openMovement(ing, "ajuste")}><SlidersHorizontal className="h-4 w-4 text-blue-600" /></IconBtn>
+                          <IconBtn title="Duplicar" onClick={() => duplicateIngredient(ing)}><Copy className="h-4 w-4 text-purple-500" /></IconBtn>
                           <IconBtn title="Editar" onClick={() => openEdit(ing)}><Pencil className="h-4 w-4 text-gray-500" /></IconBtn>
                           <IconBtn title="Excluir" onClick={() => removeIngredient(ing)}><Trash2 className="h-4 w-4 text-gray-400" /></IconBtn>
                         </div>
