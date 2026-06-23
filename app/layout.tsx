@@ -3,6 +3,7 @@ import { Inter, Bricolage_Grotesque } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
+import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider'
 import './globals.css'
 
 const inter = Inter({
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <CartProvider>
-          {children}
+          <SmoothScrollProvider>
+            {children}
+          </SmoothScrollProvider>
           <CartPanelLazy />
           <Toaster position="top-center" richColors />
         </CartProvider>
