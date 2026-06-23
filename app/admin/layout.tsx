@@ -13,6 +13,7 @@ import {
   Truck,
   Wallet,
   Users,
+  Tag,
   BarChart3,
   Settings,
   LogOut,
@@ -43,6 +44,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/compras", label: "Compras", icon: Truck, module: "compras" },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
   { href: "/admin/clientes", label: "Clientes", icon: Users, module: "clientes" },
+  { href: "/admin/cupons", label: "Cupons", icon: Tag, module: "cupons" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
 ]
@@ -57,6 +59,7 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/compras": "Compras",
   "/admin/financeiro": "Financeiro",
   "/admin/clientes": "Clientes",
+  "/admin/cupons": "Cupons",
   "/admin/relatorios": "Relatórios",
   "/admin/configuracoes": "Configurações",
 }

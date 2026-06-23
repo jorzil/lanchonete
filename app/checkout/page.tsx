@@ -58,13 +58,15 @@ function Section({ title, icon, children }: { title: string; icon?: React.ReactN
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee } = useCart()
+  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee, applyCoupon, removeCoupon } = useCart()
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', cpf: '', orderType: 'entrega', cep: '', street: '', number: '',
     complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponError, setCouponError] = useState('')
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
@@ -130,8 +132,14 @@ export default function CheckoutPage() {
       subtotal, deliveryFee, discount, total,
       status: 'novo',
       notes: form.notes,
+      coupon: coupon ?? undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+    }
+
+    // Increment coupon usage counter
+    if (coupon) {
+      try { const { incrementCouponUsage } = await import('@/lib/coupon-storage'); incrementCouponUsage(coupon.code) } catch {}
     }
 
     // Always save locally as fallback
@@ -323,6 +331,41 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="h-px bg-white/8 my-4" />
+
+                {/* Coupon input */}
+                {coupon ? (
+                  <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                    <div>
+                      <p className="text-xs text-emerald-400 font-semibold">Cupom aplicado</p>
+                      <p className="text-sm font-mono font-bold text-emerald-300">{coupon.code}</p>
+                    </div>
+                    <button onClick={removeCoupon} className="text-white/30 hover:text-white/60 text-xs underline">remover</button>
+                  </div>
+                ) : (
+                  <div className="mb-3 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Cupom de desconto"
+                      value={couponInput}
+                      onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError('') }}
+                      className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand font-mono uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!couponInput.trim()) return
+                        const ok = applyCoupon(couponInput)
+                        if (!ok) setCouponError('Cupom inválido, expirado ou não disponível.')
+                        else { setCouponInput(''); setCouponError('') }
+                      }}
+                      className="rounded-lg bg-white/8 border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/15 transition-colors"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                )}
+                {couponError && <p className="mb-2 text-xs text-red-400">{couponError}</p>}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}

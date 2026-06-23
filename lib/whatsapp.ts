@@ -34,7 +34,7 @@ export function generateOrderMessage(order: Order): string {
   lines.push('*💰 RESUMO FINANCEIRO:*')
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━')
   lines.push(`Subtotal: ${formatCurrency(order.subtotal)}`)
-  if (order.discount > 0) lines.push(`Desconto: -${formatCurrency(order.discount)}`)
+  if (order.discount > 0) lines.push(`Desconto: -${formatCurrency(order.discount)}${order.coupon ? ` (cupom: ${order.coupon.code})` : ''}`)
   lines.push(`Taxa de entrega: ${order.deliveryFee === 0 ? '✅ Grátis (Retirada)' : formatCurrency(order.deliveryFee)}`)
   lines.push(`\n*TOTAL: ${formatCurrency(order.total)}*`)
   lines.push('')

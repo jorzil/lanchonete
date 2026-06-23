@@ -2,13 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
-
-// Module-level constant — never recreated between renders
-const VALID_COUPONS: Coupon[] = [
-  { code: 'MAISSUB10',   discount: 10, type: 'percentage' },
-  { code: 'PRIMEIRODIA', discount: 5,  type: 'fixed'      },
-  { code: 'BEMVINDO',    discount: 15, type: 'percentage' },
-]
+import { validateCoupon, incrementCouponUsage } from '@/lib/coupon-storage'
 
 interface CartContextValue {
   items: CartItem[]
@@ -89,10 +83,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const closeCart = useCallback(() => setIsOpen(false), [])
 
   const applyCoupon = useCallback((code: string): boolean => {
-    const found = VALID_COUPONS.find((c) => c.code === code.toUpperCase().trim())
-    if (found) { setCoupon(found); return true }
+    const result = validateCoupon(code, subtotal)
+    if (result.valid && result.coupon) {
+      const c = result.coupon
+      setCoupon({ code: c.code, discount: c.discount, type: c.type === 'free_shipping' ? 'fixed' : c.type })
+      return true
+    }
     return false
-  }, [])
+  }, [subtotal])
   const removeCoupon = useCallback(() => setCoupon(null), [])
   const setDeliveryFee = useCallback((fee: number) => setDeliveryFeeState(fee), [])
 

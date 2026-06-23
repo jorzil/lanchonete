@@ -25,6 +25,7 @@ export type ModuleKey =
   | "compras"
   | "financeiro"
   | "clientes"
+  | "cupons"
   | "relatorios"
   | "configuracoes"
 
@@ -32,11 +33,11 @@ export type ModuleKey =
 export const ROLE_PERMISSIONS: Record<Role, ModuleKey[]> = {
   admin: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "relatorios", "configuracoes",
+    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes",
   ],
   gerente: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "relatorios",
+    "compras", "financeiro", "clientes", "cupons", "relatorios",
   ],
   atendente: ["dashboard", "pedidos", "pdv", "clientes"],
   estoque: ["dashboard", "estoque", "compras", "produtos"],
