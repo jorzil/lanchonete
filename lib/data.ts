@@ -41,7 +41,7 @@ export interface CartItem {
   image: string
 }
 
-export type OrderStatus = 'novo' | 'confirmado' | 'em-preparo' | 'saiu-para-entrega' | 'entregue' | 'cancelado'
+export type OrderStatus = 'novo' | 'aceito' | 'em_preparo' | 'pronto' | 'saiu_entrega' | 'entregue' | 'cancelado'
 
 export interface Address {
   cep: string; street: string; number: string; complement?: string

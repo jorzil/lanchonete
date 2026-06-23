@@ -5,29 +5,31 @@
 import type { Order, OrderStatus, PaymentMethod } from "@/lib/store"
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  novo: "Novo",
-  confirmado: "Confirmado",
-  "em-preparo": "Em preparo",
-  "saiu-para-entrega": "Saiu para entrega",
-  entregue: "Entregue",
-  cancelado: "Cancelado",
+  novo:         "Novo Pedido",
+  aceito:       "Aceito",
+  em_preparo:   "Em Preparo",
+  pronto:       "Pronto",
+  saiu_entrega: "Saiu p/ Entrega",
+  entregue:     "Entregue",
+  cancelado:    "Cancelado",
 }
 
-/** Classes Tailwind para os badges de status. */
 export const STATUS_STYLES: Record<OrderStatus, string> = {
-  novo: "bg-blue-100 text-blue-700 border-blue-200",
-  confirmado: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  "em-preparo": "bg-orange-100 text-orange-700 border-orange-200",
-  "saiu-para-entrega": "bg-indigo-100 text-indigo-700 border-indigo-200",
-  entregue: "bg-green-100 text-green-700 border-green-200",
-  cancelado: "bg-red-100 text-red-700 border-red-200",
+  novo:         "bg-orange-100 text-orange-700 border-orange-200",
+  aceito:       "bg-blue-100 text-blue-700 border-blue-200",
+  em_preparo:   "bg-purple-100 text-purple-700 border-purple-200",
+  pronto:       "bg-emerald-100 text-emerald-700 border-emerald-200",
+  saiu_entrega: "bg-cyan-100 text-cyan-700 border-cyan-200",
+  entregue:     "bg-green-100 text-green-700 border-green-200",
+  cancelado:    "bg-red-100 text-red-700 border-red-200",
 }
 
 export const STATUS_ORDER: OrderStatus[] = [
   "novo",
-  "confirmado",
-  "em-preparo",
-  "saiu-para-entrega",
+  "aceito",
+  "em_preparo",
+  "pronto",
+  "saiu_entrega",
   "entregue",
   "cancelado",
 ]
