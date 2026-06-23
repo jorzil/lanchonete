@@ -9,6 +9,7 @@ import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, type Product } from '@/lib/data'
 import { toast } from 'sonner'
+import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
 const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
 
@@ -77,8 +78,9 @@ export default function CardapioPage() {
   const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
   const [builderOpen, setBuilderOpen] = useState(false)
   const [sticky, setSticky] = useState(false)
+  const [idModalOpen, setIdModalOpen] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const { addItem } = useCart()
+  const { addItem, items, subtotal, total, deliveryFee, clearCart } = useCart()
 
   useEffect(() => {
     const obs = new IntersectionObserver(([e]) => setSticky(!e.isIntersecting), { threshold: 0 })
@@ -212,18 +214,32 @@ export default function CardapioPage() {
         <div className="border-t border-white/6 bg-navy-deep py-12">
           <div className="max-w-xl mx-auto px-5 text-center">
             <p className="text-white/30 text-[13.5px] mb-5">Prefere pedir pelo WhatsApp?</p>
-            <a
-              href="https://wa.me/5533984619205"
-              target="_blank" rel="noopener noreferrer"
+            <button
+              onClick={() => {
+                if (items.length === 0) {
+                  toast.error('Adicione itens ao carrinho antes de pedir pelo WhatsApp.')
+                  return
+                }
+                setIdModalOpen(true)
+              }}
               className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all hover:shadow-[0_0_30px_rgba(37,211,102,0.35)]"
             >
               💬 Pedir pelo WhatsApp
-            </a>
+            </button>
           </div>
         </div>
       </main>
       <Footer />
       <SandwichBuilder product={builderProduct} open={builderOpen} onClose={() => setBuilderOpen(false)} />
+      <IdentificationModal
+        open={idModalOpen}
+        onClose={() => setIdModalOpen(false)}
+        items={items}
+        subtotal={subtotal}
+        total={total}
+        deliveryFee={deliveryFee}
+        onSuccess={clearCart}
+      />
     </>
   )
 }
