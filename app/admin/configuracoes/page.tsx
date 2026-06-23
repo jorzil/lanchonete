@@ -22,7 +22,7 @@ interface Settings {
 
 const DEFAULT_SETTINGS: Settings = {
   companyName: "Mais Sub",
-  whatsapp: "(33) 99999-0000",
+  whatsapp: "(33) 8461-9205",
   address: "Rua Israel Pinheiro, 1000 - Centro, Governador Valadares - MG",
   hours: "Seg a Dom, 18h às 23h",
   deliveryFee: 6.0,

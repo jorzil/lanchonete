@@ -192,7 +192,7 @@ function PromoBanner() {
                 Pedir agora <ArrowRight size={15} />
               </button>
             </Link>
-            <a href="https://wa.me/5533999999999" target="_blank" rel="noopener noreferrer" className="block">
+            <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer" className="block">
               <button className="w-full inline-flex items-center justify-center gap-2 bg-white/95 hover:bg-white text-navy font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors">
                 Falar no WhatsApp
               </button>
@@ -325,7 +325,7 @@ function CtaFinal() {
                   Começar meu pedido <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
                 </button>
               </Link>
-              <a href="https://wa.me/5533999999999" target="_blank" rel="noopener noreferrer" className="block">
+              <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer" className="block">
                 <button className="w-full inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-8 py-4 rounded-full text-[14.5px] transition-colors">
                   Falar no WhatsApp
                 </button>

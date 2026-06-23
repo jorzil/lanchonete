@@ -20,7 +20,7 @@ export function Footer() {
           <p className="text-white/40 text-[13px] leading-relaxed mb-6 max-w-[220px]">
             Subs artesanais com ingredientes selecionados. Do seu jeito.
           </p>
-          <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
+          <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-brand/12 hover:bg-brand border border-brand/30 hover:border-brand text-brand hover:text-white text-[12.5px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
             <Phone size={13} />
             WhatsApp
@@ -79,7 +79,7 @@ export function Footer() {
             </li>
             <li className="flex items-center gap-2.5 text-[13px] text-white/45">
               <Phone size={14} className="text-brand shrink-0" />
-              <a href="https://wa.me/5511999999999" className="hover:text-white transition-colors">(33) 99999-9999</a>
+              <a href="https://wa.me/5533846192055" className="hover:text-white transition-colors">(33) 8461-9205</a>
             </li>
           </ul>
           <div className="flex gap-2">

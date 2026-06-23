@@ -1,7 +1,7 @@
 import type { CartItem, Order } from '@/lib/store'
 import { MENU, formatCurrency } from '@/lib/store'
 
-export const WHATSAPP_NUMBER = '5511999999999'
+export const WHATSAPP_NUMBER = '5533846192055'
 
 export function generateOrderMessage(order: Order): string {
   const lines: string[] = []

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,6 +52,7 @@ export default function PedidosPage() {
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Order | null>(null)
+  const [toDelete, setToDelete] = useState<Order | null>(null)
 
   useEffect(() => {
     setOrders(loadOrders())
@@ -74,6 +75,18 @@ export default function PedidosPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  function confirmDelete() {
+    if (!toDelete) return
+    const id = toDelete.id
+    setOrders((prev) => {
+      const next = prev.filter((o) => o.id !== id)
+      saveOrders(next)
+      return next
+    })
+    setSelected((prev) => (prev?.id === id ? null : prev))
+    setToDelete(null)
+  }
 
   function updateStatus(id: string, status: OrderStatus) {
     setOrders((prev) => {
@@ -183,9 +196,19 @@ export default function PedidosPage() {
                         </Select>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelected(o)}>
-                          <Eye className="mr-1 h-4 w-4" /> Detalhes
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setSelected(o)}>
+                            <Eye className="mr-1 h-4 w-4" /> Detalhes
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => setToDelete(o)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -228,17 +251,57 @@ export default function PedidosPage() {
         </>
       )}
 
+      {/* Modal confirmar exclusão */}
+      {toDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 mb-4">
+              <Trash2 className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Excluir pedido?</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              O pedido <strong>{toDelete.orderNumber}</strong> de{" "}
+              <strong>{toDelete.customer.name}</strong> será removido permanentemente.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setToDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
+                onClick={confirmDelete}
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal detalhe */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
         <DialogContent className="admin-theme max-h-[90vh] overflow-y-auto sm:max-w-lg">
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {selected.orderNumber}
-                  <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[selected.status])}>
-                    {STATUS_LABELS[selected.status]}
-                  </Badge>
+                <DialogTitle className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {selected.orderNumber}
+                    <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[selected.status])}>
+                      {STATUS_LABELS[selected.status]}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => setToDelete(selected)}
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" /> Excluir
+                  </Button>
                 </DialogTitle>
               </DialogHeader>
 
