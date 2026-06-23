@@ -10,6 +10,7 @@ import { ArrowRight, Star } from 'lucide-react'
 import { HeaderClient } from '@/components/layout/header-client'
 import { Footer } from '@/components/layout/footer'
 import { PRODUCTS } from '@/lib/data'
+import { SubAssembly } from '@/components/home/sub-assembly'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -821,6 +822,7 @@ export default function HomePage() {
       <main>
         <SceneHero />
         <SceneCategories />
+        <SubAssembly />
         <SceneHowItWorks />
         <SceneAbout />
         <SceneCTA />
