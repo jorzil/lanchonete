@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { StoreStatusWidget } from "@/components/admin/StoreStatusWidget"
 import {
   isAuthenticated,
   logout,
@@ -225,6 +226,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-3">
+            <StoreStatusWidget />
             <div className="hidden text-right sm:block">
               <p className="text-[13px] font-medium text-gray-800">{user?.name ?? "Administrador"}</p>
               <p className="text-[11px] text-gray-400">{user ? ROLE_LABELS[user.role] : ""}</p>

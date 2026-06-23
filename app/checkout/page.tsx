@@ -16,6 +16,7 @@ import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
 import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { getStoreStatus, computeIsOpen } from '@/lib/store-status'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -103,6 +104,14 @@ export default function CheckoutPage() {
     e.preventDefault()
     const err = validate()
     if (err) { toast.error(err); return }
+
+    // Check store status
+    const storeStatus = getStoreStatus()
+    if (!computeIsOpen(storeStatus)) {
+      toast.error('Estamos fechados no momento. Retornaremos em breve.')
+      return
+    }
+
     setSubmitting(true)
 
     const orderNumber = generateOrderNumber()
@@ -174,10 +183,18 @@ export default function CheckoutPage() {
     )
   }
 
+  const storeOpen = computeIsOpen(getStoreStatus())
+
   return (
     <><Header />
       <main className="pt-16 bg-navy min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {!storeOpen && (
+            <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-center">
+              <p className="text-lg font-bold text-red-400">🔴 Estamos fechados no momento</p>
+              <p className="mt-1 text-sm text-red-300/70">Retornaremos em breve. Você pode navegar pelo cardápio e montar seu pedido.</p>
+            </div>
+          )}
           <div className="mb-8">
             <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-brand transition-colors text-sm font-medium">
               <ArrowLeft size={16} />Voltar ao cardápio

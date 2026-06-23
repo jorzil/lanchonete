@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2, Bell, Wifi, WifiOff } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2, Bell, Wifi, WifiOff, Printer } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
 import { updateOrderStatus, deleteDbOrder } from "@/lib/db-orders"
+import { printOrder, getPrintSettings } from "@/lib/print-order"
 
 const PAGE_SIZE = 8
 
@@ -110,6 +111,17 @@ export default function PedidosPage() {
         loadAll()
         if (payload.eventType === "INSERT" && !prevOrderIds.current.has(payload.new.id)) {
           beep()
+          const settings = getPrintSettings()
+          if (settings.autoPrintOnNew) {
+            // order will be loaded in next render; trigger after state update
+            setTimeout(() => {
+              setOrders((prev) => {
+                const newOrder = prev.find((o) => o.id === payload.new.id)
+                if (newOrder) printOrder(newOrder)
+                return prev
+              })
+            }, 1000)
+          }
         }
       })
       .subscribe((status) => {
@@ -325,6 +337,14 @@ export default function PedidosPage() {
                             </Button>
                             <Button
                               variant="ghost" size="sm"
+                              className="text-blue-400 hover:text-blue-600 hover:bg-blue-50"
+                              onClick={() => printOrder(o)}
+                              title="Imprimir cupom"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost" size="sm"
                               className="text-red-400 hover:text-red-600 hover:bg-red-50"
                               onClick={() => setToDelete(o)}
                             >
@@ -437,15 +457,23 @@ export default function PedidosPage() {
                 </div>
               </div>
 
-              {/* WhatsApp */}
-              {WA_MESSAGES[selected.status] && (
+              {/* Actions row */}
+              <div className="flex gap-2">
                 <button
-                  onClick={() => sendWhatsApp(selected.customer.phone, selected.status)}
-                  className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+                  onClick={() => printOrder(selected)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-2.5 text-sm transition-colors"
                 >
-                  💬 Enviar mensagem WhatsApp
+                  <Printer size={15} /> Imprimir Cupom
                 </button>
-              )}
+                {WA_MESSAGES[selected.status] && (
+                  <button
+                    onClick={() => sendWhatsApp(selected.customer.phone, selected.status)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+                  >
+                    💬 WhatsApp
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
