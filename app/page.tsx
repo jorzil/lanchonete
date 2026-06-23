@@ -19,19 +19,19 @@ const CATEGORY_NAV = [
   {
     key: 'subs-15cm',
     label: 'Subs 15cm',
-    img: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=800&q=80&auto=format&fit=crop',
+    img: 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=800&q=80&auto=format&fit=crop',
     count: PRODUCTS.filter((p) => p.active && p.category === 'subs-15cm').length,
   },
   {
     key: 'subs-30cm',
     label: 'Subs 30cm',
-    img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&q=80&auto=format&fit=crop',
+    img: 'https://images.unsplash.com/photo-1621852004158-f3bc188ace2d?w=800&q=80&auto=format&fit=crop',
     count: PRODUCTS.filter((p) => p.active && p.category === 'subs-30cm').length,
   },
   {
     key: 'combos',
     label: 'Combos',
-    img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=800&q=80&auto=format&fit=crop',
+    img: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=800&q=80&auto=format&fit=crop',
     count: PRODUCTS.filter((p) => p.active && p.category === 'combos').length,
   },
   {
@@ -594,7 +594,7 @@ function SceneAbout() {
                 style={{ inset: '-60px' }}
               >
                 <Image
-                  src="https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=900&q=85&auto=format&fit=crop"
+                  src="https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=900&q=85&auto=format&fit=crop"
                   alt="Mais Sub artesanal"
                   fill
                   className="object-cover"
