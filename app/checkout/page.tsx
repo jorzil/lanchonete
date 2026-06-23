@@ -14,14 +14,15 @@ import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, generateOrderNumber, MENU, type PaymentMethod, type Order } from '@/lib/store'
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
 import { addOrder } from '@/lib/orders-storage'
+import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 
 type OrderType = 'entrega' | 'retirada'
 
 interface FormData {
-  name: string; phone: string; orderType: OrderType
+  name: string; phone: string; cpf: string; orderType: OrderType
   cep: string; street: string; number: string; complement: string
-  neighborhood: string; city: string; state: string
+  neighborhood: string; city: string; state: string; reference: string
   paymentMethod: PaymentMethod; notes: string
 }
 
@@ -58,8 +59,8 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee } = useCart()
   const [form, setForm] = useState<FormData>({
-    name: '', phone: '', orderType: 'entrega', cep: '', street: '', number: '',
-    complement: '', neighborhood: '', city: '', state: '', paymentMethod: 'pix', notes: ''
+    name: '', phone: '', cpf: '', orderType: 'entrega', cep: '', street: '', number: '',
+    complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -103,19 +104,58 @@ export default function CheckoutPage() {
     const err = validate()
     if (err) { toast.error(err); return }
     setSubmitting(true)
+
+    const orderNumber = generateOrderNumber()
+    const address = form.orderType === 'entrega'
+      ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state }
+      : undefined
+
     const order: Order = {
-      id: `order-${Date.now()}`, orderNumber: generateOrderNumber(), items,
+      id: `order-${Date.now()}`,
+      orderNumber,
+      items,
       customer: { name: form.name, phone: form.phone },
       orderType: form.orderType,
-      address: form.orderType === 'entrega' ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state } : undefined,
-      paymentMethod: form.paymentMethod, subtotal, deliveryFee, discount, total,
-      status: 'novo', notes: form.notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      address,
+      paymentMethod: form.paymentMethod,
+      subtotal, deliveryFee, discount, total,
+      status: 'novo',
+      notes: form.notes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
+
+    // Always save locally as fallback
     addOrder(order)
+
+    // Try to persist to Supabase if configured
+    if (supabaseConfigured) {
+      try {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber,
+            customerName: form.name,
+            customerPhone: form.phone,
+            customerCpf: form.cpf || undefined,
+            orderType: form.orderType,
+            items,
+            address: address ? { ...address, reference: form.reference } : undefined,
+            paymentMethod: form.paymentMethod,
+            subtotal, deliveryFee, discount, total,
+            notes: form.notes || undefined,
+          }),
+        })
+      } catch (err) {
+        console.error('Supabase save failed (order still saved locally):', err)
+      }
+    }
+
     const msg = generateOrderMessage(order)
     openWhatsApp(msg)
     clearCart()
-    toast.success(`Pedido ${order.orderNumber} realizado com sucesso!`)
+    toast.success(`Pedido ${orderNumber} realizado com sucesso!`)
     setTimeout(() => { setSubmitting(false); router.push('/') }, 1500)
   }
 
@@ -157,8 +197,12 @@ export default function CheckoutPage() {
                     <Label htmlFor="phone" className="text-white/50">WhatsApp *</Label>
                     <div className="relative">
                       <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
-                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
+                      <Input id="phone" placeholder="(33) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf" className="text-white/50">CPF <span className="text-white/25">(opcional)</span></Label>
+                    <Input id="cpf" placeholder="000.000.000-00" value={form.cpf} onChange={set('cpf')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                   </div>
                 </div>
               </Section>
@@ -202,7 +246,11 @@ export default function CheckoutPage() {
                     <div className="grid sm:grid-cols-3 gap-3">
                       <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
                       <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
-                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="MG" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reference" className="text-white/50">Ponto de referência <span className="text-white/25">(opcional)</span></Label>
+                      <Input id="reference" placeholder="Ex: próximo ao Supermercado X, casa azul..." value={form.reference} onChange={set('reference')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
                   </div>
                 )}
