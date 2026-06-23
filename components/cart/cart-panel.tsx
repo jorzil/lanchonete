@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
-import { formatCartForWhatsApp, openWhatsApp } from '@/lib/whatsapp'
 import { toast } from 'sonner'
 
 // O(1) lookup Maps — built once, never recreated
@@ -146,9 +145,6 @@ export function CartPanel() {
                     Finalizar Pedido
                   </Button>
                 </Link>
-                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} className="w-full border-2 border-green-400 text-green-700 hover:bg-green-50 rounded-xl font-black bg-white transition-all">
-                  Pedir via WhatsApp
-                </Button>
               </div>
             </div>
           </>
