@@ -110,22 +110,88 @@ export const MENU = {
 
 // ─── PRODUCTS ─────────────────────────────────────────────────────────────────
 export const PRODUCTS: Product[] = [
-  // Subs 15cm
-  { id: 'sub-15-frango', name: 'Frango com Cream Cheese', description: 'Frango grelhado, cream cheese cremoso, saladas frescas no pão artesanal tostado', price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=800&q=90&auto=format&fit=crop', category: 'subs-15cm', active: false, badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' } },
-  { id: 'sub-15-lombo',  name: 'Lombo Defumado',          description: 'Lombo suíno defumado artesanalmente, mussarela derretida, pão quentinho',             price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1621852004158-f3bc188ace2d?w=800&q=90&auto=format&fit=crop', category: 'subs-15cm', active: false, badge: { label: '⭐ Destaque',  color: 'bg-amber-500' } },
-  { id: 'sub-15-carne',  name: 'Carne Suprema',           description: 'Carne bovina premium, requeijão cremoso, tomate e alface no pão especial',             price: 21.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=800&q=90&auto=format&fit=crop', category: 'subs-15cm', active: false, badge: { label: '🆕 Novo',      color: 'bg-green-500' } },
-  // Subs 30cm
-  { id: 'sub-30-frango', name: 'Frango com Cream Cheese', description: 'Versão família — frango grelhado, cream cheese, legumes frescos no pão artesanal',     price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1604467794349-0b74285de7e7?w=800&q=90&auto=format&fit=crop', category: 'subs-30cm', active: false, badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' } },
-  { id: 'sub-30-lombo',  name: 'Lombo Defumado',          description: 'Versão família — lombo defumado, queijo derretido, saladas e molho especial',          price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1567234669003-dce7a7a88821?w=800&q=90&auto=format&fit=crop', category: 'subs-30cm', active: false },
-  { id: 'sub-30-carne',  name: 'Carne Suprema',           description: 'Versão família — carne premium, requeijão cremoso, vegetais frescos',                  price: 37.9, image: '🥖', imageUrl: 'https://images.unsplash.com/photo-1619096252214-ef06c45683e3?w=800&q=90&auto=format&fit=crop', category: 'subs-30cm', active: false, badge: { label: '🆕 Novo',      color: 'bg-green-500' } },
-  // Combos
-  { id: 'combo-15-refri',name: 'Combo Classic',           description: 'Sub 15cm de sua escolha + refrigerante gelado 350ml. Perfeito para o dia a dia',       price: 29.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=800&q=90&auto=format&fit=crop', category: 'combos',   active: false, badge: { label: '⚡ Econômico', color: 'bg-blue-500' } },
-  { id: 'combo-30-refri',name: 'Combo Premium',           description: 'Sub 30cm de sua escolha + refrigerante gelado 350ml. O combo completo',                 price: 45.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?w=800&q=90&auto=format&fit=crop', category: 'combos',   active: false },
-  { id: 'combo-duplo',   name: 'Combo Duplo',             description: '2 Subs 15cm + 2 refrigerantes 350ml. Ideal para compartilhar',                         price: 54.9, image: '🎁', imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=90&auto=format&fit=crop', category: 'combos',   active: false, badge: { label: '💥 Oferta',   color: 'bg-purple-600' } },
-  // Bebidas
-  { id: 'refri-lata',    name: 'Refrigerante 350ml',      description: 'Coca-Cola, Guaraná Antarctica, Sprite ou Fanta bem gelados',                           price: 6.0,  image: '🥤', imageUrl: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=800&q=90&auto=format&fit=crop', category: 'bebidas',  active: false },
-  { id: 'agua',          name: 'Água Mineral 500ml',      description: 'Água mineral natural sem gás, gelada e refrescante',                                    price: 4.0,  image: '💧', imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=90&auto=format&fit=crop', category: 'bebidas',  active: false },
-  { id: 'suco',          name: 'Suco Natural 400ml',      description: 'Laranja, Limão ou Maracujá espremidos na hora',                                         price: 9.0,  image: '🍊', imageUrl: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=800&q=90&auto=format&fit=crop', category: 'bebidas',  active: false },
+  // ── Subs 15cm ───────────────────────────────────────────────────────────────
+  {
+    id: 'sub-15-bacon-bbq', name: 'Bacon com Barbecue',
+    description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+    badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
+  },
+  {
+    id: 'sub-15-lombo-especial', name: 'Lombo Especial',
+    description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+  },
+  {
+    id: 'sub-15-frango-ranch', name: 'Frango Ranch',
+    description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+  },
+  {
+    id: 'sub-15-italiano', name: 'Italiano Premium',
+    description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+    badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
+  },
+  {
+    id: 'sub-15-lombo-defumado', name: 'Lombo Defumado',
+    description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+  },
+  {
+    id: 'sub-15-frango-mais', name: 'Frango Coma+',
+    description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+    badge: { label: '🆕 Novo', color: 'bg-green-500' },
+  },
+  {
+    id: 'sub-15-ipanema', name: 'Ipanema',
+    description: 'Carne suprema com cream cheese, mussarela, bacon, picles, baconese e barbecue',
+    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+  },
+  // ── Subs 30cm ───────────────────────────────────────────────────────────────
+  {
+    id: 'sub-30-bacon-bbq', name: 'Bacon com Barbecue',
+    description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+    badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
+  },
+  {
+    id: 'sub-30-lombo-especial', name: 'Lombo Especial',
+    description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-30-frango-ranch', name: 'Frango Ranch',
+    description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-30-italiano', name: 'Italiano Premium',
+    description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+    badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
+  },
+  {
+    id: 'sub-30-lombo-defumado', name: 'Lombo Defumado',
+    description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-30-frango-mais', name: 'Frango Coma+',
+    description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+    badge: { label: '🆕 Novo', color: 'bg-green-500' },
+  },
+  {
+    id: 'sub-30-ipanema', name: 'Ipanema',
+    description: 'Carne suprema com cream cheese, mussarela, bacon, picles, baconese e barbecue',
+    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+  },
+  // ── Bebidas ─────────────────────────────────────────────────────────────────
+  { id: 'refri-lata',  name: 'Refrigerante 350ml',  description: 'Coca-Cola, Guaraná Antarctica, Sprite ou Fanta bem gelados', price: 6.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'agua',        name: 'Água Mineral 500ml',  description: 'Água mineral natural sem gás, gelada e refrescante',         price: 4.0, image: '💧', category: 'bebidas', active: true },
+  { id: 'suco',        name: 'Suco Natural 400ml',  description: 'Laranja, Limão ou Maracujá espremidos na hora',              price: 9.0, image: '🍊', category: 'bebidas', active: true },
 ]
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────

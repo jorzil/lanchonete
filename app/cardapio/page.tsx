@@ -14,11 +14,11 @@ import { IdentificationModal } from '@/components/cart/IdentificationModal'
 const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
 
 const CATS = [
-  { key: 'all',       label: 'Tudo',      count: PRODUCTS.filter(p => p.active).length },
-  { key: 'subs-15cm', label: 'Subs 15cm', count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
-  { key: 'subs-30cm', label: 'Subs 30cm', count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
-  { key: 'combos',    label: 'Combos',    count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
-  { key: 'bebidas',   label: 'Bebidas',   count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
+  { key: 'all',       label: 'Tudo',           count: PRODUCTS.filter(p => p.active).length },
+  { key: 'monte',     label: 'Monte Seu Sub',  count: 2 },
+  { key: 'subs-15cm', label: 'Subs 15cm',      count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'subs-30cm', label: 'Subs 30cm',      count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
+  { key: 'bebidas',   label: 'Bebidas',        count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]
 
 function ProductCard({ product, onCustomize, onAdd }: {
@@ -88,7 +88,9 @@ export default function CardapioPage() {
     return () => obs.disconnect()
   }, [])
 
+  const showMonte = active === 'all' || active === 'monte'
   const filtered = useMemo(() => {
+    if (active === 'monte') return []
     let list = PRODUCTS.filter(p => p.active)
     if (active !== 'all') list = list.filter(p => p.category === active)
     if (search.trim()) {
@@ -123,7 +125,7 @@ export default function CardapioPage() {
                 Cardápio
               </h1>
               <p className="text-white/35 text-[15px] max-w-md leading-relaxed mb-8">
-                Subs 15cm e 30cm, combos e bebidas. Personalize cada detalhe do seu jeito.
+                Subs prontos ou monte do seu jeito — 15cm e 30cm, com os ingredientes que você quiser.
               </p>
               {/* Search */}
               <div className="relative max-w-sm">
@@ -179,21 +181,72 @@ export default function CardapioPage() {
             {search && <> para <span className="font-bold text-white/60">&ldquo;{search}&rdquo;</span></>}
           </p>
 
-          {filtered.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-              {filtered.map((product, i) => (
-                <div
-                  key={product.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}
-                >
-                  <ProductCard
-                    product={product}
-                    onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
-                    onAdd={handleAdd}
-                  />
+          {(showMonte || filtered.length > 0) ? (
+            <div className="space-y-8">
+              {/* Monte Seu Sub cards */}
+              {showMonte && (
+                <div>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Monte Seu Sub</h2>
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {([
+                      { size: '15cm' as const, price: 21.9, desc: 'Escolha pão, carne, queijo, saladas, molhos e extras — tudo do seu jeito' },
+                      { size: '30cm' as const, price: 37.9, desc: 'Versão família — personalize cada detalhe do seu sub tamanho família' },
+                    ] as { size: '15cm' | '30cm'; price: number; desc: string }[]).map(({ size, price, desc }) => {
+                      const dummyProduct: Product = {
+                        id: `monte-${size}`, name: `Monte Seu Sub ${size}`,
+                        description: desc, price, image: '🥖',
+                        category: size === '15cm' ? 'subs-15cm' : 'subs-30cm', active: true,
+                      }
+                      return (
+                        <div key={size} className="animate-slide-up">
+                          <div
+                            onClick={() => { setBuilderProduct(dummyProduct); setBuilderOpen(true) }}
+                            className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border-2 border-brand/30 hover:border-brand/70 hover:shadow-[0_0_40px_rgba(238,92,19,0.15)] transition-all duration-300 cursor-pointer"
+                          >
+                            <div className="relative aspect-[4/3] bg-gradient-to-br from-brand/20 to-navy-deep flex items-center justify-center">
+                              <span className="text-5xl">🥖</span>
+                              <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+                                Personalize
+                              </span>
+                            </div>
+                            <div className="p-4 flex flex-col flex-1">
+                              <h3 className="font-bold text-white text-[14px] leading-snug mb-1">Monte Seu Sub {size}</h3>
+                              <p className="text-white/35 text-[12px] leading-relaxed line-clamp-2 flex-1">{desc}</p>
+                              <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-white/6">
+                                <div>
+                                  <p className="text-[9px] text-white/25 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
+                                  <p className="text-[17px] font-black text-white">{formatCurrency(price)}</p>
+                                </div>
+                                <span className="text-[12px] font-bold bg-brand text-white px-3 py-1.5 rounded-lg group-hover:bg-brand-hover transition-colors">
+                                  Montar
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              ))}
+              )}
+
+              {/* Produtos prontos */}
+              {filtered.length > 0 && (
+                <div>
+                  {showMonte && <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+                    {filtered.map((product, i) => (
+                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                        <ProductCard
+                          product={product}
+                          onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
+                          onAdd={handleAdd}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="animate-slide-up-sm py-24 text-center">
