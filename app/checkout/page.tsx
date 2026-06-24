@@ -299,13 +299,6 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
-                {form.paymentMethod === 'pix' && (
-                  <div className="mt-4 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/15">
-                    <div className="text-4xl mb-2">📱</div>
-                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-brand font-bold">maissub@email.com</span></p>
-                    <p className="text-xs text-white/30 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
-                  </div>
-                )}
               </Section>
 
               <Section title="Observações" delay={0.24}>
