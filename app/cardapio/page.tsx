@@ -238,12 +238,30 @@ export default function CardapioPage() {
                 </div>
               )}
 
-              {/* Produtos prontos */}
-              {filtered.length > 0 && (
+              {/* Subs Prontos */}
+              {filtered.filter(p => p.category !== 'bebidas').length > 0 && (
                 <div>
                   {showMonte && <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                    {filtered.map((product, i) => (
+                    {filtered.filter(p => p.category !== 'bebidas').map((product, i) => (
+                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                        <ProductCard
+                          product={product}
+                          onBread={p => setBreadProduct(p)}
+                          onAdd={handleAdd}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bebidas */}
+              {filtered.filter(p => p.category === 'bebidas').length > 0 && (
+                <div>
+                  <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Bebidas</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+                    {filtered.filter(p => p.category === 'bebidas').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={product}

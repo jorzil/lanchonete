@@ -180,7 +180,28 @@ function SceneHero() {
       />
 
       <div className="relative flex-1 flex items-center max-w-7xl mx-auto px-5 sm:px-8 pt-28 pb-28 w-full">
-        <div className="w-full max-w-[900px]">
+        {/* Hero product image — right side */}
+        <motion.div
+          initial={{ opacity: 0, x: 40, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute right-0 sm:right-8 bottom-0 top-16 hidden lg:flex items-center pointer-events-none"
+          style={{ transform: `translate(${mouse.x * -0.4}px,${mouse.y * -0.3}px)`, transition: 'transform 0.18s linear' }}
+        >
+          <div className="relative w-[480px] h-[340px] rounded-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)] border border-white/8">
+            <Image
+              src="/bacon-barbecue.jpg"
+              alt="Sub Mais"
+              fill
+              className="object-cover"
+              sizes="480px"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-navy/60" />
+          </div>
+        </motion.div>
+
+        <div className="w-full max-w-[640px]">
           {/* Eyebrow pill */}
           <motion.div
             initial={{ opacity: 0, y: 18 }}
