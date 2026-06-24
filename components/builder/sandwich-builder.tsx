@@ -15,11 +15,12 @@ interface SandwichBuilderProps {
 }
 
 const STEPS = [
-  { id: 1, title: 'Pão',    emoji: '🍞', required: true  },
-  { id: 2, title: 'Carne',  emoji: '🥩', required: true  },
-  { id: 3, title: 'Queijo', emoji: '🧀', required: true  },
-  { id: 4, title: 'Salada', emoji: '🥗', required: false },
-  { id: 5, title: 'Molhos', emoji: '🥫', required: false },
+  { id: 1, title: 'Pão',         emoji: '🍞', required: true  },
+  { id: 2, title: 'Carne',       emoji: '🥩', required: false },
+  { id: 3, title: 'Queijo',      emoji: '🧀', required: false },
+  { id: 4, title: 'Salada',      emoji: '🥗', required: false },
+  { id: 5, title: 'Molhos',      emoji: '🥫', required: false },
+  { id: 6, title: 'Observação',  emoji: '📝', required: false },
 ]
 
 const DEFAULT_CUSTOMIZATION: SubCustomization = {
@@ -30,6 +31,7 @@ const DEFAULT_CUSTOMIZATION: SubCustomization = {
   salads: [],
   sauces: [],
   extras: {},
+  notes: '',
 }
 
 const ALL_SALAD_KEYS = MENU.salads.filter((s) => s.key !== 'salada-completa').map((s) => s.key)
@@ -74,8 +76,6 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
 
   const isStepValid = (s: number): boolean => {
     if (s === 1) return customization.bread !== ''
-    if (s === 2) return customization.meat !== ''
-    if (s === 3) return customization.cheeses.length > 0
     return true
   }
 
@@ -98,20 +98,13 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
   const handleBack = () => setStep((s) => Math.max(1, s - 1))
 
   const handleAddToCart = () => {
-    const missingSteps: number[] = []
-    if (!isStepValid(1)) missingSteps.push(1)
-    if (!isStepValid(2)) missingSteps.push(2)
-    if (!isStepValid(3)) missingSteps.push(3)
-
-    if (missingSteps.length > 0) {
-      const newErrors: Record<number, boolean> = {}
-      missingSteps.forEach((s) => { newErrors[s] = true })
-      setErrors(newErrors)
-      setStep(missingSteps[0])
+    if (!isStepValid(1)) {
+      setErrors({ 1: true })
+      setStep(1)
       return
     }
 
-    const meatName  = _meatMap.get(customization.meat)?.name || ''
+    const meatName  = customization.meat ? (_meatMap.get(customization.meat)?.name || '') : 'Sem carne'
     const breadName = _breadMap.get(customization.bread)?.name || ''
     const itemName  = product ? product.name : `Sub ${size} — ${meatName}`
     addItem({
@@ -120,6 +113,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       price: total,
       quantity: 1,
       customization: { ...customization, size },
+      notes: customization.notes || undefined,
       image: '🥖',
     })
     toast.success('Sub adicionado ao carrinho!', {
@@ -188,6 +182,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       const s = _sauceMap.get(sk)
       if (s) lines.push({ emoji: SAUCE_EMOJIS[sk] || '🥫', label: s.name })
     })
+    if (customization.notes) lines.push({ emoji: '📝', label: customization.notes })
     return lines
   }, [customization, cheeseExtraPrice])
 
@@ -264,10 +259,11 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                 <h2 className="text-lg font-black text-gray-900 leading-tight">{STEPS[step - 1].title}</h2>
                 <p className="text-[12px] text-gray-400 leading-tight mt-0.5">
                   {step === 1 && 'Escolha o tipo de pão — obrigatório'}
-                  {step === 2 && 'Escolha a carne principal — obrigatório'}
-                  {step === 3 && 'Mínimo 1 queijo obrigatório'}
+                  {step === 2 && 'Opcional — pode pedir sem carne'}
+                  {step === 3 && 'Opcional — pode pedir sem queijo'}
                   {step === 4 && 'Opcional — escolha à vontade'}
                   {step === 5 && `Opcional — máximo ${sauceMax} molhos`}
+                  {step === 6 && 'Algum detalhe especial? Escreva aqui'}
                 </p>
               </div>
               {!STEPS[step - 1].required && (
@@ -323,6 +319,24 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             {/* ── Step 2: Carne ── */}
             {step === 2 && (
               <div className="space-y-3">
+                {/* Sem carne */}
+                <button
+                  onClick={() => setCustomization(p => ({ ...p, meat: '' }))}
+                  className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all active:scale-[0.99] hover:scale-[1.01] ${
+                    customization.meat === ''
+                      ? 'border-gray-400 bg-gray-50 shadow-md ring-1 ring-gray-300'
+                      : 'border-dashed border-gray-200 bg-white hover:border-gray-400/60'
+                  }`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl shadow-sm shrink-0">🚫</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-gray-700 text-base leading-tight">Sem carne</div>
+                    <div className="text-gray-400 text-xs mt-1">Pular esta etapa</div>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${customization.meat === '' ? 'bg-gray-500 border-gray-500 shadow-md' : 'border-gray-300'}`}>
+                    {customization.meat === '' && <Check size={13} className="text-white" />}
+                  </div>
+                </button>
                 {MENU.meats.map((meat) => {
                   const selected = customization.meat === meat.key
                   const grad     = MEAT_GRADIENTS[meat.key] ?? 'from-orange-100 to-red-100'
@@ -357,6 +371,24 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             {/* ── Step 3: Queijo ── */}
             {step === 3 && (
               <div>
+                {/* Sem queijo */}
+                <button
+                  onClick={() => setCustomization(p => ({ ...p, cheeses: [] }))}
+                  className={`w-full mb-3 p-4 rounded-2xl border-2 text-left flex items-center gap-4 transition-all active:scale-[0.99] hover:scale-[1.01] ${
+                    customization.cheeses.length === 0
+                      ? 'border-gray-400 bg-gray-50 shadow-md ring-1 ring-gray-300'
+                      : 'border-dashed border-gray-200 bg-white hover:border-gray-400/60'
+                  }`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl shadow-sm shrink-0">🚫</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-black text-gray-700 text-base leading-tight">Sem queijo</div>
+                    <div className="text-gray-400 text-xs mt-1">Pular esta etapa</div>
+                  </div>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${customization.cheeses.length === 0 ? 'bg-gray-500 border-gray-500 shadow-md' : 'border-gray-300'}`}>
+                    {customization.cheeses.length === 0 && <Check size={13} className="text-white" />}
+                  </div>
+                </button>
                 <div className="mb-4 p-3.5 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-2.5">
                   <span className="text-base shrink-0 mt-0.5">💡</span>
                   <p className="text-sm text-amber-800">
@@ -537,6 +569,24 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     <span className="text-base">✅</span>
                     <p className="text-sm font-bold text-brand">Limite de {sauceMax} molhos atingido!</p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Step 6: Observação ── */}
+            {step === 6 && (
+              <div className="space-y-4">
+                <textarea
+                  value={customization.notes ?? ''}
+                  onChange={e => setCustomization(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Ex: sem cebola, pão bem tostado, molho à parte..."
+                  rows={5}
+                  maxLength={300}
+                  className="w-full rounded-2xl border-2 border-gray-200 focus:border-brand outline-none p-4 text-gray-800 text-sm placeholder:text-gray-300 resize-none transition-colors"
+                />
+                <p className="text-right text-xs text-gray-300">{(customization.notes ?? '').length}/300</p>
+                {!customization.notes && (
+                  <p className="text-center text-sm text-gray-400 mt-4">Sem observações? Tudo bem — clique em <strong>Adicionar</strong>.</p>
                 )}
               </div>
             )}

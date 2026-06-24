@@ -29,6 +29,7 @@ export function generateOrderMessage(order: Order): string {
       if (c.sauces && c.sauces.length > 0) { lines.push(`   🥫 Molhos: ${c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', ')}`) } else { lines.push('   🥫 Molhos: Sem molho') }
       const extras = Object.entries(c.extras || {}).filter(([, qty]) => qty > 0)
       if (extras.length > 0) lines.push(`   ➕ Extras: ${extras.map(([key, qty]) => { const extra = MENU.extras.find((e) => e.key === key); const price = c.size === '15cm' ? extra?.price15cm : extra?.price30cm; return `${extra?.name || key} x${qty} (+${formatCurrency((price || 0) * qty)})` }).join(', ')}`)
+      if (c.notes) lines.push(`   📝 Obs: ${c.notes}`)
     }
     lines.push(`   💰 Valor: ${formatCurrency(item.price * item.quantity)}`)
   })

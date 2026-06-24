@@ -17,6 +17,7 @@ export interface SubCustomization {
   salads: string[]
   sauces: string[]
   extras: Record<string, number>
+  notes?: string
 }
 
 export interface Product {
