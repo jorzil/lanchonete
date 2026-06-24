@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const configured = URL.length > 10 && KEY.length > 20
+const configured = URL.startsWith('https://') && KEY.length > 10
 
 const SCHEMA_SQL = `-- Cole este SQL no Supabase → SQL Editor → New Query
 

@@ -4,9 +4,9 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
 
 export const supabaseConfigured =
-  url.length > 10 &&
+  url.startsWith('https://') &&
   !url.includes('placeholder') &&
-  key.length > 20 &&
+  key.length > 10 &&
   !key.includes('placeholder')
 
 export const supabase = supabaseConfigured
