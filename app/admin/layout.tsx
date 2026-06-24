@@ -18,6 +18,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  Activity,
   Sandwich,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -47,6 +48,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/cupons", label: "Cupons", icon: Tag, module: "cupons" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
+  { href: "/admin/setup", label: "Diagnóstico", icon: Activity, module: "setup" },
 ]
 
 const BREADCRUMBS: Record<string, string> = {

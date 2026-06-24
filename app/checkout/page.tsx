@@ -107,13 +107,6 @@ export default function CheckoutPage() {
     const err = validate()
     if (err) { toast.error(err); return }
 
-    // Check store status
-    const storeStatus = getStoreStatus()
-    if (!computeIsOpen(storeStatus)) {
-      toast.error('Estamos fechados no momento. Retornaremos em breve.')
-      return
-    }
-
     setSubmitting(true)
 
     const orderNumber = generateOrderNumber()
@@ -148,7 +141,7 @@ export default function CheckoutPage() {
     // Try to persist to Supabase if configured
     if (supabaseConfigured) {
       try {
-        await fetch('/api/orders', {
+        const res = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -164,8 +157,14 @@ export default function CheckoutPage() {
             notes: form.notes || undefined,
           }),
         })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.error('Supabase save failed:', body)
+          toast.warning('Pedido salvo localmente, mas houve erro no banco. Admin: verifique /admin/setup')
+        }
       } catch (err) {
         console.error('Supabase save failed (order still saved locally):', err)
+        toast.warning('Pedido salvo localmente. Admin: verifique a conexão em /admin/setup')
       }
     }
 

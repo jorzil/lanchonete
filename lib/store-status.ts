@@ -53,8 +53,8 @@ export function getStoreStatus(): StoreStatus {
 function buildDefault(): StoreStatus {
   const schedule = DEFAULT_SCHEDULE
   return {
-    isOpen: computeIsOpen({ isOpen: false, manualOverride: null, schedule, updatedAt: '' }),
-    manualOverride: null,
+    isOpen: true,
+    manualOverride: true, // open by default until admin explicitly closes
     schedule,
     updatedAt: new Date().toISOString(),
   }

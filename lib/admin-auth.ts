@@ -28,12 +28,13 @@ export type ModuleKey =
   | "cupons"
   | "relatorios"
   | "configuracoes"
+  | "setup"
 
 // Permissões por papel: quais módulos cada papel pode acessar.
 export const ROLE_PERMISSIONS: Record<Role, ModuleKey[]> = {
   admin: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes",
+    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes", "setup",
   ],
   gerente: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
