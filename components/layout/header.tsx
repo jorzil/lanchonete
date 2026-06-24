@@ -41,9 +41,8 @@ export function Header() {
       }`}>
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-6">
 
-          <Link href="/" className="flex items-center shrink-0 gap-2">
-            <MBadge size={28} />
-            <MaisSubMark className="text-[18px]" />
+          <Link href="/" className="flex items-center shrink-0">
+            <MaisSubMark />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -86,9 +85,8 @@ export function Header() {
         mobileOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'
       }`}>
         <div className="flex items-center justify-between h-16 px-5 border-b border-white/8">
-          <div className="flex items-center gap-2">
-            <MBadge size={26} />
-            <MaisSubMark className="text-[18px]" />
+          <div className="flex items-center">
+            <MaisSubMark />
           </div>
           <button onClick={() => setMobileOpen(false)} className="p-1 text-white/55 hover:text-white">
             <X size={20} />

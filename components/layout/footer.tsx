@@ -5,17 +5,11 @@ import { MaisSubMark, MBadge } from '@/components/brand/logo'
 export function Footer() {
   return (
     <footer className="relative bg-navy-deep border-t border-white/8 overflow-hidden">
-      {/* Decorative big M */}
-      <div className="absolute -right-12 -top-12 opacity-[0.04] pointer-events-none">
-        <MBadge size={320} />
-      </div>
-
       <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
 
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <MBadge size={32} />
-            <MaisSubMark className="text-[18px]" />
+          <div className="mb-5">
+            <MaisSubMark />
           </div>
           <p className="text-white/40 text-[13px] leading-relaxed mb-6 max-w-[220px]">
             Subs artesanais com ingredientes selecionados. Do seu jeito.
