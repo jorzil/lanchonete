@@ -205,8 +205,15 @@ export default function CardapioPage() {
                             onClick={() => { setBuilderProduct(dummyProduct); setBuilderOpen(true) }}
                             className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border-2 border-brand/30 hover:border-brand/70 hover:shadow-[0_0_40px_rgba(238,92,19,0.15)] transition-all duration-300 cursor-pointer"
                           >
-                            <div className="relative aspect-[4/3] bg-gradient-to-br from-brand/20 to-navy-deep flex items-center justify-center">
-                              <span className="text-5xl">🥖</span>
+                            <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
+                              <Image
+                                src={size === '15cm' ? '/15 cm.jpg' : '/30 cm.jpg'}
+                                alt={`Monte Seu Sub ${size}`}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width:640px) 50vw,33vw"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-navy-surface/40 via-transparent to-transparent" />
                               <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
                                 Personalize
                               </span>
