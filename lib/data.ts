@@ -117,34 +117,34 @@ export const PRODUCTS: Product[] = [
   {
     id: 'sub-15-bacon-bbq', name: 'Bacon com Barbecue',
     description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
-    price: 21.9, image: '🥖', imageUrl: '/products/bacon-barbecue.jpg', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/bacon-barbecue.jpg', category: 'subs-15cm', active: true,
     badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
   },
   {
     id: 'sub-15-lombo-especial', name: 'Lombo Especial',
     description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
-    price: 21.9, image: '🥖', imageUrl: '/products/lombo-especial.jpg', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/lombo-especial.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-15-frango-ranch', name: 'Frango Ranch',
     description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
-    price: 21.9, image: '🥖', imageUrl: '/products/frango-ranch.jpg', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/frango-ranch.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-15-italiano', name: 'Italiano Premium',
     description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
-    price: 21.9, image: '🥖', imageUrl: '/products/italiano-premium.jpg', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/italiano-premium.jpg', category: 'subs-15cm', active: true,
     badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
   },
   {
     id: 'sub-15-lombo-defumado', name: 'Lombo Defumado',
     description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
-    price: 21.9, image: '🥖', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/lombo-defumado.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-15-frango-mais', name: 'Frango Coma+',
     description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
-    price: 21.9, image: '🥖', imageUrl: '/products/frango-mais.jpg', category: 'subs-15cm', active: true,
+    price: 21.9, image: '🥖', imageUrl: '/frango-coma.jpg', category: 'subs-15cm', active: true,
     badge: { label: '🆕 Novo', color: 'bg-green-500' },
   },
   {
@@ -156,34 +156,34 @@ export const PRODUCTS: Product[] = [
   {
     id: 'sub-30-bacon-bbq', name: 'Bacon com Barbecue',
     description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
-    price: 37.9, image: '🥖', imageUrl: '/products/bacon-barbecue.jpg', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/bacon-barbecue.jpg', category: 'subs-30cm', active: true,
     badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
   },
   {
     id: 'sub-30-lombo-especial', name: 'Lombo Especial',
     description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
-    price: 37.9, image: '🥖', imageUrl: '/products/lombo-especial.jpg', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/lombo-especial.jpg', category: 'subs-30cm', active: true,
   },
   {
     id: 'sub-30-frango-ranch', name: 'Frango Ranch',
     description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
-    price: 37.9, image: '🥖', imageUrl: '/products/frango-ranch.jpg', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/frango-ranch.jpg', category: 'subs-30cm', active: true,
   },
   {
     id: 'sub-30-italiano', name: 'Italiano Premium',
     description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
-    price: 37.9, image: '🥖', imageUrl: '/products/italiano-premium.jpg', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/italiano-premium.jpg', category: 'subs-30cm', active: true,
     badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
   },
   {
     id: 'sub-30-lombo-defumado', name: 'Lombo Defumado',
     description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
-    price: 37.9, image: '🥖', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/lombo-defumado.jpg', category: 'subs-30cm', active: true,
   },
   {
     id: 'sub-30-frango-mais', name: 'Frango Coma+',
     description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
-    price: 37.9, image: '🥖', imageUrl: '/products/frango-mais.jpg', category: 'subs-30cm', active: true,
+    price: 37.9, image: '🥖', imageUrl: '/frango-coma.jpg', category: 'subs-30cm', active: true,
     badge: { label: '🆕 Novo', color: 'bg-green-500' },
   },
   {
