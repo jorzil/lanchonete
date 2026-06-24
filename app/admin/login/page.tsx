@@ -52,13 +52,13 @@ export default function AdminLoginPage() {
         <div className="rounded-2xl border border-gray-200 bg-white p-7 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] text-gray-600">Email</Label>
+              <Label htmlFor="email" className="text-[13px] text-gray-600">Usuário</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="admin@maissub.com.br"
+                  type="text"
+                  placeholder="Usuário"
                   className="pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -106,12 +106,6 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-5 space-y-1 rounded-lg bg-gray-50 px-3 py-3 text-xs text-gray-400">
-            <p className="mb-1 font-semibold text-gray-500">Contas demo:</p>
-            <p>admin@maissub.com.br · <span className="text-gray-600">admin123</span></p>
-            <p>gerente@maissub.com.br · <span className="text-gray-600">gerente123</span></p>
-            <p className="text-gray-300">atendente · estoque · cozinha + 123</p>
-          </div>
         </div>
 
         <p className="mt-6 text-center text-[11px] text-gray-300">

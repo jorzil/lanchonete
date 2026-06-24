@@ -58,11 +58,6 @@ export function Footer() {
                 @maissub.gv
               </a>
             </li>
-            <li>
-              <Link href="/admin" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
-                Área Admin
-              </Link>
-            </li>
           </ul>
         </div>
 
