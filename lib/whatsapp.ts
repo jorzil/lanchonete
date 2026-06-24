@@ -14,6 +14,9 @@ export function generateOrderMessage(order: Order): string {
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━')
   order.items.forEach((item, index) => {
     lines.push(`\n*${index + 1}. ${item.name}* (x${item.quantity})`)
+    if (item.notes) {
+      lines.push(`   🥖 ${item.notes}`)
+    }
     if (item.customization) {
       const c = item.customization
       lines.push(`   🥖 Tamanho: ${c.size}`)

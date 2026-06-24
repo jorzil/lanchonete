@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
 const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
+const BreadPickerModal = dynamic(() => import('@/components/builder/bread-picker-modal').then(m => ({ default: m.BreadPickerModal })), { ssr: false })
 
 const CATS = [
   { key: 'all',       label: 'Tudo',           count: PRODUCTS.filter(p => p.active).length },
@@ -21,9 +22,9 @@ const CATS = [
   { key: 'bebidas',   label: 'Bebidas',        count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]
 
-function ProductCard({ product, onCustomize, onAdd }: {
+function ProductCard({ product, onBread, onAdd }: {
   product: Product
-  onCustomize: (p: Product) => void
+  onBread: (p: Product) => void
   onAdd: (p: Product) => void
 }) {
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
@@ -61,7 +62,7 @@ function ProductCard({ product, onCustomize, onAdd }: {
             <p className="text-[16px] font-black text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
           </div>
           <button
-            onClick={() => isSub ? onCustomize(product) : onAdd(product)}
+            onClick={() => isSub ? onBread(product) : onAdd(product)}
             className="flex items-center gap-1.5 bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
             {isSub ? 'Personalizar' : 'Adicionar'}
@@ -77,6 +78,7 @@ export default function CardapioPage() {
   const [search, setSearch] = useState('')
   const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
   const [builderOpen, setBuilderOpen] = useState(false)
+  const [breadProduct, setBreadProduct] = useState<Product | null>(null)
   const [sticky, setSticky] = useState(false)
   const [idModalOpen, setIdModalOpen] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -239,7 +241,7 @@ export default function CardapioPage() {
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={product}
-                          onCustomize={p => { setBuilderProduct(p); setBuilderOpen(true) }}
+                          onBread={p => setBreadProduct(p)}
                           onAdd={handleAdd}
                         />
                       </div>
@@ -284,6 +286,7 @@ export default function CardapioPage() {
       </main>
       <Footer />
       <SandwichBuilder product={builderProduct} open={builderOpen} onClose={() => setBuilderOpen(false)} />
+      <BreadPickerModal product={breadProduct} onClose={() => setBreadProduct(null)} />
       <IdentificationModal
         open={idModalOpen}
         onClose={() => setIdModalOpen(false)}
