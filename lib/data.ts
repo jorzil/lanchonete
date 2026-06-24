@@ -90,7 +90,8 @@ export const MENU = {
     { key: 'picles',          name: 'Picles' },
     { key: 'azeitona',        name: 'Azeitona' },
     { key: 'rucula',          name: 'Rúcula' },
-    { key: 'salada-completa', name: 'Salada Completa' },
+    { key: 'cenoura-ralada',  name: 'Cenoura Ralada' },
+    { key: 'pimentao',        name: 'Pimentão' },
   ] as SaladOption[],
   sauces: [
     { key: 'chipotle',           name: 'Chipotle' },
