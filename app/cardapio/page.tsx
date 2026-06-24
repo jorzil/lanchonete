@@ -15,11 +15,10 @@ const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-buil
 const BreadPickerModal = dynamic(() => import('@/components/builder/bread-picker-modal').then(m => ({ default: m.BreadPickerModal })), { ssr: false })
 
 const CATS = [
-  { key: 'all',       label: 'Tudo',           count: PRODUCTS.filter(p => p.active).length },
-  { key: 'monte',     label: 'Monte Seu Sub',  count: 2 },
-  { key: 'subs-15cm', label: 'Subs 15cm',      count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
-  { key: 'subs-30cm', label: 'Subs 30cm',      count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
-  { key: 'bebidas',   label: 'Bebidas',        count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
+  { key: 'all',       label: 'Tudo',          count: PRODUCTS.filter(p => p.active).length },
+  { key: 'monte',     label: 'Monte Seu Sub', count: 2 },
+  { key: 'subs-15cm', label: 'Subs',          count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'bebidas',   label: 'Bebidas',       count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]
 
 function ProductCard({ product, onBread, onAdd }: {
