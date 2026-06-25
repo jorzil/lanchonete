@@ -277,7 +277,7 @@ export default function CardapioPage() {
               {/* Subs Prontos */}
               {filtered.filter(p => p.category !== 'bebidas' && p.category !== 'cookies').length > 0 && (
                 <div>
-                  {showMonte && <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
+                  {showMonte && <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category !== 'bebidas' && p.category !== 'cookies').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
@@ -295,7 +295,7 @@ export default function CardapioPage() {
               {/* Cookies */}
               {filtered.filter(p => p.category === 'cookies').length > 0 && (
                 <div>
-                  <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Cookies</h2>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Cookies</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'cookies').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
@@ -309,7 +309,7 @@ export default function CardapioPage() {
               {/* Bebidas */}
               {filtered.filter(p => p.category === 'bebidas').length > 0 && (
                 <div>
-                  <h2 className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Bebidas</h2>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Bebidas</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'bebidas').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
