@@ -135,8 +135,8 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
 <head>
 <meta charset="UTF-8">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; max-width: 80mm; padding: 4mm; color: #000; }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-weight: bold; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; max-width: 80mm; padding: 4mm; color: #000; font-weight: bold; }
   .center { text-align: center; }
   .bold { font-weight: bold; }
   .big { font-size: 16px; font-weight: bold; }
