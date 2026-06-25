@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Check, ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react'
+import { X, Check, ChevronRight, ChevronLeft, AlertCircle, Plus, Minus } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/contexts/cart-context'
@@ -20,7 +20,8 @@ const STEPS = [
   { id: 3, title: 'Queijo',      emoji: '🧀', required: false },
   { id: 4, title: 'Salada',      emoji: '🥗', required: false },
   { id: 5, title: 'Molhos',      emoji: '🥫', required: false },
-  { id: 6, title: 'Observação',  emoji: '📝', required: false },
+  { id: 6, title: 'Turbinar',    emoji: '⚡', required: false },
+  { id: 7, title: 'Observação',  emoji: '📝', required: false },
 ]
 
 const DEFAULT_CUSTOMIZATION: SubCustomization = {
@@ -182,6 +183,12 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
       const s = _sauceMap.get(sk)
       if (s) lines.push({ emoji: SAUCE_EMOJIS[sk] || '🥫', label: s.name })
     })
+    Object.entries(customization.extras ?? {}).forEach(([key, qty]) => {
+      if (qty > 0) {
+        const e = MENU.extras.find(x => x.key === key)
+        if (e) lines.push({ emoji: '⚡', label: `${e.name} ×${qty}` })
+      }
+    })
     if (customization.notes) lines.push({ emoji: '📝', label: customization.notes })
     return lines
   }, [customization, cheeseExtraPrice])
@@ -263,7 +270,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   {step === 3 && 'Opcional — pode pedir sem queijo'}
                   {step === 4 && 'Opcional — escolha à vontade'}
                   {step === 5 && `Opcional — máximo ${sauceMax} molhos`}
-                  {step === 6 && 'Algum detalhe especial? Escreva aqui'}
+                  {step === 6 && 'Adicione ingredientes extras ao seu sub'}
+                  {step === 7 && 'Algum detalhe especial? Escreva aqui'}
                 </p>
               </div>
               {!STEPS[step - 1].required && (
@@ -573,8 +581,69 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
               </div>
             )}
 
-            {/* ── Step 6: Observação ── */}
+            {/* ── Step 6: Turbinar ── */}
             {step === 6 && (
+              <div className="space-y-3">
+                <div className="p-3.5 bg-yellow-50 rounded-xl border border-yellow-100 flex items-start gap-2.5 mb-4">
+                  <span className="text-base shrink-0 mt-0.5">⚡</span>
+                  <p className="text-sm text-yellow-800">
+                    <strong>Turbine seu sub!</strong> Adicione ingredientes extras e deixe ainda mais gostoso.
+                  </p>
+                </div>
+                {MENU.extras.map((extra) => {
+                  const qty = customization.extras?.[extra.key] ?? 0
+                  const price = size === '15cm' ? extra.price15cm : extra.price30cm
+                  const EXTRA_EMOJIS: Record<string, string> = {
+                    'bacon': '🥓',
+                    'peito-peru': '🍖',
+                    'salaminho-italiano': '🍕',
+                    'queijo-parmesao': '🧀',
+                    'presunto': '🥩',
+                    'cebola-caramelizada': '🧅',
+                  }
+                  return (
+                    <div
+                      key={extra.key}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                        qty > 0
+                          ? 'border-brand bg-orange-50 shadow-md ring-1 ring-brand/15'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-100 to-amber-200 flex items-center justify-center text-2xl shrink-0">
+                        {EXTRA_EMOJIS[extra.key] || '➕'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-gray-900 text-sm leading-tight">{extra.name}</p>
+                        <p className="text-brand font-bold text-xs mt-0.5">+{formatCurrency(price)} cada</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setCustomization(p => ({ ...p, extras: { ...p.extras, [extra.key]: Math.max(0, (p.extras?.[extra.key] ?? 0) - 1) } }))}
+                          disabled={qty === 0}
+                          className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-500 hover:border-brand hover:text-brand disabled:opacity-30 transition-all"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="w-5 text-center font-black text-gray-900 text-base">{qty}</span>
+                        <button
+                          onClick={() => setCustomization(p => ({ ...p, extras: { ...p.extras, [extra.key]: (p.extras?.[extra.key] ?? 0) + 1 } }))}
+                          className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white hover:bg-brand-hover transition-all"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {Object.values(customization.extras ?? {}).every(q => q === 0) && (
+                  <p className="text-center text-xs text-gray-400 mt-2">Nenhum extra selecionado — tudo bem!</p>
+                )}
+              </div>
+            )}
+
+            {/* ── Step 7: Observação ── */}
+            {step === 7 && (
               <div className="space-y-4">
                 <textarea
                   value={customization.notes ?? ''}

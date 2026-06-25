@@ -104,10 +104,12 @@ export const MENU = {
   ] as SauceOption[],
   maxSauces: 3,
   extras: [
-    { key: 'bacon',       name: 'Bacon',         price15cm: 4, price30cm: 6 },
-    { key: 'presunto',    name: 'Presunto',       price15cm: 3, price30cm: 5 },
-    { key: 'peito-peru',  name: 'Peito de Peru',  price15cm: 4, price30cm: 6 },
-    { key: 'queijo-dobro',name: 'Queijo em Dobro',price15cm: 3, price30cm: 5 },
+    { key: 'bacon',               name: 'Bacon',                price15cm: 5, price30cm: 8 },
+    { key: 'peito-peru',          name: 'Peito de Peru',        price15cm: 5, price30cm: 8 },
+    { key: 'salaminho-italiano',  name: 'Salaminho Italiano',   price15cm: 5, price30cm: 8 },
+    { key: 'queijo-parmesao',     name: 'Queijo Parmesão',      price15cm: 4, price30cm: 7 },
+    { key: 'presunto',            name: 'Presunto',             price15cm: 3, price30cm: 6 },
+    { key: 'cebola-caramelizada', name: 'Cebola Caramelizada',  price15cm: 3, price30cm: 6 },
   ] as ExtraOption[],
 }
 
@@ -201,8 +203,8 @@ export function calculateSubTotal(customization: SubCustomization): number {
     }
   }
   if (customization.cheeses.length > 1) {
-    const qd = _extrasMap.get('queijo-dobro')
-    if (qd) total += is15 ? qd.price15cm : qd.price30cm
+    const cheeseExtraPrice = is15 ? 3 : 5
+    total += cheeseExtraPrice * (customization.cheeses.length - 1)
   }
   return total
 }
