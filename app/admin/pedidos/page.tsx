@@ -26,13 +26,18 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string; next?: string 
   cancelado:     { label: "Cancelado",         cls: "bg-red-100 text-red-700 border-red-200" },
 }
 
-const WA_MESSAGES: Record<string, string> = {
-  aceito:       "✅ *Seu pedido foi aceito!* Entrou na fila de preparo. Em breve começamos a preparar. 🥪",
-  em_preparo:   "👨‍🍳 *Seu pedido está sendo preparado!* Caprichamos em cada detalhe. Em breve fica pronto!",
-  pronto:       "✨ *Seu pedido ficou pronto!* Será enviado em instantes. 🚀",
-  saiu_entrega: "🛵 *Seu pedido saiu para entrega!* Estamos a caminho. Fique de olho!",
-  entregue:     "🎉 *Pedido entregue!* Obrigado por escolher a Mais Sub. Bom apetite! 🥖",
-  cancelado:    "❌ *Seu pedido foi cancelado.* Lamentamos o inconveniente. Entre em contato: (33) 98461-9205",
+function buildWaMessage(status: string, orderNumber: string): string {
+  const trackUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://www.maissub.com.br'}/acompanhar/${orderNumber}`
+  const track = `\n\n🔍 *Acompanhe seu pedido em tempo real:*\n${trackUrl}`
+  const msgs: Record<string, string> = {
+    aceito:       `✅ *Seu pedido #${orderNumber} foi aceito!* Entrou na fila de preparo. Em breve começamos a preparar. 🥪${track}`,
+    em_preparo:   `👨‍🍳 *Seu pedido #${orderNumber} está sendo preparado!* Caprichamos em cada detalhe. Em breve fica pronto!${track}`,
+    pronto:       `✨ *Seu pedido #${orderNumber} ficou pronto!* Será enviado em instantes. 🚀${track}`,
+    saiu_entrega: `🛵 *Seu pedido #${orderNumber} saiu para entrega!* Estamos a caminho. Fique de olho!${track}`,
+    entregue:     `🎉 *Pedido #${orderNumber} entregue!* Obrigado por escolher a Mais Sub. Bom apetite! 🥖`,
+    cancelado:    `❌ *Seu pedido #${orderNumber} foi cancelado.* Lamentamos o inconveniente. Entre em contato: (33) 98461-9205`,
+  }
+  return msgs[status] ?? ''
 }
 
 function beep() {
@@ -80,8 +85,8 @@ function formatDate(iso: string) {
   })
 }
 
-function sendWhatsApp(phone: string, status: string) {
-  const msg = WA_MESSAGES[status]
+function sendWhatsApp(phone: string, status: string, orderNumber: string) {
+  const msg = buildWaMessage(status, orderNumber)
   if (!msg) return
   const clean = phone.replace(/\D/g, "")
   const num = clean.startsWith("55") ? clean : `55${clean}`
@@ -186,8 +191,8 @@ export default function PedidosPage() {
 
     // WhatsApp message for customer
     const order = orders.find((o) => o.id === id)
-    if (order && WA_MESSAGES[nextStatus]) {
-      sendWhatsApp(order.customer.phone, nextStatus)
+    if (order && buildWaMessage(nextStatus, order.orderNumber)) {
+      sendWhatsApp(order.customer.phone, nextStatus, order.orderNumber)
     }
   }
 
@@ -489,9 +494,9 @@ export default function PedidosPage() {
                 >
                   <Printer size={15} /> Imprimir Cupom
                 </button>
-                {WA_MESSAGES[selected.status] && (
+                {!!buildWaMessage(selected.status, selected.orderNumber) && (
                   <button
-                    onClick={() => sendWhatsApp(selected.customer.phone, selected.status)}
+                    onClick={() => sendWhatsApp(selected.customer.phone, selected.status, selected.orderNumber)}
                     className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
                   >
                     💬 WhatsApp
