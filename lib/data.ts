@@ -156,23 +156,23 @@ export const PRODUCTS: Product[] = [
   {
     id: 'cookie-caramelo', name: 'Cookie Caramelo Salgado',
     description: 'Cookie artesanal recheado com caramelo salgado, crocante por fora e macio por dentro',
-    price: 16.0, image: '🍪', imageUrl: '/cookie-caramelo.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/caramelo-salgado.jpg', category: 'cookies', active: true,
     badge: { label: '🔥 Favorito', color: 'bg-amber-500' },
   },
   {
     id: 'cookie-nutella', name: 'Cookie Nutella',
     description: 'Cookie artesanal recheado com Nutella cremosa, irresistível a cada mordida',
-    price: 16.0, image: '🍪', imageUrl: '/cookie-nutella.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/nutela.jpg', category: 'cookies', active: true,
   },
   {
     id: 'cookie-kinder', name: 'Cookie Kinder Bueno',
     description: 'Cookie artesanal com recheio de Kinder Bueno e avelã, uma combinação incrível',
-    price: 16.0, image: '🍪', imageUrl: '/cookie-kinder.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/kinder.jpg', category: 'cookies', active: true,
   },
   {
     id: 'cookie-ovomaltine', name: 'Cookie Ovomaltine',
     description: 'Cookie artesanal crocante com recheio de Ovomaltine, sabor único e marcante',
-    price: 16.0, image: '🍪', imageUrl: '/cookie-ovomaltine.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/ovo-maltine.jpg', category: 'cookies', active: true,
   },
   // ── Bebidas ─────────────────────────────────────────────────────────────────
   { id: 'refri-lata',  name: 'Refrigerante 350ml',  description: 'Coca-Cola, Guaraná Antarctica, Sprite ou Fanta bem gelados', price: 6.0, image: '🥤', category: 'bebidas', active: true },
