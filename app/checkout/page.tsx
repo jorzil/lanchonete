@@ -312,7 +312,8 @@ export default function CheckoutPage() {
                 {form.orderType === 'retirada' && (
                   <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm text-white/60">
                     <p className="font-semibold text-white mb-1">📍 Endereço para retirada:</p>
-                    <p>Rua Exemplo, 123 - Bairro, Cidade - SP</p>
+                    <p>R. 7 de Setembro, 2480 - Centro</p>
+                    <p>Gov. Valadares - MG, CEP 35010-170</p>
                     <p className="text-white/30 mt-1">Seg-Sex: 11h–22h | Sáb-Dom: 11h–23h</p>
                   </div>
                 )}
