@@ -25,7 +25,7 @@ const CATEGORY_NAV = [
   {
     key: 'subs-30cm',
     label: 'Subs 30cm',
-    img: '/30 cm.jpg',
+    img: '/lombo-defumado.jpg',
     count: PRODUCTS.filter((p) => p.active && p.category === 'subs-30cm').length,
   },
   {
@@ -33,6 +33,12 @@ const CATEGORY_NAV = [
     label: 'Combos',
     img: '/bacon-barbecue.jpg',
     count: PRODUCTS.filter((p) => p.active && p.category === 'combos').length,
+  },
+  {
+    key: 'cookies',
+    label: 'Cookies',
+    img: '/caramelo-salgado.jpg',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'cookies').length,
   },
   {
     key: 'bebidas',
