@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendEvolutionMessage } from '@/lib/whatsapp'
+import { sendEvolutionMessage } from '@/lib/evolution'
 
 export async function POST(req: NextRequest) {
   try {
