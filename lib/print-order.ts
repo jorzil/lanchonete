@@ -138,29 +138,29 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; font-weight: bold; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; max-width: 80mm; padding: 3mm 4mm; color: #000; }
+  body { font-family: 'Courier New', monospace; font-size: 15px; width: 80mm; max-width: 80mm; padding: 3mm 4mm; color: #000; }
   .center { text-align: center; }
-  .store-name { font-size: 18px; letter-spacing: 1px; }
-  .store-sub { font-size: 11px; }
-  .divider-solid { border-top: 2px solid #000; margin: 5px 0; }
-  .divider { border-top: 1px dashed #000; margin: 5px 0; }
+  .store-name { font-size: 22px; letter-spacing: 1px; }
+  .store-sub { font-size: 13px; }
+  .divider-solid { border-top: 2px solid #000; margin: 6px 0; }
+  .divider { border-top: 1px dashed #000; margin: 6px 0; }
   .section { margin: 4px 0; }
-  .section-title { text-align: center; font-size: 13px; letter-spacing: 1px; margin: 4px 0; }
-  .order-num { font-size: 20px; text-align: center; letter-spacing: 2px; margin: 3px 0; }
-  .order-type-badge { font-size: 13px; text-align: center; padding: 2px 0; border: 2px solid #000; margin: 3px 8mm; }
-  .row-line { display: flex; justify-content: space-between; gap: 4px; font-size: 11px; margin: 1px 0; }
+  .section-title { text-align: center; font-size: 15px; letter-spacing: 1px; margin: 5px 0; }
+  .order-num { font-size: 26px; text-align: center; letter-spacing: 2px; margin: 4px 0; }
+  .order-type-badge { font-size: 16px; text-align: center; padding: 3px 0; border: 2px solid #000; margin: 3px 8mm; }
+  .row-line { display: flex; justify-content: space-between; gap: 4px; font-size: 14px; margin: 2px 0; }
   .row-line span:first-child { white-space: nowrap; }
   .row-line span:last-child { text-align: right; }
-  .item { margin: 4px 0; }
-  .item-row { display: flex; gap: 3px; }
-  .item-qty { min-width: 20px; }
+  .item { margin: 5px 0; }
+  .item-row { display: flex; gap: 3px; font-size: 15px; }
+  .item-qty { min-width: 24px; }
   .item-name { flex: 1; }
   .item-price { white-space: nowrap; }
-  .item-opt { font-size: 10px; padding-left: 22px; }
-  .total-row { display: flex; justify-content: space-between; font-size: 11px; margin: 1px 0; }
-  .total-grand { display: flex; justify-content: space-between; font-size: 15px; margin: 3px 0; }
-  .payment-box { border: 2px solid #000; padding: 3px 5px; margin: 3px 0; font-size: 12px; text-align: center; }
-  .footer-line { font-size: 10px; }
+  .item-opt { font-size: 13px; padding-left: 24px; }
+  .total-row { display: flex; justify-content: space-between; font-size: 14px; margin: 2px 0; }
+  .total-grand { display: flex; justify-content: space-between; font-size: 18px; margin: 4px 0; }
+  .payment-box { border: 2px solid #000; padding: 4px 5px; margin: 4px 0; font-size: 15px; text-align: center; }
+  .footer-line { font-size: 12px; }
   @media print {
     body { margin: 0; }
     @page { margin: 0; size: 80mm auto; }
