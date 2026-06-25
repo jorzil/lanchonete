@@ -133,7 +133,8 @@ function SceneHero() {
     { ch: 'a', orange: true },
     { ch: 'i', orange: true },
     { ch: 's', orange: true },
-    { ch: ' ', orange: false },
+  ]
+  const line3 = [
     { ch: 'G', orange: false },
     { ch: 'o', orange: false },
     { ch: 's', orange: false },
@@ -229,12 +230,24 @@ function SceneHero() {
                   </span>
                 ))}
               </div>
-              {/* Line 2: "Mais Gostoso." where "Mais" is orange */}
+              {/* Line 2: "Mais" in orange */}
               <div className="whitespace-nowrap">
                 {line2.map((item, i) => (
                   <span
                     key={i}
-                    className={`char inline-block ${item.orange ? 'text-brand' : 'text-white'}`}
+                    className="char inline-block text-brand"
+                    style={{ opacity: 0 }}
+                  >
+                    {item.ch}
+                  </span>
+                ))}
+              </div>
+              {/* Line 3: "Gostoso." in white */}
+              <div className="whitespace-nowrap">
+                {line3.map((item, i) => (
+                  <span
+                    key={i}
+                    className="char inline-block text-white"
                     style={{ opacity: 0 }}
                   >
                     {item.ch}
