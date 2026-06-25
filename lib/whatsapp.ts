@@ -1,5 +1,5 @@
-import type { CartItem, Order } from '@/lib/store'
-import { MENU, formatCurrency } from '@/lib/store'
+import type { CartItem, Order } from '@/lib/data'
+import { MENU, formatCurrency } from '@/lib/data'
 
 export const WHATSAPP_NUMBER = '5533984619205'
 
