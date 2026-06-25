@@ -85,12 +85,26 @@ function formatDate(iso: string) {
   })
 }
 
-function sendWhatsApp(phone: string, status: string, orderNumber: string) {
+async function sendWhatsApp(phone: string, status: string, orderNumber: string, auto = false) {
   const msg = buildWaMessage(status, orderNumber)
   if (!msg) return
-  const clean = phone.replace(/\D/g, "")
-  const num = clean.startsWith("55") ? clean : `55${clean}`
-  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank", "noopener")
+
+  // Try Evolution API first (automatic)
+  try {
+    const res = await fetch('/api/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, text: msg }),
+    })
+    if (res.ok) return // sent automatically ✓
+  } catch {}
+
+  // Fallback: open WhatsApp Web (manual)
+  if (!auto) {
+    const clean = phone.replace(/\D/g, "")
+    const num = clean.startsWith("55") ? clean : `55${clean}`
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank", "noopener")
+  }
 }
 
 export default function PedidosPage() {
@@ -189,10 +203,10 @@ export default function PedidosPage() {
     })
     setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
 
-    // WhatsApp message for customer
+    // WhatsApp automático para o cliente
     const order = orders.find((o) => o.id === id)
     if (order && buildWaMessage(nextStatus, order.orderNumber)) {
-      sendWhatsApp(order.customer.phone, nextStatus, order.orderNumber)
+      sendWhatsApp(order.customer.phone, nextStatus, order.orderNumber, true)
     }
   }
 
