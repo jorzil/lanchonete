@@ -46,6 +46,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
   { href: "/admin/clientes", label: "Clientes", icon: Users, module: "clientes" },
   { href: "/admin/cupons", label: "Cupons", icon: Tag, module: "cupons" },
+  { href: "/admin/entrega", label: "Entrega", icon: Truck, module: "configuracoes" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
   { href: "/admin/setup", label: "Diagnóstico", icon: Activity, module: "setup" },
@@ -62,6 +63,7 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/financeiro": "Financeiro",
   "/admin/clientes": "Clientes",
   "/admin/cupons": "Cupons",
+  "/admin/entrega": "Entrega",
   "/admin/relatorios": "Relatórios",
   "/admin/configuracoes": "Configurações",
 }

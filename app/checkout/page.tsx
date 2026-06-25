@@ -17,6 +17,7 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { getStoreStatus, computeIsOpen } from '@/lib/store-status'
+import { geocodeAddress, calcDeliveryFee, getDeliveryConfig, type FeeResult } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -64,6 +65,7 @@ export default function CheckoutPage() {
     complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
+  const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
@@ -71,7 +73,12 @@ export default function CheckoutPage() {
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const handleOrderType = (type: OrderType) => { setForm((prev) => ({ ...prev, orderType: type })); setDeliveryFee(type === 'entrega' ? 5 : 0) }
+  const handleOrderType = (type: OrderType) => {
+    setForm((prev) => ({ ...prev, orderType: type }))
+    if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
+    else if (feeResult && !feeResult.outsideArea) setDeliveryFee(feeResult.fee)
+    else setDeliveryFee(0)
+  }
 
   const fetchCep = async (cep: string) => {
     const clean = cep.replace(/\D/g, '')
@@ -81,8 +88,32 @@ export default function CheckoutPage() {
       const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
       const data = await res.json()
       if (!data.erro) {
-        setForm((prev) => ({ ...prev, street: data.logradouro || '', neighborhood: data.bairro || '', city: data.localidade || '', state: data.uf || '' }))
+        const street     = data.logradouro || ''
+        const neighborhood = data.bairro || ''
+        const city       = data.localidade || ''
+        const state      = data.uf || ''
+        setForm((prev) => ({ ...prev, street, neighborhood, city, state }))
         toast.success('Endereço encontrado!')
+
+        // Geocode and calculate delivery fee
+        const addressStr = `${street}, ${neighborhood}, ${city}, ${state}, Brasil`
+        const coords = await geocodeAddress(addressStr)
+        if (coords) {
+          const result = calcDeliveryFee(coords.lat, coords.lng)
+          setFeeResult(result)
+          if (result.outsideArea) {
+            const config = getDeliveryConfig()
+            toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
+            setDeliveryFee(0)
+          } else {
+            setDeliveryFee(result.fee)
+            toast.info(`Taxa de entrega: R$${result.fee.toFixed(2)} (${result.distanceKm}km — ${result.zone?.label})`)
+          }
+        } else {
+          // fallback: use first zone fee
+          const config = getDeliveryConfig()
+          setDeliveryFee(config.zones[0]?.fee ?? 5)
+        }
       } else toast.error('CEP não encontrado.')
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
@@ -361,7 +392,12 @@ export default function CheckoutPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
-                  <div className="flex justify-between text-white/50"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
+                  <div className="flex justify-between text-white/50">
+                    <span>Entrega{feeResult && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
+                    <span className={feeResult?.outsideArea ? 'text-red-400 text-xs' : ''}>
+                      {feeResult?.outsideArea ? 'Fora da área' : deliveryFee === 0 ? (form.orderType === 'retirada' ? 'Grátis' : '—') : formatCurrency(deliveryFee)}
+                    </span>
+                  </div>
                   <div className="h-px bg-white/8 my-1" />
                   <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-brand">{formatCurrency(total)}</span></div>
                 </div>
