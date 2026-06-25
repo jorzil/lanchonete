@@ -318,7 +318,8 @@ export default function PedidosPage() {
                 <tbody>
                   {pageItems.map((o) => {
                     const cfg = STATUS_CONFIG[o.status] ?? STATUS_CONFIG.novo
-                    const nextStatus = cfg.next
+                    const isRetirada = o.orderType === "retirada"
+                    const nextStatus = cfg.next === "saiu_entrega" && isRetirada ? "entregue" : cfg.next
                     const isNew = o.status === "novo"
                     return (
                       <tr
@@ -350,7 +351,7 @@ export default function PedidosPage() {
                                 onClick={() => advanceStatus(o.id, nextStatus)}
                                 className="rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap"
                               >
-                                → {STATUS_CONFIG[nextStatus]?.label}
+                                → {isRetirada && nextStatus === "entregue" && o.status === "pronto" ? "Retirado" : STATUS_CONFIG[nextStatus]?.label}
                               </button>
                             )}
                             {o.status !== "cancelado" && o.status !== "entregue" && (
@@ -473,13 +474,15 @@ export default function PedidosPage() {
                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
                     if (key === selected.status) return null
                     if (key === "novo") return null
+                    if (key === "saiu_entrega" && selected.orderType === "retirada") return null
+                    const label = key === "entregue" && selected.orderType === "retirada" ? "Retirado" : cfg.label
                     return (
                       <button
                         key={key}
                         onClick={() => advanceStatus(selected.id, key)}
                         className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80", cfg.cls)}
                       >
-                        {cfg.label}
+                        {label}
                       </button>
                     )
                   })}
