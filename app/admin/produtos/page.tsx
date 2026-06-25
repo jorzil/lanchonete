@@ -18,19 +18,21 @@ function mergeOverrides(base: Product[], overrides: OverridesMap): ProductWithCo
   return base.map(p => ({ ...p, ...(overrides[p.id] ?? {}) }))
 }
 
-const CATEGORIES: Product["category"][] = ["subs-15cm", "subs-30cm", "combos", "bebidas"]
+const CATEGORIES: Product["category"][] = ["subs-15cm", "subs-30cm", "combos", "cookies", "bebidas"]
 
 const CATEGORY_LABELS: Record<Product["category"], string> = {
   "subs-15cm": "Subs 15cm",
   "subs-30cm": "Subs 30cm",
-  combos: "Combos",
-  bebidas: "Bebidas",
+  combos:   "Combos",
+  cookies:  "Cookies",
+  bebidas:  "Bebidas",
 }
 
 const CATEGORY_COLORS: Record<Product["category"], string> = {
   "subs-15cm": "bg-orange-100 text-orange-700",
   "subs-30cm": "bg-amber-100 text-amber-700",
   combos:      "bg-blue-100 text-blue-700",
+  cookies:     "bg-yellow-100 text-yellow-700",
   bebidas:     "bg-teal-100 text-teal-700",
 }
 
