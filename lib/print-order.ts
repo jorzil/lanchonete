@@ -130,6 +130,9 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
     </div>` : `
     <div class="section">
       <div class="section-title">*** RETIRADA NO BALCAO ***</div>
+      <div class="row-line" style="justify-content:center; font-size:13px; margin-top:3px">R. 7 de Setembro, 2480</div>
+      <div class="row-line" style="justify-content:center; font-size:13px">Centro - Gov. Valadares/MG</div>
+      <div class="row-line" style="justify-content:center; font-size:13px">CEP: 35010-170</div>
     </div>`
 
   return `<!DOCTYPE html>
