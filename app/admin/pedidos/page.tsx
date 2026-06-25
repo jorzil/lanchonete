@@ -205,10 +205,13 @@ export default function PedidosPage() {
     setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
 
     // WhatsApp automático para o cliente
-    const msg = buildWaMessage(nextStatus, order.orderNumber)
-    if (msg && order.customer.phone) {
-      sendWhatsApp(order.customer.phone, nextStatus, order.orderNumber, true)
-    }
+    try {
+      const phone = order?.customer?.phone ?? ''
+      const orderNum = order?.orderNumber ?? ''
+      if (phone && orderNum) {
+        sendWhatsApp(phone, nextStatus, orderNum, true)
+      }
+    } catch {}
   }
 
   async function handleDelete() {
