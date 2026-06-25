@@ -186,7 +186,8 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  async function advanceStatus(id: string, nextStatus: string) {
+  async function advanceStatus(order: Order, nextStatus: string) {
+    const id = order.id
     if (supabaseConfigured) {
       try {
         await updateOrderStatus(id, nextStatus)
@@ -204,8 +205,8 @@ export default function PedidosPage() {
     setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
 
     // WhatsApp automático para o cliente
-    const order = orders.find((o) => o.id === id)
-    if (order && buildWaMessage(nextStatus, order.orderNumber)) {
+    const msg = buildWaMessage(nextStatus, order.orderNumber)
+    if (msg && order.customer.phone) {
       sendWhatsApp(order.customer.phone, nextStatus, order.orderNumber, true)
     }
   }
@@ -362,7 +363,7 @@ export default function PedidosPage() {
                           <div className="flex items-center justify-end gap-1">
                             {nextStatus && (
                               <button
-                                onClick={() => advanceStatus(o.id, nextStatus)}
+                                onClick={() => advanceStatus(o, nextStatus)}
                                 className="rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 whitespace-nowrap"
                               >
                                 → {isRetirada && nextStatus === "entregue" && o.status === "pronto" ? "Retirado" : STATUS_CONFIG[nextStatus]?.label}
@@ -370,7 +371,7 @@ export default function PedidosPage() {
                             )}
                             {o.status !== "cancelado" && o.status !== "entregue" && (
                               <button
-                                onClick={() => advanceStatus(o.id, "cancelado")}
+                                onClick={() => advanceStatus(o, "cancelado")}
                                 className="rounded-lg px-2 py-1 text-[11px] font-medium text-red-500 hover:bg-red-50"
                               >
                                 Cancelar
@@ -493,7 +494,7 @@ export default function PedidosPage() {
                     return (
                       <button
                         key={key}
-                        onClick={() => advanceStatus(selected.id, key)}
+                        onClick={() => advanceStatus(selected, key)}
                         className={cn("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:opacity-80", cfg.cls)}
                       >
                         {label}
