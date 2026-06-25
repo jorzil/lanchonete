@@ -1,14 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Pencil, Search, Package, X, Copy } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Pencil, Search, Package, X, Copy, RefreshCw } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-import { formatCurrency, usePersistedState, PRODUCTS, type Product } from "@/lib/store"
+import { formatCurrency, PRODUCTS, type Product } from "@/lib/data"
 import { syncProductsToInventory } from "@/lib/inventory-storage"
 
 // Extend Product locally to support cost price
 type ProductWithCost = Product & { costPrice?: number }
+
+// Overrides persisted per product ID (never the full list)
+type ProductOverride = { active?: boolean; costPrice?: number; price?: number; badge?: Product['badge'] }
+type OverridesMap = Record<string, ProductOverride>
+
+function mergeOverrides(base: Product[], overrides: OverridesMap): ProductWithCost[] {
+  return base.map(p => ({ ...p, ...(overrides[p.id] ?? {}) }))
+}
 
 const CATEGORIES: Product["category"][] = ["subs-15cm", "subs-30cm", "combos", "bebidas"]
 
@@ -276,7 +284,16 @@ function ProductModal({
 
 /* ── Main page ── */
 export default function ProdutosPage() {
-  const [products, setProducts] = usePersistedState<ProductWithCost[]>("admin_products", PRODUCTS)
+  const [overrides, setOverrides] = useState<OverridesMap>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('admin_product_overrides') ?? '{}') } catch { return {} }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('admin_product_overrides', JSON.stringify(overrides)) } catch {}
+  }, [overrides])
+
+  const products: ProductWithCost[] = mergeOverrides(PRODUCTS, overrides)
+
   const [query, setQuery]       = useState("")
   const [editing, setEditing]   = useState<ProductWithCost | null>(null)
   const [isNew, setIsNew]       = useState(false)
@@ -302,34 +319,22 @@ export default function ProdutosPage() {
   }
 
   function duplicate(p: ProductWithCost) {
-    const newProd: ProductWithCost = {
-      ...p,
-      id:   `prod-${Date.now().toString(36)}`,
-      name: `${p.name} (cópia)`,
-    }
-    setProducts((prev) => {
-      const next = [...prev, newProd]
-      syncProductsToInventory(next)
-      return next
-    })
+    const newId = `prod-${Date.now().toString(36)}`
+    setOverrides(prev => ({ ...prev, [newId]: { active: p.active, costPrice: p.costPrice, price: p.price, badge: p.badge } }))
   }
 
   function save() {
     if (!editing || !editing.name.trim()) return
-    setProducts((prev) => {
-      const next = isNew
-        ? [...prev, { ...editing, id: editing.id.trim() || `prod-${Date.now().toString(36)}` }]
-        : prev.map((p) => (p.id === editing.id ? editing : p))
-      // Sync to inventory after every save
-      syncProductsToInventory(next)
-      return next
-    })
+    const { id, active, costPrice, price, badge } = editing
+    setOverrides(prev => ({ ...prev, [id]: { active, costPrice, price, badge } }))
+    syncProductsToInventory(mergeOverrides(PRODUCTS, { ...overrides, [id]: { active, costPrice, price, badge } }))
     setOpen(false)
     setEditing(null)
   }
 
   function toggleActive(id: string) {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p)))
+    const current = products.find(p => p.id === id)
+    setOverrides(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), active: !current?.active } }))
   }
 
   const activeCount   = products.filter((p) => p.active).length
@@ -344,13 +349,23 @@ export default function ProdutosPage() {
           <h1 className="text-2xl font-black text-gray-900">Produtos</h1>
           <p className="text-sm text-gray-500">Gerencie o cardápio da Mais Sub</p>
         </div>
-        <button
-          onClick={openNew}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 text-sm shadow-sm transition-all self-start sm:self-auto"
-        >
-          <Plus size={16} />
-          Novo produto
-        </button>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => { setOverrides({}); localStorage.removeItem('admin_products') }}
+            className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-gray-50 text-gray-600 font-bold px-4 py-2.5 text-sm border border-gray-200 shadow-sm transition-all"
+            title="Resetar para produtos do cardápio"
+          >
+            <RefreshCw size={15} />
+            Sincronizar
+          </button>
+          <button
+            onClick={openNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 text-sm shadow-sm transition-all"
+          >
+            <Plus size={16} />
+            Novo produto
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
