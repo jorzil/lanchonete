@@ -222,28 +222,24 @@ function SceneHero() {
               style={{ fontSize: 'clamp(3.8rem,10.5vw,9.5rem)' }}
             >
               {/* Line 1: "O Sub" */}
-              <div className="overflow-hidden">
-                <div className="text-white">
-                  {line1.map((c, i) => (
-                    <span key={i} className="char inline-block" style={{ opacity: 0 }}>
-                      {c}
-                    </span>
-                  ))}
-                </div>
+              <div className="text-white whitespace-nowrap">
+                {line1.map((c, i) => (
+                  <span key={i} className="char inline-block" style={{ opacity: 0 }}>
+                    {c}
+                  </span>
+                ))}
               </div>
               {/* Line 2: "Mais Gostoso." where "Mais" is orange */}
-              <div className="overflow-hidden">
-                <div>
-                  {line2.map((item, i) => (
-                    <span
-                      key={i}
-                      className={`char inline-block ${item.orange ? 'text-brand' : 'text-white'}`}
-                      style={{ opacity: 0 }}
-                    >
-                      {item.ch}
-                    </span>
-                  ))}
-                </div>
+              <div className="whitespace-nowrap">
+                {line2.map((item, i) => (
+                  <span
+                    key={i}
+                    className={`char inline-block ${item.orange ? 'text-brand' : 'text-white'}`}
+                    style={{ opacity: 0 }}
+                  >
+                    {item.ch}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -294,7 +290,6 @@ function SceneHero() {
             ))}
           </div>
           <span className="text-white font-bold text-[14px] tabular-nums">4.9</span>
-          <span className="text-white/40 text-[12px]">·&nbsp;+2.000 pedidos</span>
         </div>
       </motion.div>
 

@@ -7,9 +7,10 @@ import { useCart } from '@/contexts/cart-context'
 import { MaisSubMark, MBadge } from '@/components/brand/logo'
 
 const NAV = [
-  { href: '/cardapio', label: 'Cardápio' },
-  { href: '/cardapio?cat=combos', label: 'Combos' },
-  { href: '/#sobre', label: 'Sobre' },
+  { href: '/cardapio',            label: 'Cardápio'          },
+  { href: '/cardapio?cat=combos', label: 'Combos'            },
+  { href: '/#sobre',              label: 'Sobre'             },
+  { href: '/acompanhar',          label: 'Acompanhar Pedido' },
 ]
 
 export function Header() {
