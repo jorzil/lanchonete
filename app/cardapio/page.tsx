@@ -21,28 +21,62 @@ const CATS = [
   { key: 'bebidas',   label: 'Bebidas',       count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]
 
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+        onClick={onClose}
+        aria-label="Fechar"
+      >
+        <X size={22} />
+      </button>
+      <div className="relative max-w-2xl w-full max-h-[85vh] aspect-[4/3] rounded-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <Image src={src} alt={alt} fill className="object-cover" sizes="(max-width:768px) 100vw, 672px" />
+      </div>
+      <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-[13px] font-medium">{alt}</p>
+    </div>
+  )
+}
+
 function ProductCard({ product, onBread, onAdd }: {
   product: Product
   onBread: (p: Product) => void
   onAdd: (p: Product) => void
 }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
 
   return (
+    <>
+      {lightboxOpen && product.imageUrl && (
+        <ImageLightbox src={product.imageUrl} alt={product.name} onClose={() => setLightboxOpen(false)} />
+      )}
     <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/6 hover:border-brand/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
-      <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
+      <div
+        className="relative aspect-[4/3] overflow-hidden bg-navy-deep"
+        onClick={() => product.imageUrl && setLightboxOpen(true)}
+      >
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
-            className="object-cover card-img"
+            className="object-cover card-img transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
           />
         ) : (
           <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-navy-surface/50 via-transparent to-transparent" />
+        {product.imageUrl && (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <span className="bg-black/50 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm">Ver foto</span>
+          </div>
+        )}
         {product.badge && (
           <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
             {product.badge.label.replace(/[^\w\s]/g, '').trim()}
@@ -69,6 +103,7 @@ function ProductCard({ product, onBread, onAdd }: {
         </div>
       </div>
     </div>
+    </>
   )
 }
 
