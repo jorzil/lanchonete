@@ -194,7 +194,8 @@ export default function PedidosPage() {
     if (!msg) return
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank", "noopener")
+    const url = `https://web.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
+    window.open(url, "_blank", "noopener")
   }
 
   async function advanceStatus(order: Order, nextStatus: string) {
