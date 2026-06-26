@@ -164,7 +164,7 @@ export default function CardapioPage() {
       list = list.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
     }
     return list
-  }, [active, search])
+  }, [active, search, disabledProducts])
 
   const handleAdd = (p: Product) => {
     addItem({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image })
