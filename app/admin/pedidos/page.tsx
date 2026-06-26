@@ -190,9 +190,17 @@ export default function PedidosPage() {
     const id = order.id
     if (supabaseConfigured) {
       try {
+        // Use server-side route that updates status AND sends WhatsApp
+        await fetch(`/api/orders/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nextStatus }),
+        })
+        await loadAll()
+      } catch {
         await updateOrderStatus(id, nextStatus)
         await loadAll()
-      } catch {}
+      }
     }
     // localStorage fallback
     setOrders((prev) => {
@@ -203,15 +211,6 @@ export default function PedidosPage() {
       return next
     })
     setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
-
-    // WhatsApp automático para o cliente
-    try {
-      const phone = order?.customer?.phone ?? ''
-      const orderNum = order?.orderNumber ?? ''
-      if (phone && orderNum) {
-        sendWhatsApp(phone, nextStatus, orderNum, true)
-      }
-    } catch {}
   }
 
   async function handleDelete() {
