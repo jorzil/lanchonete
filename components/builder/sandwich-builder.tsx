@@ -45,7 +45,6 @@ const _breadMap  = new Map(MENU.breads.map((b) => [b.key, b]))
 
 const BREAD_GRADIENTS: Record<string, string> = {
   'tradicional': 'from-amber-100 to-amber-200',
-  'gergelim':    'from-yellow-100 to-orange-100',
   '4-queijos':   'from-yellow-200 to-amber-300',
 }
 

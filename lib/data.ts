@@ -71,7 +71,6 @@ export const MENU = {
   ],
   breads: [
     { key: 'tradicional',  name: 'Tradicional',   description: 'Pão clássico, macio e levemente tostado',         emoji: '🍞' },
-    { key: 'gergelim',     name: 'Com Gergelim',  description: 'Pão com gergelim crocante por fora, macio por dentro', emoji: '🥖' },
     { key: '4-queijos',    name: '4 Queijos',     description: 'Pão recheado com blend especial de 4 queijos',     emoji: '🧀' },
   ] as BreadOption[],
   meats: [
