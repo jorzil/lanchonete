@@ -189,9 +189,13 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  function openWhatsAppWeb(phone: string, status: string, orderNumber: string) {
-    const msg = buildWaMessage(status, orderNumber)
+  function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string) {
+    let msg = buildWaMessage(status, orderNumber)
     if (!msg) return
+    // Na saída para entrega, inclui o código que o cliente informa ao motoboy.
+    if (status === 'saiu_entrega' && deliveryCode) {
+      msg += `\n\n🔐 *Código de entrega:* ${deliveryCode}\nInforme este código ao entregador para confirmar o recebimento.`
+    }
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
     const url = `https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
@@ -202,7 +206,7 @@ export default function PedidosPage() {
     if (nextStatus === 'aceito') stopSiren()
     // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
     // gesture so the browser does not block the popup).
-    openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber)
+    openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode)
     const id = order.id
     if (supabaseConfigured) {
       try {
@@ -465,6 +469,12 @@ export default function PedidosPage() {
                     {selected.address.complement ? ` - ${selected.address.complement}` : ""} · {selected.address.neighborhood}, {selected.address.city}/{selected.address.state}
                   </p>
                 )}
+                {selected.deliveryCode && (
+                  <p className="flex items-center gap-1.5 pt-1 text-gray-700">
+                    🔐 <span className="font-semibold">Código de entrega:</span>
+                    <span className="font-black tracking-widest text-[#EE5C13]">{selected.deliveryCode}</span>
+                  </p>
+                )}
               </div>
 
               {/* Items */}
@@ -528,7 +538,7 @@ export default function PedidosPage() {
                 </button>
                 {!!buildWaMessage(selected.status, selected.orderNumber) && (
                   <button
-                    onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber)}
+                    onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode)}
                     className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
                   >
                     💬 WhatsApp

@@ -61,6 +61,7 @@ export interface Order {
   orderType: 'entrega' | 'retirada'; paymentMethod: PaymentMethod
   subtotal: number; deliveryFee: number; discount: number; total: number
   status: OrderStatus; notes?: string; createdAt: string; updatedAt: string; coupon?: Coupon
+  deliveryCode?: string // código de 4 dígitos p/ o motoboy confirmar a entrega
 }
 
 // ─── MENU DATA ────────────────────────────────────────────────────────────────

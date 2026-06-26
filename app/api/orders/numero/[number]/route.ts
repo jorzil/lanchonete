@@ -10,17 +10,19 @@ interface DbOrder {
 }
 
 function rowToOrder(row: DbOrder): Order {
+  const addr = (row.address ?? undefined) as (Address & { deliveryCode?: string }) | undefined
   return {
     id: row.id, orderNumber: row.order_number,
     items: row.items ?? [],
     customer: { name: row.customer_name, phone: row.customer_phone },
-    address: row.address ?? undefined,
+    address: addr,
     orderType: row.order_type,
     paymentMethod: row.payment_method as PaymentMethod,
     subtotal: Number(row.subtotal), deliveryFee: Number(row.delivery_fee),
     discount: Number(row.discount), total: Number(row.total),
     status: row.status as OrderStatus,
     notes: row.notes ?? undefined,
+    deliveryCode: addr?.deliveryCode,
     createdAt: row.created_at, updatedAt: row.updated_at,
   }
 }

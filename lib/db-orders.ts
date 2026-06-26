@@ -26,14 +26,20 @@ interface DbOrder {
   updated_at: string
 }
 
+// Gera código aleatório de 4 dígitos para confirmação de entrega
+export function generateDeliveryCode(): string {
+  return String(Math.floor(1000 + Math.random() * 9000))
+}
+
 // ─── Map DB row → Order ────────────────────────────────────────────────────
 function rowToOrder(row: DbOrder): Order {
+  const addr = (row.address ?? undefined) as (Address & { deliveryCode?: string }) | undefined
   return {
     id: row.id,
     orderNumber: row.order_number,
     items: row.items ?? [],
     customer: { name: row.customer_name, phone: row.customer_phone },
-    address: row.address ?? undefined,
+    address: addr,
     orderType: row.order_type,
     paymentMethod: row.payment_method as PaymentMethod,
     subtotal: Number(row.subtotal),
@@ -42,6 +48,7 @@ function rowToOrder(row: DbOrder): Order {
     total: Number(row.total),
     status: row.status as OrderStatus,
     notes: row.notes ?? undefined,
+    deliveryCode: addr?.deliveryCode,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -94,6 +101,12 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
 
   if (custErr) console.error('Customer upsert error (non-fatal):', custErr.message)
 
+  // Código de entrega (4 dígitos) — só para pedidos de entrega
+  const deliveryCode = data.orderType === 'entrega' ? generateDeliveryCode() : null
+  const addressWithCode = data.address
+    ? { ...data.address, ...(deliveryCode ? { deliveryCode } : {}) }
+    : null
+
   // 2. Insert order
   const { data: row, error: orderErr } = await supabase
     .from('orders')
@@ -104,7 +117,7 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
       customer_phone: data.customerPhone,
       order_type: data.orderType,
       items: data.items,
-      address: data.address ?? null,
+      address: addressWithCode,
       payment_method: data.paymentMethod,
       subtotal: data.subtotal,
       delivery_fee: data.deliveryFee,
@@ -159,4 +172,45 @@ export async function getOrder(id: string): Promise<Order | null> {
   const { data, error } = await supabase.from('orders').select('*').eq('id', id).single()
   if (error) return null
   return rowToOrder(data as DbOrder)
+}
+
+// ─── Entregas (motoboy) ───────────────────────────────────────────────────────
+// Lista pedidos de entrega que estão prontos ou a caminho (sem expor o código).
+export async function listDeliveries(): Promise<Order[]> {
+  if (!supabaseConfigured) throw new Error('Supabase not configured')
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('order_type', 'entrega')
+    .in('status', ['pronto', 'saiu_entrega'])
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return (data as DbOrder[]).map(rowToOrder)
+}
+
+// Confirma a entrega validando o código de 4 dígitos. Retorna o pedido se ok.
+export async function confirmDeliveryByCode(
+  orderId: string,
+  code: string
+): Promise<{ ok: boolean; reason?: string; order?: Order }> {
+  if (!supabaseConfigured) throw new Error('Supabase not configured')
+
+  const { data, error } = await supabase.from('orders').select('*').eq('id', orderId).single()
+  if (error || !data) return { ok: false, reason: 'Pedido não encontrado' }
+
+  const order = rowToOrder(data as DbOrder)
+  if (order.status === 'entregue') return { ok: false, reason: 'Pedido já foi entregue' }
+  if (order.status === 'cancelado') return { ok: false, reason: 'Pedido cancelado' }
+  if (!order.deliveryCode) return { ok: false, reason: 'Este pedido não possui código de entrega' }
+  if (String(code).trim() !== order.deliveryCode) return { ok: false, reason: 'Código incorreto' }
+
+  const { error: updErr } = await supabase
+    .from('orders')
+    .update({ status: 'entregue' })
+    .eq('id', orderId)
+  if (updErr) return { ok: false, reason: updErr.message }
+
+  return { ok: true, order: { ...order, status: 'entregue' } }
 }

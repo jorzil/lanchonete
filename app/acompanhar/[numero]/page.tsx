@@ -162,6 +162,17 @@ export default function AcompanharPage() {
           )}
         </div>
 
+        {/* Código de entrega */}
+        {!isCancelled && !isDone && order.orderType === 'entrega' && order.deliveryCode && (
+          <div className="rounded-2xl bg-[#EE5C13]/10 border border-[#EE5C13]/30 p-5 text-center">
+            <p className="text-[#EE5C13] text-[11px] font-bold uppercase tracking-widest mb-1">Código de entrega</p>
+            <p className="text-white font-black text-4xl tracking-[0.3em] my-1">{order.deliveryCode}</p>
+            <p className="text-white/50 text-xs mt-2">
+              Informe este código ao entregador para confirmar o recebimento do seu pedido. 🛵
+            </p>
+          </div>
+        )}
+
         {/* Progress tracker */}
         {!isCancelled && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
