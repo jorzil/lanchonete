@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sandwich, Phone, ChevronRight, Clock } from 'lucide-react'
+import { Phone, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { Logo } from '@/components/brand/logo'
 import { formatCurrency, type Order } from '@/lib/data'
 import { loadOrders } from '@/lib/orders-storage'
 
@@ -70,11 +71,8 @@ export default function AcompanharEntradaPage() {
 
   return (
     <div className="min-h-screen bg-[#0B1F3A] flex flex-col items-center justify-center px-4 py-12">
-      <Link href="/" className="flex items-center gap-3 mb-10">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EE5C13]">
-          <Sandwich className="h-5 w-5 text-white" />
-        </div>
-        <p className="text-white font-black text-xl">Mais<span className="text-[#EE5C13]">Sub</span></p>
+      <Link href="/" className="mb-10">
+        <Logo height={72} />
       </Link>
 
       <div className="w-full max-w-sm">
@@ -86,13 +84,13 @@ export default function AcompanharEntradaPage() {
 
           <form onSubmit={handleSearch} className="space-y-4">
             <div className="relative">
-              <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+              <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black/40" />
               <input
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(formatPhone(e.target.value))}
                 placeholder="(33) 99999-9999"
-                className="w-full bg-white/8 border border-white/12 rounded-xl pl-10 pr-4 py-3.5 text-white text-base font-bold placeholder:text-white/20 outline-none focus:border-[#EE5C13] transition-colors"
+                className="w-full bg-white border border-white/12 rounded-xl pl-10 pr-4 py-3.5 text-black text-base font-bold placeholder:text-black/30 outline-none focus:border-[#EE5C13] transition-colors"
                 autoFocus
               />
             </div>
