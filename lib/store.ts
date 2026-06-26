@@ -8,13 +8,22 @@ import type { Order } from '@/lib/data'
 import { MENU, formatCurrency } from '@/lib/data'
 
 export function usePersistedState<T>(key: string, defaultValue: T): [T, (value: T | ((prev: T) => T)) => void] {
-  const [state, setState] = useState<T>(() => {
-    if (typeof window === 'undefined') return defaultValue
-    try { const stored = localStorage.getItem(key); return stored ? (JSON.parse(stored) as T) : defaultValue } catch { return defaultValue }
-  })
+  const [state, setState] = useState<T>(defaultValue)
+  const [hydrated, setHydrated] = useState(false)
+
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(state)) } catch { /* ignore */ }
-  }, [key, state])
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored) setState(JSON.parse(stored) as T)
+    } catch {}
+    setHydrated(true)
+  }, [key])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try { localStorage.setItem(key, JSON.stringify(state)) } catch {}
+  }, [key, state, hydrated])
+
   return [state, setState]
 }
 

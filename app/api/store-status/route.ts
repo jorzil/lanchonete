@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
-const SETTINGS_KEY = 'store_status'
+// System row stored in customers table — no extra table needed
+const SYSTEM_PHONE = '__store_config__'
 
 const DEFAULT_SCHEDULE = {
   0: { open: '18:00', close: '23:00', enabled: false },
@@ -14,9 +15,27 @@ const DEFAULT_SCHEDULE = {
 }
 
 const DEFAULT_STATUS = {
-  manualOverride: true as boolean | null,
+  manualOverride: true as boolean | null, // open by default until admin changes it
   schedule: DEFAULT_SCHEDULE,
-  updatedAt: new Date().toISOString(),
+}
+
+async function readFromDb() {
+  const { data } = await supabase
+    .from('customers')
+    .select('address_reference')
+    .eq('phone', SYSTEM_PHONE)
+    .maybeSingle()
+  if (data?.address_reference) {
+    try { return JSON.parse(data.address_reference) } catch {}
+  }
+  return null
+}
+
+async function writeToDb(value: object) {
+  await supabase.from('customers').upsert(
+    { phone: SYSTEM_PHONE, name: '__system__', address_reference: JSON.stringify(value) },
+    { onConflict: 'phone' }
+  )
 }
 
 export async function GET() {
@@ -24,17 +43,8 @@ export async function GET() {
     return NextResponse.json(DEFAULT_STATUS)
   }
 
-  const { data, error } = await supabase
-    .from('settings')
-    .select('value')
-    .eq('key', SETTINGS_KEY)
-    .maybeSingle()
-
-  if (error || !data) {
-    return NextResponse.json(DEFAULT_STATUS)
-  }
-
-  return NextResponse.json(data.value)
+  const stored = await readFromDb()
+  return NextResponse.json(stored ?? DEFAULT_STATUS)
 }
 
 export async function PATCH(req: NextRequest) {
@@ -43,24 +53,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json()
-
-  // Fetch existing first to merge
-  const { data: existing } = await supabase
-    .from('settings')
-    .select('value')
-    .eq('key', SETTINGS_KEY)
-    .maybeSingle()
-
-  const current = existing?.value ?? DEFAULT_STATUS
+  const current = (await readFromDb()) ?? DEFAULT_STATUS
   const next = { ...current, ...body, updatedAt: new Date().toISOString() }
 
-  const { error } = await supabase
-    .from('settings')
-    .upsert({ key: SETTINGS_KEY, value: next })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
+  await writeToDb(next)
   return NextResponse.json(next)
 }
