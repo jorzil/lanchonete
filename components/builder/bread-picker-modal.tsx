@@ -32,6 +32,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
   const [size, setSize] = useState<string>('')
   const [bread, setBread] = useState<string>('')
   const [extras, setExtras] = useState<Record<string, number>>({})
+  const [notes, setNotes] = useState<string>('')
   const [disabled, setDisabled] = useState<Set<string>>(new Set())
   const { addItem } = useCart()
 
@@ -66,6 +67,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
     setSize('')
     setBread('')
     setExtras({})
+    setNotes('')
     onClose()
   }
 
@@ -74,15 +76,17 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
     if (!bread) { toast.error('Escolha o tipo de pão.'); return }
     const breadObj = MENU.breads.find(b => b.key === bread)
     const activeExtras = Object.fromEntries(Object.entries(extras).filter(([, q]) => q > 0))
+    const obs = notes.trim()
+    const noteText = obs ? `Pão: ${breadObj?.name} • Obs: ${obs}` : `Pão: ${breadObj?.name}`
     addItem({
       productId: product!.id,
       name: `${product!.name} ${size}`,
       price: total,
       quantity: 1,
       image: product!.image,
-      notes: `Pão: ${breadObj?.name}`,
-      customization: Object.keys(activeExtras).length > 0
-        ? { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces: [], extras: activeExtras, notes: '' }
+      notes: noteText,
+      customization: (Object.keys(activeExtras).length > 0 || obs)
+        ? { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces: [], extras: activeExtras, notes: obs }
         : undefined,
     })
     toast.success(`${product!.name} ${size} adicionado!`)
@@ -184,6 +188,20 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
               )
             })}
           </div>
+        </div>
+
+        {/* Observação */}
+        <div className="mt-4">
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-1">📝 Observação</p>
+          <p className="text-[11px] text-white/30 mb-2">Algum detalhe especial? Ex: sem rúcula, sem cebola…</p>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ex: quero sem rúcula"
+            rows={2}
+            maxLength={200}
+            className="w-full rounded-xl bg-white/5 border-2 border-white/10 focus:border-brand outline-none p-3 text-white text-[13px] placeholder:text-white/25 resize-none transition-colors"
+          />
         </div>
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
