@@ -13,6 +13,7 @@ import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
 const SandwichBuilder = dynamic(() => import('@/components/builder/sandwich-builder').then(m => ({ default: m.SandwichBuilder })), { ssr: false })
 const BreadPickerModal = dynamic(() => import('@/components/builder/bread-picker-modal').then(m => ({ default: m.BreadPickerModal })), { ssr: false })
+const ComboPickerModal = dynamic(() => import('@/components/builder/combo-picker-modal').then(m => ({ default: m.ComboPickerModal })), { ssr: false })
 
 const CATS = [
   { key: 'all',       label: 'Tudo',          count: PRODUCTS.filter(p => p.active).length },
@@ -44,13 +45,15 @@ function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClos
   )
 }
 
-function ProductCard({ product, onBread, onAdd }: {
+function ProductCard({ product, onBread, onAdd, onCombo }: {
   product: Product
   onBread: (p: Product) => void
   onAdd: (p: Product) => void
+  onCombo: (p: Product) => void
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
+  const isCombo = product.category === 'combos'
 
   return (
     <>
@@ -107,10 +110,10 @@ function ProductCard({ product, onBread, onAdd }: {
             <p className="text-[16px] font-black text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
           </div>
           <button
-            onClick={() => isSub ? onBread(product) : onAdd(product)}
+            onClick={() => isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product)}
             className="flex items-center gap-1.5 bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
-            {isSub ? 'Personalizar' : 'Adicionar'}
+            {isSub ? 'Personalizar' : isCombo ? 'Montar combo' : 'Adicionar'}
           </button>
         </div>
       </div>
@@ -125,6 +128,7 @@ export default function CardapioPage() {
   const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
   const [builderOpen, setBuilderOpen] = useState(false)
   const [breadProduct, setBreadProduct] = useState<Product | null>(null)
+  const [comboProduct, setComboProduct] = useState<Product | null>(null)
   const [sticky, setSticky] = useState(false)
   const [idModalOpen, setIdModalOpen] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -286,17 +290,32 @@ export default function CardapioPage() {
               )}
 
               {/* Subs Prontos */}
-              {filtered.filter(p => p.category !== 'bebidas' && p.category !== 'cookies').length > 0 && (
+              {filtered.filter(p => p.category === 'subs-15cm' || p.category === 'subs-30cm').length > 0 && (
                 <div>
                   {showMonte && <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                    {filtered.filter(p => p.category !== 'bebidas' && p.category !== 'cookies').map((product, i) => (
+                    {filtered.filter(p => p.category === 'subs-15cm' || p.category === 'subs-30cm').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={product}
                           onBread={p => setBreadProduct(p)}
                           onAdd={handleAdd}
+                          onCombo={p => setComboProduct(p)}
                         />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Combos */}
+              {filtered.filter(p => p.category === 'combos').length > 0 && (
+                <div>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Combos <span className="text-green-400">— 5% OFF</span></h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+                    {filtered.filter(p => p.category === 'combos').map((product, i) => (
+                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                        <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
                     ))}
                   </div>
@@ -310,7 +329,7 @@ export default function CardapioPage() {
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'cookies').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
-                        <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} />
+                        <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
                     ))}
                   </div>
@@ -328,6 +347,7 @@ export default function CardapioPage() {
                           product={product}
                           onBread={p => setBreadProduct(p)}
                           onAdd={handleAdd}
+                          onCombo={p => setComboProduct(p)}
                         />
                       </div>
                     ))}
@@ -372,6 +392,7 @@ export default function CardapioPage() {
       <Footer />
       <SandwichBuilder product={builderProduct} open={builderOpen} onClose={() => setBuilderOpen(false)} />
       <BreadPickerModal product={breadProduct} onClose={() => setBreadProduct(null)} />
+      <ComboPickerModal product={comboProduct} onClose={() => setComboProduct(null)} />
       <IdentificationModal
         open={idModalOpen}
         onClose={() => setIdModalOpen(false)}
