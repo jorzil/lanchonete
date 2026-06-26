@@ -29,42 +29,53 @@ export async function PATCH(
     const { status } = await req.json()
     const { id } = await context.params
 
-    console.log(`[status] id=${id} status=${status}`)
+    console.log(`[status] PATCH id=${id} status=${status}`)
 
     if (!status || !id) {
       return NextResponse.json({ error: 'id e status obrigatórios' }, { status: 400 })
     }
 
-    // Update status in DB and get phone/orderNumber back
-    const { data: row, error } = await supabase
+    // 1. Buscar dados do pedido antes de atualizar
+    const { data: orderRow, error: selectError } = await supabase
       .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
       .select('order_number, customer_phone')
+      .eq('id', id)
       .single()
 
-    if (error) {
-      console.error('[status] supabase error:', error.message)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (selectError) {
+      console.error('[status] select error:', selectError.message)
     }
 
-    const phone = row?.customer_phone ?? ''
-    const orderNumber = row?.order_number ?? ''
-    const msg = buildMessage(status, orderNumber)
+    const phone = orderRow?.customer_phone ?? ''
+    const orderNumber = orderRow?.order_number ?? ''
+    console.log(`[status] order=${orderNumber} phone=${phone}`)
 
-    console.log(`[status] order=${orderNumber} phone=${phone} msg=${msg ? 'yes' : 'empty'}`)
+    // 2. Atualizar status
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', id)
+
+    if (updateError) {
+      console.error('[status] update error:', updateError.message)
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    // 3. Enviar WhatsApp pelo servidor
+    const msg = buildMessage(status, orderNumber)
+    console.log(`[status] msg=${msg ? 'ok' : 'empty'}`)
 
     let whatsappSent = false
     if (phone && msg) {
       const result = await sendEvolutionMessage(phone, msg)
       whatsappSent = result.success
-      console.log(`[status] whatsapp:`, JSON.stringify(result))
+      console.log(`[status] whatsapp result:`, JSON.stringify(result))
     }
 
     return NextResponse.json({ success: true, whatsappSent })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
-    console.error('[status] catch error:', message)
+    console.error('[status] catch:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
