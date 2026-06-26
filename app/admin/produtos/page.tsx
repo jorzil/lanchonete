@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { formatCurrency, PRODUCTS, type Product } from "@/lib/data"
 import { syncProductsToInventory } from "@/lib/inventory-storage"
+import { fetchDisabledProducts, patchDisabledProducts } from "@/lib/products-availability"
 
 // Extend Product locally to support cost price
 type ProductWithCost = Product & { costPrice?: number }
@@ -294,7 +295,25 @@ export default function ProdutosPage() {
     try { localStorage.setItem('admin_product_overrides', JSON.stringify(overrides)) } catch {}
   }, [overrides])
 
+  // Carrega do Supabase os produtos desativados (cross-device) e aplica aos overrides
+  useEffect(() => {
+    fetchDisabledProducts().then((disabled) => {
+      if (disabled.size === 0) return
+      setOverrides((prev) => {
+        const next = { ...prev }
+        disabled.forEach((id) => { next[id] = { ...(next[id] ?? {}), active: false } })
+        return next
+      })
+    })
+  }, [])
+
   const products: ProductWithCost[] = mergeOverrides(PRODUCTS, overrides)
+
+  // Salva no Supabase a lista de produtos inativos (para sumir do site público)
+  function syncDisabledToDb(merged: ProductWithCost[]) {
+    const disabled = merged.filter((p) => !p.active).map((p) => p.id)
+    patchDisabledProducts(disabled)
+  }
 
   const [query, setQuery]       = useState("")
   const [editing, setEditing]   = useState<ProductWithCost | null>(null)
@@ -328,15 +347,20 @@ export default function ProdutosPage() {
   function save() {
     if (!editing || !editing.name.trim()) return
     const { id, active, costPrice, price, badge } = editing
-    setOverrides(prev => ({ ...prev, [id]: { active, costPrice, price, badge } }))
-    syncProductsToInventory(mergeOverrides(PRODUCTS, { ...overrides, [id]: { active, costPrice, price, badge } }))
+    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, badge } }
+    setOverrides(nextOverrides)
+    const merged = mergeOverrides(PRODUCTS, nextOverrides)
+    syncProductsToInventory(merged)
+    syncDisabledToDb(merged)
     setOpen(false)
     setEditing(null)
   }
 
   function toggleActive(id: string) {
     const current = products.find(p => p.id === id)
-    setOverrides(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), active: !current?.active } }))
+    const nextOverrides = { ...overrides, [id]: { ...(overrides[id] ?? {}), active: !current?.active } }
+    setOverrides(nextOverrides)
+    syncDisabledToDb(mergeOverrides(PRODUCTS, nextOverrides))
   }
 
   const activeCount   = products.filter((p) => p.active).length
@@ -353,7 +377,7 @@ export default function ProdutosPage() {
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
           <button
-            onClick={() => { setOverrides({}); localStorage.removeItem('admin_products') }}
+            onClick={() => { setOverrides({}); localStorage.removeItem('admin_products'); patchDisabledProducts([]) }}
             className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-gray-50 text-gray-600 font-bold px-4 py-2.5 text-sm border border-gray-200 shadow-sm transition-all"
             title="Resetar para produtos do cardápio"
           >

@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, type Product } from '@/lib/data'
+import { fetchDisabledProducts } from '@/lib/products-availability'
 import { toast } from 'sonner'
 import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
@@ -132,6 +133,7 @@ export default function CardapioPage() {
   const [comboProduct, setComboProduct] = useState<Product | null>(null)
   const [sticky, setSticky] = useState(false)
   const [idModalOpen, setIdModalOpen] = useState(false)
+  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
   const sentinelRef = useRef<HTMLDivElement>(null)
   const { addItem, items, subtotal, total, deliveryFee, clearCart } = useCart()
 
@@ -139,6 +141,11 @@ export default function CardapioPage() {
     const obs = new IntersectionObserver(([e]) => setSticky(!e.isIntersecting), { threshold: 0 })
     if (sentinelRef.current) obs.observe(sentinelRef.current)
     return () => obs.disconnect()
+  }, [])
+
+  // Produtos desativados pelo admin (Supabase) — somem do cardápio
+  useEffect(() => {
+    fetchDisabledProducts().then(setDisabledProducts)
   }, [])
 
   // Pré-seleciona a categoria a partir do ?cat= da URL (ex: vindo da Home)
@@ -150,7 +157,7 @@ export default function CardapioPage() {
   const showMonte = active === 'all' || active === 'monte'
   const filtered = useMemo(() => {
     if (active === 'monte') return []
-    let list = PRODUCTS.filter(p => p.active)
+    let list = PRODUCTS.filter(p => p.active && !disabledProducts.has(p.id))
     if (active !== 'all') list = list.filter(p => p.category === active)
     if (search.trim()) {
       const q = search.toLowerCase()
