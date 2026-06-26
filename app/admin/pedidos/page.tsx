@@ -369,6 +369,11 @@ export default function PedidosPage() {
                         <td className="px-5 py-3">
                           <div className="text-gray-900 font-medium">{o.customer.name}</div>
                           <div className="text-xs text-gray-400">{o.customer.phone}</div>
+                          {o.deliveryCode && (
+                            <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-[#EE5C13] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded">
+                              🔐 {o.deliveryCode}
+                            </div>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{formatDate(o.createdAt)}</td>
                         <td className="px-5 py-3 font-semibold text-gray-900 text-right">{formatCurrency(o.total)}</td>
