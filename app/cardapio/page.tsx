@@ -103,7 +103,7 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
       <div className="p-4 flex flex-col flex-1">
         <div className="flex-1">
           <h3 className="font-bold text-white text-[14px] leading-snug mb-1">{product.name}</h3>
-          <p className="text-white/35 text-[12px] leading-relaxed line-clamp-2">{product.description}</p>
+          <p className="text-white/35 text-[12px] leading-relaxed">{product.description}</p>
         </div>
         <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-white/6">
           <div>
