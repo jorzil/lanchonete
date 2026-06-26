@@ -200,20 +200,16 @@ export default function PedidosPage() {
   async function advanceStatus(order: Order, nextStatus: string) {
     if (nextStatus === 'aceito') stopSiren()
     // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
-    // gesture so the browser does not block the popup). Automation fallback.
+    // gesture so the browser does not block the popup).
     openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber)
     const id = order.id
     if (supabaseConfigured) {
       try {
-        // Use server-side route that updates status AND sends WhatsApp
-        await fetch(`/api/orders/${id}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: nextStatus }),
-        })
+        // Update status directly in the DB (no Evolution/API send — message
+        // goes out via WhatsApp Web above).
+        await updateOrderStatus(id, nextStatus)
         await loadAll()
       } catch {
-        await updateOrderStatus(id, nextStatus)
         await loadAll()
       }
     }
