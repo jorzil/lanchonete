@@ -370,6 +370,20 @@ export default function ProdutosPage() {
     syncDisabledToDb(mergeOverrides(PRODUCTS, nextOverrides))
   }
 
+  const [syncing, setSyncing] = useState(false)
+  const [syncedAt, setSyncedAt] = useState<string | null>(null)
+
+  // Envia os produtos inativos para o site (Supabase) — vale em todos os aparelhos
+  async function syncNow() {
+    setSyncing(true)
+    const merged = mergeOverrides(PRODUCTS, overrides)
+    const disabled = merged.filter((p) => !p.active).map((p) => p.id)
+    await patchDisabledProducts(disabled)
+    syncProductsToInventory(merged)
+    setSyncing(false)
+    setSyncedAt(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+  }
+
   const activeCount   = products.filter((p) => p.active).length
   const inactiveCount = products.length - activeCount
 
@@ -384,12 +398,13 @@ export default function ProdutosPage() {
         </div>
         <div className="flex gap-2 self-start sm:self-auto">
           <button
-            onClick={() => { setOverrides({}); localStorage.removeItem('admin_products'); patchDisabledProducts([]) }}
-            className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-gray-50 text-gray-600 font-bold px-4 py-2.5 text-sm border border-gray-200 shadow-sm transition-all"
-            title="Resetar para produtos do cardápio"
+            onClick={syncNow}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-gray-50 text-gray-600 font-bold px-4 py-2.5 text-sm border border-gray-200 shadow-sm transition-all disabled:opacity-50"
+            title="Enviar produtos inativos para o site"
           >
-            <RefreshCw size={15} />
-            Sincronizar
+            <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Sincronizando…' : syncedAt ? `Sincronizado ${syncedAt}` : 'Sincronizar'}
           </button>
           <button
             onClick={openNew}
