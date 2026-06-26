@@ -49,7 +49,7 @@ export function CartPanel() {
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && closeCart()}>
-      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-gradient-to-b from-[#FFFFFF] to-[#F9F9F9] border-l-4 border-l-[#EE5C13] text-gray-900 shadow-2xl">
+      <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col bg-gradient-to-b from-[#FFFFFF] to-[#F9F9F9] border-l-4 border-l-[#EE5C13] text-gray-900 shadow-2xl [&>button]:text-white [&>button]:opacity-100">
         <SheetHeader className="px-6 py-5 border-b-2 border-gray-200 bg-gradient-to-r from-navy via-navy-surface to-navy-deep">
           <SheetTitle className="text-white flex items-center gap-3">
             <div className="p-2 bg-brand-hover rounded-lg">
