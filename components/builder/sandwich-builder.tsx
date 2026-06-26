@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Check, ChevronRight, ChevronLeft, AlertCircle, Plus, Minus } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/contexts/cart-context'
 import { MENU, formatCurrency, calculateSubTotal, type SubCustomization, type Product } from '@/lib/store'
+import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
 import { toast } from 'sonner'
 
 interface SandwichBuilderProps {
@@ -68,6 +69,18 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
   const [step, setStep] = useState(1)
   const [customization, setCustomization] = useState<SubCustomization>({ ...DEFAULT_CUSTOMIZATION })
   const [errors, setErrors] = useState<Record<number, boolean>>({})
+  const [disabled, setDisabled] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (open) fetchDisabledIngredients().then(setDisabled)
+  }, [open])
+
+  const availBreads  = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
+  const availMeats   = useMemo(() => MENU.meats.filter((m) => !disabled.has(ingKey('meat', m.key))), [disabled])
+  const availCheeses = useMemo(() => MENU.cheeses.filter((c) => !disabled.has(ingKey('cheese', c.key))), [disabled])
+  const availSauces  = useMemo(() => MENU.sauces.filter((s) => !disabled.has(ingKey('sauce', s.key))), [disabled])
+  const availExtras  = useMemo(() => MENU.extras.filter((e) => !disabled.has(ingKey('extra', e.key))), [disabled])
+  const availSaladKeys = useMemo(() => ALL_SALAD_KEYS.filter((k) => !disabled.has(ingKey('salad', k))), [disabled])
 
   const size = product?.category === 'subs-30cm' ? '30cm' : '15cm'
   const cheeseExtraPrice = size === '15cm' ? 3 : 5
@@ -134,13 +147,13 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
     setCustomization((prev) => {
       if (key === 'salada-completa') {
         const isComplete = prev.salads.includes('salada-completa')
-        return { ...prev, salads: isComplete ? [] : ['salada-completa', ...ALL_SALAD_KEYS] }
+        return { ...prev, salads: isComplete ? [] : ['salada-completa', ...availSaladKeys] }
       }
       const current = prev.salads.filter((s) => s !== 'salada-completa')
       const set = new Set(current)
       set.has(key) ? set.delete(key) : set.add(key)
       const next = [...set]
-      const allSelected = ALL_SALAD_KEYS.every((k) => set.has(k))
+      const allSelected = availSaladKeys.length > 0 && availSaladKeys.every((k) => set.has(k))
       return { ...prev, salads: allSelected ? ['salada-completa', ...next] : next }
     })
 
@@ -292,7 +305,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
             {/* ── Step 1: Pão ── */}
             {step === 1 && (
               <div className="space-y-3">
-                {MENU.breads.map((bread) => {
+                {availBreads.map((bread) => {
                   const selected = customization.bread === bread.key
                   const grad     = BREAD_GRADIENTS[bread.key] ?? 'from-amber-100 to-yellow-100'
                   return (
@@ -344,7 +357,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     {customization.meat === '' && <Check size={13} className="text-white" />}
                   </div>
                 </button>
-                {MENU.meats.map((meat) => {
+                {availMeats.map((meat) => {
                   const selected = customization.meat === meat.key
                   const grad     = MEAT_GRADIENTS[meat.key] ?? 'from-orange-100 to-red-100'
                   return (
@@ -403,7 +416,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   </p>
                 </div>
                 <div className="space-y-3">
-                  {MENU.cheeses.map((cheese) => {
+                  {availCheeses.map((cheese) => {
                     const selected   = customization.cheeses.includes(cheese.key)
                     const idx        = customization.cheeses.indexOf(cheese.key)
                     const isIncluded = selected && idx === 0
@@ -474,7 +487,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                 </button>
 
                 <div className="grid grid-cols-2 gap-2.5">
-                  {ALL_SALAD_KEYS.map((key) => {
+                  {availSaladKeys.map((key) => {
                     const salad    = _saladMap.get(key)
                     if (!salad) return null
                     const selected = customization.salads.includes(key)
@@ -539,7 +552,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                 </div>
 
                 <div className="space-y-2.5">
-                  {MENU.sauces.map((sauce) => {
+                  {availSauces.map((sauce) => {
                     const selected = customization.sauces.includes(sauce.key)
                     const disabled = !selected && sauceCount >= sauceMax
                     return (
@@ -589,7 +602,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                     <strong>Turbine seu sub!</strong> Adicione ingredientes extras e deixe ainda mais gostoso.
                   </p>
                 </div>
-                {MENU.extras.map((extra) => {
+                {availExtras.map((extra) => {
                   const qty = customization.extras?.[extra.key] ?? 0
                   const price = size === '15cm' ? extra.price15cm : extra.price30cm
                   const EXTRA_EMOJIS: Record<string, string> = {

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { MENU, formatCurrency, type Product } from '@/lib/data'
 import { useCart } from '@/contexts/cart-context'
+import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
 import { toast } from 'sonner'
 import { Plus, Minus } from 'lucide-react'
 
@@ -31,7 +32,15 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
   const [size, setSize] = useState<string>('')
   const [bread, setBread] = useState<string>('')
   const [extras, setExtras] = useState<Record<string, number>>({})
+  const [disabled, setDisabled] = useState<Set<string>>(new Set())
   const { addItem } = useCart()
+
+  useEffect(() => {
+    if (product) fetchDisabledIngredients().then(setDisabled)
+  }, [product])
+
+  const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
+  const availExtras = useMemo(() => MENU.extras.filter((e) => !disabled.has(ingKey('extra', e.key))), [disabled])
 
   if (!product) return null
 
@@ -109,7 +118,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
         <div className="mt-4">
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha o pão</p>
           <div className="space-y-2">
-            {MENU.breads.map(b => (
+            {availBreads.map(b => (
               <button
                 key={b.key}
                 onClick={() => setBread(b.key)}
@@ -137,7 +146,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-1">⚡ Turbinar seu sub</p>
           <p className="text-[11px] text-white/30 mb-3">Adicionais opcionais</p>
           <div className="space-y-2">
-            {MENU.extras.map(extra => {
+            {availExtras.map(extra => {
               const qty = extras[extra.key] ?? 0
               const price = size === '30cm' ? extra.price30cm : extra.price15cm
               return (
