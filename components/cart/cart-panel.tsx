@@ -9,19 +9,23 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
-import { formatCartForWhatsApp, openWhatsApp } from '@/lib/whatsapp'
 import { toast } from 'sonner'
 
+// O(1) lookup Maps — built once, never recreated
+const _meatMap   = new Map(MENU.meats.map((m) => [m.key, m.name]))
+const _cheeseMap = new Map(MENU.cheeses.map((c) => [c.key, c.name]))
+const _saladMap  = new Map(MENU.salads.map((s) => [s.key, s.name]))
+const _sauceMap  = new Map(MENU.sauces.map((s) => [s.key, s.name]))
+
 function customizationSummary(c: NonNullable<import('@/lib/store').CartItem['customization']>): string {
-  const parts: string[] = []
-  parts.push(c.size)
-  if (c.meat) { const meat = MENU.meats.find((m) => m.key === c.meat); if (meat) parts.push(meat.name) }
+  const parts: string[] = [c.size]
+  if (c.meat) { const name = _meatMap.get(c.meat); if (name) parts.push(name) }
   if (c.cheeses && c.cheeses.length > 0) {
-    const names = c.cheeses.map((ck) => MENU.cheeses.find((ch) => ch.key === ck)?.name || ck).join(', ')
+    const names = c.cheeses.map((ck) => _cheeseMap.get(ck) || ck).join(', ')
     parts.push(c.cheeses.length > 1 ? `${names} (em dobro)` : names)
   }
-  if (c.salads.length > 0) parts.push(c.salads.map((s) => MENU.salads.find((sl) => sl.key === s)?.name || s).join(', '))
-  if (c.sauces.length > 0) parts.push(c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', '))
+  if (c.salads.length > 0) parts.push(c.salads.map((s) => _saladMap.get(s) || s).join(', '))
+  if (c.sauces.length > 0) parts.push(c.sauces.map((s) => _sauceMap.get(s) || s).join(', '))
   return parts.join(' • ')
 }
 
@@ -58,7 +62,7 @@ export function CartPanel() {
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="text-7xl mb-4 animate-bounce">🥖</div>
+            <div className="text-7xl mb-4">🥖</div>
             <h3 className="text-xl font-black text-gray-900 mb-2">Seu carrinho está vazio</h3>
             <p className="text-gray-500 mb-6 text-sm">Adicione subs deliciosos ao seu pedido!</p>
             <Link href="/cardapio" onClick={closeCart}>
@@ -141,9 +145,6 @@ export function CartPanel() {
                     Finalizar Pedido
                   </Button>
                 </Link>
-                <Button onClick={() => { if (items.length === 0) return; openWhatsApp(formatCartForWhatsApp(items, total)) }} className="w-full border-2 border-green-400 text-green-700 hover:bg-green-50 rounded-xl font-black bg-white transition-all">
-                  Pedir via WhatsApp
-                </Button>
               </div>
             </div>
           </>

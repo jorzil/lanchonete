@@ -1,530 +1,423 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, ArrowUpRight, Star, Clock, MapPin, Sparkles, Beef, Salad, Flame } from 'lucide-react'
-import { Header } from '@/components/layout/header'
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ArrowRight, Star } from 'lucide-react'
+import { HeaderClient } from '@/components/layout/header-client'
 import { Footer } from '@/components/layout/footer'
-import { SandwichBuilder } from '@/components/builder/sandwich-builder'
-import { useCart } from '@/contexts/cart-context'
-import { PRODUCTS, formatCurrency, type Product } from '@/lib/store'
-import { MaisSubWordmark, MBadge } from '@/components/brand/logo'
-import { toast } from 'sonner'
+import { PRODUCTS } from '@/lib/data'
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 22 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: '-60px' },
-  transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] as const, delay },
-})
+gsap.registerPlugin(ScrollTrigger)
 
-// ─── HERO ─────────────────────────────────────────────────────────────────────
-function Hero() {
-  return (
-    <section className="relative bg-navy overflow-hidden">
-      {/* Subtle glow only */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[700px] h-[500px] bg-brand/10 blur-[160px] rounded-full" />
-      </div>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
 
-      <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-24">
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-
-          <div className="lg:col-span-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 bg-brand/15 border border-brand/30 rounded-full px-3.5 py-1.5 mb-7"
-            >
-              <span className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
-              <span className="text-brand text-[11.5px] font-bold tracking-[0.16em] uppercase">Aberto agora · Gov. Valadares</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display font-extrabold text-white text-[56px] sm:text-[72px] lg:text-[88px] leading-[0.95] tracking-[-0.04em] mb-6"
-            >
-              Monte seu sub<br />
-              em <span className="text-brand">2 minutos.</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.32 }}
-              className="text-white/65 text-[16px] sm:text-[17px] leading-[1.55] mb-9 max-w-[480px]"
-            >
-              Escolha o tamanho, a carne, o queijo, as saladas e os molhos. Você decide cada detalhe — a gente entrega quentinho em até 30 minutos.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.45 }}
-              className="flex flex-col sm:flex-row gap-3 mb-12"
-            >
-              <Link href="/cardapio" className="block">
-                <button className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_8px_30px_rgba(238,92,19,0.45)]">
-                  Começar pedido
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-                </button>
-              </Link>
-              <Link href="/cardapio" className="block">
-                <button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-7 py-4 rounded-full text-[14.5px] transition-colors">
-                  Ver cardápio
-                </button>
-              </Link>
-            </motion.div>
-
-            {/* Trust signals - inline */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="flex items-center gap-6 flex-wrap"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-[#EE5C13] text-brand" />)}
-                </div>
-                <span className="text-white font-semibold text-[13px] tabular-nums">4.9</span>
-                <span className="text-white/40 text-[12.5px]">+2.000 avaliações</span>
-              </div>
-              <div className="h-4 w-px bg-white/15" />
-              <div className="flex items-center gap-2">
-                <Clock size={12} className="text-brand" />
-                <span className="text-white font-semibold text-[13px] tabular-nums">~28min</span>
-                <span className="text-white/40 text-[12.5px]">tempo médio</span>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Hero image */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-6 relative"
-          >
-            <div className="relative aspect-[5/6] lg:aspect-[4/5] rounded-[28px] overflow-hidden border border-white/10">
-              <Image
-                src="https://images.unsplash.com/photo-1553909489-cd47e0907980?w=1200&q=92&auto=format&fit=crop"
-                alt="Sub artesanal Mais Sub"
-                fill priority
-                className="object-cover"
-                sizes="(max-width:1024px) 100vw, 50vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-navy/40 via-transparent to-transparent" />
-            </div>
-
-            {/* M sticker accent */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
-              animate={{ opacity: 1, scale: 1, rotate: -12 }}
-              transition={{ duration: 0.6, delay: 0.85 }}
-              className="absolute -top-5 -right-3 sm:-right-6"
-            >
-              <MBadge size={92} />
-            </motion.div>
-
-            {/* Price tag */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.95 }}
-              className="absolute -bottom-5 -left-3 sm:-left-6 bg-white text-navy rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.3)]"
-            >
-              <p className="text-[10px] uppercase tracking-[0.18em] text-navy/55 font-bold mb-1">A partir de</p>
-              <p className="font-display font-extrabold text-[28px] leading-none tabular-nums tracking-[-0.03em]">R$ 21,90</p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Categories nav — Subway-style strip directly below hero */}
-      <CategoryNav />
-    </section>
-  )
-}
-
-// ─── CATEGORY NAV (Subway-style) ─────────────────────────────────────────────
-function CategoryNav() {
-  const cats = [
-    { key: 'subs-15cm', label: 'Subs 15cm', img: 'https://images.unsplash.com/photo-1553909489-cd47e0907980?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
-    { key: 'subs-30cm', label: 'Subs 30cm', img: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
-    { key: 'combos',    label: 'Combos',    img: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
-    { key: 'bebidas',   label: 'Bebidas',   img: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=400&q=85', count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
-  ]
-  return (
-    <div className="relative max-w-7xl mx-auto px-5 sm:px-8 pb-10 lg:pb-0 lg:-mb-14 lg:translate-y-14">
-      <motion.div {...fadeUp(0.1)} className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        {cats.map((cat, i) => (
-          <Link key={cat.key} href={`/cardapio?cat=${cat.key}`} className="group">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 + i * 0.07, ease: [0.16, 1, 0.3, 1] }}
-              className="relative bg-navy-surface hover:bg-[#1B4480] border border-white/10 hover:border-brand/50 rounded-2xl p-5 flex items-center gap-4 transition-all"
-            >
-              <div className="relative w-14 h-14 lg:w-16 lg:h-16 shrink-0 rounded-xl overflow-hidden bg-navy-deep">
-                <Image src={cat.img} alt={cat.label} fill className="object-cover" sizes="64px" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-[14px] lg:text-[15px] leading-tight">{cat.label}</p>
-                <p className="text-white/45 text-[11.5px] mt-0.5 tabular-nums">{cat.count} {cat.count === 1 ? 'opção' : 'opções'}</p>
-              </div>
-              <ArrowUpRight size={16} className="text-white/30 group-hover:text-brand group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0" />
-            </motion.div>
-          </Link>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
-
-// ─── HOW IT WORKS (Subway signature) ──────────────────────────────────────────
-function HowItWorks() {
-  const steps = [
-    { n: '01', icon: Sparkles, title: 'Escolha o tamanho', desc: '15cm para um lanche perfeito ou 30cm para quando a fome aperta.' },
-    { n: '02', icon: Beef,     title: 'Selecione a carne', desc: 'Frango grelhado, lombo defumado ou carne suprema premium.' },
-    { n: '03', icon: Salad,    title: 'Saladas & molhos',  desc: 'Até 8 saladas frescas e 3 molhos artesanais — totalmente livre.' },
-    { n: '04', icon: Flame,    title: 'Finalize com extras', desc: 'Bacon, presunto, peito de peru ou queijo em dobro pra turbinar.' },
-  ]
-  return (
-    <section className="bg-navy-deep py-24 lg:py-32 pt-32 lg:pt-44 border-y border-white/6" id="como-funciona">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div {...fadeUp()} className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-14">
-          <div>
-            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Como funciona</p>
-            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] max-w-[520px]">
-              Do seu jeito,<br />em 4 passos simples.
-            </h2>
-          </div>
-          <Link href="/cardapio">
-            <button className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-6 py-3 rounded-full text-[13.5px] transition-colors shadow-[0_6px_24px_rgba(238,92,19,0.4)]">
-              Começar agora
-              <ArrowRight size={14} />
-            </button>
-          </Link>
-        </motion.div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {steps.map((step, i) => (
-            <motion.div
-              key={step.n}
-              {...fadeUp(i * 0.08)}
-              className="relative bg-navy-surface border border-white/8 rounded-2xl p-6 hover:border-brand/40 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <span className="text-brand font-display font-extrabold text-[14px] tabular-nums tracking-wider">{step.n}</span>
-                <div className="w-10 h-10 bg-brand/12 rounded-xl flex items-center justify-center">
-                  <step.icon size={18} className="text-brand" />
-                </div>
-              </div>
-              <p className="text-white font-bold text-[15px] leading-tight mb-2">{step.title}</p>
-              <p className="text-white/50 text-[12.5px] leading-relaxed">{step.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─── PRODUCT CARD ─────────────────────────────────────────────────────────────
-function ProductCard({ product, onCustomize, onAdd }: {
-  product: Product; onCustomize: (p: Product) => void; onAdd: (p: Product) => void
-}) {
-  const isSub = product.category === 'subs-15cm' || product.category === 'subs-30cm'
-  return (
-    <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/8 hover:border-brand/45 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-400">
-      <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
-        {product.imageUrl ? (
-          <Image src={product.imageUrl} alt={product.name} fill className="object-cover card-img" sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,300px" />
-        ) : (
-          <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
-        )}
-        {product.badge && (
-          <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
-            {product.badge.label.replace(/[^\w\s]/g, '').trim()}
-          </span>
-        )}
-      </div>
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="font-bold text-white text-[14.5px] leading-snug mb-1">{product.name}</h3>
-        <p className="text-white/45 text-[12.5px] leading-relaxed line-clamp-2 flex-1">{product.description}</p>
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
-          <div>
-            <p className="text-[9.5px] text-white/30 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
-            <p className="text-[17px] font-bold text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
-          </div>
-          <button
-            onClick={() => isSub ? onCustomize(product) : onAdd(product)}
-            className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-all"
-          >
-            {isSub ? 'Montar' : 'Adicionar'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── FEATURED ─────────────────────────────────────────────────────────────────
-function FeaturedSection() {
-  const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
-  const [builderOpen, setBuilderOpen] = useState(false)
-  const { addItem } = useCart()
-  const featured = PRODUCTS.filter(p => p.active && (p.category === 'subs-15cm' || p.category === 'subs-30cm')).slice(0, 4)
-
-  return (
-    <section className="bg-navy py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
-          <div>
-            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Mais pedidos</p>
-            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
-              Os subs queridos<br />pela galera.
-            </h2>
-          </div>
-          <Link href="/cardapio" className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-white/55 hover:text-white transition-colors">
-            Ver cardápio completo <ArrowRight size={13} />
-          </Link>
-        </motion.div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {featured.map((p, i) => (
-            <motion.div key={p.id} {...fadeUp(i * 0.07)}>
-              <ProductCard
-                product={p}
-                onCustomize={pr => { setBuilderProduct(pr); setBuilderOpen(true) }}
-                onAdd={pr => { addItem({ productId: pr.id, name: pr.name, price: pr.price, quantity: 1, image: pr.image }); toast.success(`${pr.name} adicionado!`) }}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </div>
-      <SandwichBuilder product={builderProduct} open={builderOpen} onClose={() => setBuilderOpen(false)} />
-    </section>
-  )
-}
-
-// ─── PROMO BANNER ─────────────────────────────────────────────────────────────
-function PromoBanner() {
-  return (
-    <section className="bg-brand py-16 lg:py-20 relative overflow-hidden">
-      {/* Pattern from packaging */}
-      <div
-        className="absolute inset-0 opacity-[0.15] pointer-events-none"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 14px 14px, #0B2C5C 3px, transparent 3.5px), radial-gradient(circle at 42px 42px, #0B2C5C 2.5px, transparent 3px)',
-          backgroundSize: '56px 56px',
-        }}
-      />
-      <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div {...fadeUp()} className="grid lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7">
-            <p className="text-white/85 text-[11px] font-bold uppercase tracking-[0.22em] mb-3">Promoção</p>
-            <h2 className="font-display font-extrabold text-white text-[2rem] sm:text-[2.6rem] lg:text-[3.2rem] leading-[0.98] tracking-[-0.04em] mb-4">
-              Frete grátis<br />
-              acima de R$ 50.
-            </h2>
-            <p className="text-white/85 text-[15px] max-w-[420px]">
-              Em todo Governador Valadares. Válido todo dia, do almoço ao jantar.
-            </p>
-          </div>
-          <div className="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col gap-3">
-            <Link href="/cardapio" className="block">
-              <button className="w-full inline-flex items-center justify-center gap-2 bg-navy hover:bg-navy-surface text-white font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors shadow-[0_8px_24px_rgba(11,44,92,0.35)]">
-                Pedir agora
-                <ArrowRight size={15} />
-              </button>
-            </Link>
-            <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer" className="block">
-              <button className="w-full inline-flex items-center justify-center gap-2 bg-white/95 hover:bg-white text-navy font-bold px-7 py-4 rounded-full text-[14.5px] transition-colors">
-                Falar no WhatsApp
-              </button>
-            </a>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  )
-}
-
-// ─── COMBOS ───────────────────────────────────────────────────────────────────
-function CombosSection() {
-  const { addItem } = useCart()
-  const combos = PRODUCTS.filter(p => p.active && p.category === 'combos')
-  return (
-    <section className="bg-navy py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div {...fadeUp()} className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 mb-12">
-          <div>
-            <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Combos</p>
-            <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em]">
-              Mais sabor<br />pelo mesmo preço.
-            </h2>
-          </div>
-          <Link href="/cardapio?cat=combos" className="inline-flex items-center gap-1.5 text-[13.5px] font-semibold text-white/55 hover:text-white transition-colors">
-            Ver todos <ArrowRight size={13} />
-          </Link>
-        </motion.div>
-
-        <div className="grid sm:grid-cols-3 gap-4">
-          {combos.map((combo, i) => (
-            <motion.article
-              key={combo.id}
-              {...fadeUp(i * 0.08)}
-              className={`relative rounded-2xl overflow-hidden border border-white/8 hover:border-brand/40 hover:shadow-[0_12px_40px_rgba(238,92,19,0.12)] transition-all duration-300 ${i === 0 ? 'sm:col-span-2' : ''}`}
-            >
-              <div className={`relative overflow-hidden bg-navy-surface ${i === 0 ? 'aspect-[16/8]' : 'aspect-[4/3]'}`}>
-                {combo.imageUrl && (
-                  <Image src={combo.imageUrl} alt={combo.name} fill className="object-cover card-img" sizes="600px" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/25 to-transparent" />
-                {combo.badge && (
-                  <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
-                    {combo.badge.label.replace(/[^\w\s]/g, '').trim()}
-                  </span>
-                )}
-                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-bold text-[18px] leading-tight">{combo.name}</p>
-                    <p className="text-white/65 text-[12.5px] mt-1 line-clamp-1">{combo.description}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <p className="text-white font-display font-extrabold text-[22px] tabular-nums leading-none tracking-[-0.03em]">{formatCurrency(combo.price)}</p>
-                    <button
-                      onClick={() => { addItem({ productId: combo.id, name: combo.name, price: combo.price, quantity: 1, image: combo.image }); toast.success(`${combo.name} adicionado!`) }}
-                      className="bg-brand hover:bg-brand-hover text-white text-[12px] font-bold px-4 py-2 rounded-full transition-colors"
-                    >
-                      Adicionar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.article>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─── BRAND ────────────────────────────────────────────────────────────────────
-function BrandSection() {
-  return (
-    <section className="bg-navy-deep py-24 lg:py-32" id="sobre">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <motion.div {...fadeUp()} className="relative">
-            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden border border-white/8">
-              <Image
-                src="https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=900&q=90&auto=format&fit=crop"
-                alt="Mais Sub artesanal"
-                fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/50 to-transparent" />
-            </div>
-            <div className="absolute -top-4 -left-4 rotate-[-12deg]">
-              <MBadge size={72} />
-            </div>
-            <div className="absolute -bottom-5 right-4 sm:right-8 bg-brand text-white rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(238,92,19,0.4)]">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/85 font-bold mb-1">Avaliação</p>
-              <div className="flex items-center gap-2">
-                <p className="font-display font-extrabold text-[26px] leading-none tabular-nums tracking-[-0.03em]">4.9</p>
-                <div className="flex gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={11} className="fill-white text-white" />)}
-                </div>
-              </div>
-              <p className="text-white/85 text-[11px] mt-1">+2.000 reviews</p>
-            </div>
-          </motion.div>
-
-          <div>
-            <motion.p {...fadeUp(0.05)} className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">A marca</motion.p>
-            <motion.h2 {...fadeUp(0.12)} className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-6">
-              Subs feitos<br />com cuidado.
-            </motion.h2>
-            <motion.p {...fadeUp(0.18)} className="text-white/55 text-[15px] leading-relaxed mb-10 max-w-md">
-              Em Governador Valadares desde o primeiro pão. Cada sub é montado na hora, com ingredientes selecionados e embalado no nosso papel azul e laranja.
-            </motion.p>
-            <div className="grid sm:grid-cols-2 gap-5">
-              {[
-                { t: 'Pão na hora', d: 'Assado todos os dias na nossa cozinha.' },
-                { t: 'Carnes selecionadas', d: 'Lombo defumado, frango grelhado, carne premium.' },
-                { t: 'Ingredientes frescos', d: 'Saladas repostas toda manhã.' },
-                { t: 'Entrega em ~28 min', d: 'Quentinho na sua porta em Gov. Valadares.' },
-              ].map((p, i) => (
-                <motion.div key={p.t} {...fadeUp(0.24 + i * 0.06)} className="border-l border-brand pl-4">
-                  <p className="font-bold text-white text-[14px] mb-1">{p.t}</p>
-                  <p className="text-white/45 text-[12.5px] leading-relaxed">{p.d}</p>
-                </motion.div>
-              ))}
-            </div>
-            <motion.div {...fadeUp(0.5)} className="mt-10">
-              <Link href="/cardapio">
-                <button className="group inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-7 py-3.5 rounded-full text-[14px] transition-all shadow-[0_8px_24px_rgba(238,92,19,0.35)]">
-                  Fazer pedido <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─── REVIEWS ──────────────────────────────────────────────────────────────────
-const REVIEWS = [
-  { name: 'Ana Lima', role: 'Cliente frequente', text: 'Melhor sub da cidade, sem exagero. Chegou em 24 minutos, ainda quentinho. A personalização é surreal.' },
-  { name: 'Carlos Souza', role: 'Todo sábado', text: 'O Frango com Cream Cheese é irresistível. Peço toda semana há 4 meses. Nunca uma decepção.' },
-  { name: 'Mariana Costa', role: 'Foodie', text: 'Chipotle + Baconese é a combinação. Atendimento rápido, embalagem impecável. Meu favorito.' },
+const CATEGORY_NAV = [
+  {
+    key: 'subs-15cm',
+    label: 'Subs 15cm',
+    img: '/15 cm.jpg',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'subs-15cm').length,
+  },
+  {
+    key: 'subs-30cm',
+    label: 'Subs 30cm',
+    img: '/lombo-defumado.jpg',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'subs-30cm').length,
+  },
+  {
+    key: 'combos',
+    label: 'Combos',
+    img: '/bacon-barbecue.jpg',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'combos').length,
+  },
+  {
+    key: 'cookies',
+    label: 'Cookies',
+    img: '/caramelo-salgado.jpg',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'cookies').length,
+  },
+  {
+    key: 'bebidas',
+    label: 'Bebidas',
+    img: 'https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=800&q=80&auto=format&fit=crop',
+    count: PRODUCTS.filter((p) => p.active && p.category === 'bebidas').length,
+  },
 ]
 
-function Reviews() {
+// ─── MAGNETIC BUTTON ─────────────────────────────────────────────────────────
+
+function MagneticButton({
+  children,
+  className,
+  onClick,
+}: {
+  children: React.ReactNode
+  className?: string
+  onClick?: () => void
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = btnRef.current
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    const x = e.clientX - (rect.left + rect.width / 2)
+    const y = e.clientY - (rect.top + rect.height / 2)
+    btn.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`
+  }
+
+  const handleMouseLeave = () => {
+    if (!btnRef.current) return
+    btnRef.current.style.transition = 'transform 0.5s cubic-bezier(0.23,1,0.32,1)'
+    btnRef.current.style.transform = 'translate(0px,0px)'
+  }
+
+  const handleMouseEnter = () => {
+    if (!btnRef.current) return
+    btnRef.current.style.transition = 'transform 0.15s ease'
+  }
+
   return (
-    <section className="bg-navy py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div {...fadeUp()} className="text-center mb-14">
-          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-3">Avaliações</p>
-          <h2 className="font-display font-extrabold text-white text-[2.2rem] sm:text-[2.8rem] leading-[0.98] tracking-[-0.04em] mb-4">
-            +2.000 clientes confirmam.
-          </h2>
-          <div className="inline-flex items-center gap-2">
-            <div className="flex gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={16} className="fill-[#EE5C13] text-brand" />)}
-            </div>
-            <span className="text-white font-bold text-[15px] tabular-nums">4.9</span>
-            <span className="text-white/45 text-[13.5px]">de média</span>
+    <button
+      ref={btnRef}
+      className={className}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleMouseEnter}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── SCENE 1 — IMPACT HERO ────────────────────────────────────────────────────
+
+function SceneHero() {
+  const headlineRef = useRef<HTMLDivElement>(null)
+  const [mouse, setMouse] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      setMouse({
+        x: (e.clientX - window.innerWidth / 2) * 0.03,
+        y: (e.clientY - window.innerHeight / 2) * 0.03,
+      })
+    }
+    window.addEventListener('mousemove', handleMove)
+    return () => window.removeEventListener('mousemove', handleMove)
+  }, [])
+
+  useEffect(() => {
+    if (!headlineRef.current) return
+    const ctx = gsap.context(() => {
+      const chars = headlineRef.current!.querySelectorAll('.char')
+      gsap.fromTo(
+        chars,
+        { y: 120, opacity: 0, skewY: 8 },
+        {
+          y: 0,
+          opacity: 1,
+          skewY: 0,
+          duration: 1.1,
+          stagger: 0.04,
+          ease: 'power4.out',
+          delay: 0.15,
+        }
+      )
+    }, headlineRef)
+    return () => ctx.revert()
+  }, [])
+
+  const line1 = ['O', ' ', 'S', 'u', 'b']
+  const line2 = [
+    { ch: 'M', orange: true },
+    { ch: 'a', orange: true },
+    { ch: 'i', orange: true },
+    { ch: 's', orange: true },
+  ]
+  const line3 = [
+    { ch: 'G', orange: false },
+    { ch: 'o', orange: false },
+    { ch: 's', orange: false },
+    { ch: 't', orange: false },
+    { ch: 'o', orange: false },
+    { ch: 's', orange: false },
+    { ch: 'o', orange: false },
+    { ch: '.', orange: false },
+  ]
+
+  return (
+    <section className="relative min-h-screen bg-navy overflow-hidden flex flex-col">
+      {/* Subtle grid */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)',
+          backgroundSize: '80px 80px',
+        }}
+      />
+
+      {/* Glow orb — follows mouse */}
+      <div
+        aria-hidden
+        className="absolute top-[-10%] right-[-8%] w-[650px] h-[650px] rounded-full pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle,rgba(238,92,19,0.22) 0%,rgba(238,92,19,0.07) 50%,transparent 72%)',
+          transform: `translate(${mouse.x}px,${mouse.y}px)`,
+          transition: 'transform 0.12s linear',
+          filter: 'blur(30px)',
+        }}
+      />
+      {/* Secondary glow bottom-left */}
+      <div
+        aria-hidden
+        className="absolute bottom-[-20%] left-[-8%] w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle,rgba(22,58,110,0.9) 0%,transparent 70%)',
+          filter: 'blur(60px)',
+        }}
+      />
+
+      <div className="relative flex-1 flex items-center max-w-7xl mx-auto px-5 sm:px-8 pt-28 pb-28 w-full">
+        {/* Hero product image — right side */}
+        <motion.div
+          initial={{ opacity: 0, x: 40, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.9, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute right-0 sm:right-8 bottom-0 top-16 hidden lg:flex items-center pointer-events-none"
+          style={{ transform: `translate(${mouse.x * -0.4}px,${mouse.y * -0.3}px)`, transition: 'transform 0.18s linear' }}
+        >
+          <div className="relative w-[480px] h-[340px] rounded-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)] border border-white/8">
+            <Image
+              src="/bacon-barbecue.jpg"
+              alt="Sub Mais"
+              fill
+              className="object-cover"
+              sizes="480px"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-navy/60" />
           </div>
         </motion.div>
-        <div className="grid sm:grid-cols-3 gap-4">
-          {REVIEWS.map((r, i) => (
-            <motion.div key={r.name} {...fadeUp(i * 0.1)} className="bg-navy-surface border border-white/8 rounded-2xl p-6">
-              <div className="flex gap-0.5 mb-5">
-                {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={12} className="fill-[#EE5C13] text-brand" />)}
+
+        <div className="w-full max-w-[640px]">
+          {/* Eyebrow pill */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.05 }}
+            className="inline-flex items-center gap-2.5 mb-10 bg-brand/10 border border-brand/25 rounded-full px-4 py-1.5"
+          >
+            <span className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+            <span className="text-brand text-[11px] font-bold tracking-[0.2em] uppercase">
+              Aberto agora · Gov. Valadares
+            </span>
+          </motion.div>
+
+          {/* Headline */}
+          <div ref={headlineRef}>
+            <div
+              className="font-display font-extrabold leading-[0.88] tracking-[-0.045em]"
+              style={{ fontSize: 'clamp(3.8rem,10.5vw,9.5rem)' }}
+            >
+              {/* Line 1: "O Sub" */}
+              <div className="text-white whitespace-nowrap">
+                {line1.map((c, i) => (
+                  <span key={i} className="char inline-block" style={{ opacity: 0 }}>
+                    {c}
+                  </span>
+                ))}
               </div>
-              <p className="text-white/85 text-[14px] leading-relaxed mb-6">&ldquo;{r.text}&rdquo;</p>
-              <div className="pt-4 border-t border-white/8 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-brand text-white grid place-items-center text-[12px] font-bold">
-                  {r.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              {/* Line 2: "Mais" in orange */}
+              <div className="whitespace-nowrap">
+                {line2.map((item, i) => (
+                  <span
+                    key={i}
+                    className="char inline-block text-brand"
+                    style={{ opacity: 0 }}
+                  >
+                    {item.ch}
+                  </span>
+                ))}
+              </div>
+              {/* Line 3: "Gostoso." in white */}
+              <div className="whitespace-nowrap">
+                {line3.map((item, i) => (
+                  <span
+                    key={i}
+                    className="char inline-block text-white"
+                    style={{ opacity: 0 }}
+                  >
+                    {item.ch}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Subline */}
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.8 }}
+            className="text-white/45 text-[14px] sm:text-[16px] tracking-[0.08em] uppercase font-medium mt-7 mb-10"
+          >
+            Governador Valadares&nbsp;&nbsp;·&nbsp;&nbsp;Feito na hora&nbsp;&nbsp;·&nbsp;&nbsp;Do seu jeito
+          </motion.p>
+
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.95 }}
+            className="flex flex-wrap gap-3"
+          >
+            <Link href="/cardapio">
+              <MagneticButton className="group inline-flex items-center gap-2.5 bg-brand text-white font-bold px-8 py-4 rounded-full text-[15px] shadow-[0_8px_40px_rgba(238,92,19,0.55)] hover:shadow-[0_12px_55px_rgba(238,92,19,0.7)] transition-shadow">
+                Montar meu sub
+                <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+              </MagneticButton>
+            </Link>
+            <Link href="/cardapio">
+              <MagneticButton className="inline-flex items-center gap-2 bg-transparent text-white font-semibold px-7 py-4 rounded-full text-[15px] border border-white/20 hover:border-white/45 transition-colors">
+                Ver cardápio
+              </MagneticButton>
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Floating badge bottom-right */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 1.2, type: 'spring', stiffness: 180, damping: 18 }}
+        className="absolute bottom-10 right-6 sm:right-10 bg-white/7 backdrop-blur-xl border border-white/12 rounded-2xl px-5 py-3.5"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="flex gap-0.5">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Star key={i} size={11} className="fill-brand text-brand" />
+            ))}
+          </div>
+          <span className="text-white font-bold text-[14px] tabular-nums">4.9</span>
+        </div>
+      </motion.div>
+
+      {/* Scroll cue */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.6, duration: 0.8 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 pointer-events-none"
+        aria-hidden
+      >
+        <span className="text-white/20 text-[9px] tracking-[0.22em] uppercase font-medium">Scroll</span>
+        <div className="w-px h-10 bg-gradient-to-b from-white/20 to-transparent" />
+      </motion.div>
+    </section>
+  )
+}
+
+// ─── SCENE 2 — DISCOVERY (CATEGORIES) ────────────────────────────────────────
+
+function SceneCategories() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const cardsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!cardsRef.current || !sectionRef.current) return
+    const ctx = gsap.context(() => {
+      const cards = cardsRef.current!.querySelectorAll('.cat-card')
+      gsap.fromTo(
+        cards,
+        { y: 80, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.85,
+          stagger: 0.12,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: cardsRef.current,
+            start: 'top 82%',
+            toggleActions: 'play none none none',
+          },
+        }
+      )
+    }, sectionRef)
+    return () => ctx.revert()
+  }, [])
+
+  return (
+    <section ref={sectionRef} className="bg-navy-deep py-28 lg:py-40 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="mb-16 lg:mb-20"
+        >
+          <p className="text-brand text-[11px] font-bold tracking-[0.25em] uppercase mb-5">
+            Cardápio
+          </p>
+          <h2
+            className="font-display font-extrabold text-white leading-[0.9] tracking-[-0.04em]"
+            style={{ fontSize: 'clamp(2.8rem,6.5vw,6rem)' }}
+          >
+            Escolha seu<br />
+            <span className="text-white/25">favorito.</span>
+          </h2>
+        </motion.div>
+
+        <div
+          ref={cardsRef}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5"
+        >
+          {CATEGORY_NAV.map((cat) => (
+            <Link
+              key={cat.key}
+              href={`/cardapio?cat=${cat.key}`}
+              className="group cat-card block opacity-0"
+            >
+              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden border border-white/8 transition-all duration-500 group-hover:border-brand/60 group-hover:scale-[1.02]">
+                <Image
+                  src={cat.img}
+                  alt={cat.label}
+                  fill
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  sizes="(max-width:1024px) 50vw, 25vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/35 to-transparent group-hover:from-navy/75 transition-all duration-500" />
+                {/* Orange ring on hover */}
+                <div className="absolute inset-0 rounded-2xl ring-0 group-hover:ring-2 ring-brand/0 group-hover:ring-brand/70 transition-all duration-300 pointer-events-none" />
+
+                <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
+                  <p className="text-white font-display font-extrabold text-[1.1rem] sm:text-[1.3rem] leading-tight mb-1">
+                    {cat.label}
+                  </p>
+                  <p className="text-white/40 text-[12px] font-medium tabular-nums">
+                    {cat.count} {cat.count === 1 ? 'opção' : 'opções'}
+                  </p>
                 </div>
-                <div>
-                  <p className="font-bold text-white text-[13px]">{r.name}</p>
-                  <p className="text-white/40 text-[11.5px]">{r.role}</p>
+
+                <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-brand/0 group-hover:bg-brand transition-all duration-300 flex items-center justify-center">
+                  <ArrowRight
+                    size={13}
+                    className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-x-0"
+                  />
                 </div>
               </div>
-            </motion.div>
+            </Link>
           ))}
         </div>
       </div>
@@ -532,43 +425,422 @@ function Reviews() {
   )
 }
 
-// ─── CTA FINAL ────────────────────────────────────────────────────────────────
-function CtaFinal() {
+// ─── SCENE 3 — EXPLORATION (HOW IT WORKS) ────────────────────────────────────
+
+const HOW_STEPS = [
+  {
+    n: '01',
+    title: 'Escolha o pão',
+    desc: 'Italiano, integral ou de forma — o pão certo para começar tudo com o pé direito.',
+  },
+  {
+    n: '02',
+    title: 'Monte seus ingredientes',
+    desc: 'Carnes premium, queijos selecionados, saladas frescas e molhos artesanais. Tudo do seu jeito.',
+  },
+  {
+    n: '03',
+    title: 'Receba em 30min',
+    desc: 'Preparado na hora, embalado com cuidado e entregue quentinho onde você estiver.',
+  },
+]
+
+function SceneHowItWorks() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const stepsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!stepsRef.current || !sectionRef.current) return
+    const ctx = gsap.context(() => {
+      const steps = stepsRef.current!.querySelectorAll('.how-step')
+      steps.forEach((step) => {
+        gsap.fromTo(
+          step,
+          { opacity: 0.15 },
+          {
+            opacity: 1,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: step,
+              start: 'top 68%',
+              end: 'top 30%',
+              scrub: true,
+            },
+          }
+        )
+      })
+    }, sectionRef)
+    return () => ctx.revert()
+  }, [])
+
   return (
-    <section className="bg-navy-deep pt-8 pb-24 lg:pb-32">
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <motion.div
-          {...fadeUp()}
-          className="relative overflow-hidden bg-navy border border-brand/25 rounded-[28px] px-8 py-16 sm:px-14 sm:py-20 lg:px-20 lg:py-24"
+    <section
+      ref={sectionRef}
+      className="relative py-28 lg:py-40 overflow-hidden"
+      style={{ backgroundColor: '#FDF6EC' }}
+    >
+      {/* Giant background "SUB" text */}
+      <div
+        aria-hidden
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden"
+      >
+        <span
+          className="font-display font-extrabold leading-none text-black/[0.04] tracking-[-0.06em]"
+          style={{ fontSize: '28vw' }}
         >
-          <div className="absolute -top-20 -right-16 opacity-[0.07] pointer-events-none">
-            <MBadge size={400} />
+          SUB
+        </span>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-start">
+
+          {/* Left — sticky label */}
+          <motion.div
+            initial={{ opacity: 0, x: -28 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="lg:sticky lg:top-32"
+          >
+            <p className="text-brand text-[11px] font-bold tracking-[0.25em] uppercase mb-5">
+              Como funciona
+            </p>
+            <h2
+              className="font-display font-extrabold text-navy leading-[0.91] tracking-[-0.045em] mb-8"
+              style={{ fontSize: 'clamp(2.4rem,5vw,5rem)' }}
+            >
+              Simples<br />como deve ser.
+            </h2>
+            <p className="text-navy/50 text-[16px] leading-relaxed max-w-[340px]">
+              Três passos separam você do sub mais gostoso de Governador Valadares.
+            </p>
+            <Link href="/cardapio" className="mt-10 inline-block">
+              <MagneticButton className="group inline-flex items-center gap-2 bg-navy text-white font-bold px-7 py-3.5 rounded-full text-[14px] hover:bg-navy/90 transition-colors shadow-[0_8px_30px_rgba(11,44,92,0.2)]">
+                Montar agora
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </MagneticButton>
+            </Link>
+          </motion.div>
+
+          {/* Steps */}
+          <div ref={stepsRef} className="space-y-0">
+            {HOW_STEPS.map((step) => (
+              <div
+                key={step.n}
+                className="how-step flex gap-8 items-start py-12 border-b border-navy/10 last:border-b-0"
+                style={{ opacity: 0.15 }}
+              >
+                <span
+                  className="font-display font-extrabold text-brand leading-none shrink-0 tabular-nums"
+                  style={{ fontSize: 'clamp(2.5rem,4vw,3.5rem)' }}
+                >
+                  {step.n}
+                </span>
+                <div>
+                  <h3
+                    className="font-display font-extrabold text-navy leading-tight tracking-[-0.025em] mb-3"
+                    style={{ fontSize: 'clamp(1.35rem,2.2vw,1.75rem)' }}
+                  >
+                    {step.title}
+                  </h3>
+                  <p className="text-navy/50 text-[15px] leading-relaxed max-w-[380px]">
+                    {step.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="relative grid lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7">
-              <p className="text-[11px] font-bold text-brand uppercase tracking-[0.22em] mb-4">Bora?</p>
-              <h2 className="font-display font-extrabold text-white text-[2.4rem] sm:text-[3.2rem] lg:text-[4rem] leading-[0.95] tracking-[-0.045em] mb-5">
-                Tá com fome?<br />
-                <span className="text-brand">Monte seu sub.</span>
-              </h2>
-              <p className="text-white/55 text-[15px] max-w-[440px] leading-relaxed">
-                Em 2 minutos você personaliza tudo. A gente entrega quentinho em até 30 minutos.
-              </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── SCENE 4 — IMMERSION (ABOUT / ATMOSPHERE) ────────────────────────────────
+
+function SceneAbout() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const imageInnerRef = useRef<HTMLDivElement>(null)
+  const stat1Ref = useRef<HTMLDivElement>(null)
+  const stat2Ref = useRef<HTMLDivElement>(null)
+  const stat3Ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!sectionRef.current) return
+    const ctx = gsap.context(() => {
+      // Parallax image
+      if (imageInnerRef.current) {
+        gsap.fromTo(
+          imageInnerRef.current,
+          { y: -60 },
+          {
+            y: 60,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: true,
+            },
+          }
+        )
+      }
+
+      // Stats stagger
+      const statCards = [stat1Ref.current, stat2Ref.current, stat3Ref.current].filter(Boolean)
+      if (statCards.length) {
+        gsap.fromTo(
+          statCards,
+          { opacity: 0, y: 40, scale: 0.88 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.7,
+            stagger: 0.14,
+            ease: 'back.out(1.5)',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 58%',
+              toggleActions: 'play none none none',
+            },
+          }
+        )
+      }
+    }, sectionRef)
+    return () => ctx.revert()
+  }, [])
+
+  return (
+    <section
+      ref={sectionRef}
+      className="bg-navy-deep min-h-screen flex items-center overflow-hidden py-24 lg:py-0"
+    >
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 w-full">
+        <div className="grid lg:grid-cols-2 gap-14 lg:gap-24 items-center">
+
+          {/* Left — image with parallax */}
+          <div className="relative">
+            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden border border-white/8">
+              <div
+                ref={imageInnerRef}
+                className="absolute"
+                style={{ inset: '-60px' }}
+              >
+                <Image
+                  src="/italiano-premium.jpg"
+                  alt="Mais Sub artesanal"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width:1024px) 100vw, 50vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy-deep/55 via-transparent to-transparent" />
+              </div>
             </div>
-            <div className="lg:col-span-5 flex flex-col gap-3">
-              <Link href="/cardapio" className="block">
-                <button className="group w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-8 py-4 rounded-full text-[15px] transition-all shadow-[0_10px_36px_rgba(238,92,19,0.5)]">
-                  Começar meu pedido
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-                </button>
-              </Link>
-              <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer" className="block">
-                <button className="w-full inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/15 border border-white/15 text-white font-semibold px-8 py-4 rounded-full text-[14.5px] transition-colors">
-                  Falar no WhatsApp
-                </button>
-              </a>
+
+            {/* Stat cards */}
+            <div
+              ref={stat1Ref}
+              className="absolute -top-5 -right-4 sm:right-4 bg-brand text-white rounded-2xl px-5 py-4 shadow-[0_16px_45px_rgba(238,92,19,0.5)] opacity-0"
+            >
+              <p className="font-display font-extrabold text-[2rem] leading-none tabular-nums">15min</p>
+              <p className="text-white/80 text-[10px] font-bold tracking-[0.14em] uppercase mt-1">Preparo</p>
+            </div>
+
+            <div
+              ref={stat2Ref}
+              className="absolute top-[38%] -left-5 sm:-left-8 bg-white text-navy rounded-2xl px-5 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.2)] opacity-0"
+            >
+              <p className="font-display font-extrabold text-[2rem] leading-none tabular-nums text-navy">100%</p>
+              <p className="text-navy/50 text-[10px] font-bold tracking-[0.14em] uppercase mt-1">Fresco</p>
+            </div>
+
+            <div
+              ref={stat3Ref}
+              className="absolute -bottom-5 right-5 sm:right-8 bg-white/8 backdrop-blur-xl border border-white/15 text-white rounded-2xl px-5 py-4 opacity-0"
+            >
+              <p className="font-display font-extrabold text-[2rem] leading-none tabular-nums">~28min</p>
+              <p className="text-white/55 text-[10px] font-bold tracking-[0.14em] uppercase mt-1">Entrega</p>
             </div>
           </div>
+
+          {/* Right — editorial copy */}
+          <motion.div
+            initial={{ opacity: 0, x: 35 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <p className="text-brand text-[11px] font-bold tracking-[0.25em] uppercase mb-6">
+              Nossa história
+            </p>
+            <h2
+              className="font-display font-extrabold text-white leading-[0.91] tracking-[-0.04em] mb-8"
+              style={{ fontSize: 'clamp(2.2rem,4.5vw,4.5rem)' }}
+            >
+              Mais Sub nasceu<br />
+              de uma obsessão:<br />
+              <span className="text-brand">o sub perfeito.</span>
+            </h2>
+            <p className="text-white/52 text-[16px] leading-[1.72] mb-5 max-w-[440px]">
+              Cada detalhe importa — o pão assado no ponto certo, as saladas repostas toda manhã, a carne grelhada na hora. Não é entrega. É artesanato.
+            </p>
+            <p className="text-white/32 text-[15px] leading-[1.72] max-w-[440px]">
+              Em Governador Valadares desde o primeiro dia, entregando o mesmo cuidado em cada pedido. Porque você merece o melhor sub da cidade.
+            </p>
+
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {[
+                { title: 'Pão na hora', sub: 'Assado diariamente' },
+                { title: 'Ingredientes frescos', sub: 'Sem conservantes' },
+                { title: 'Feito por pessoas', sub: 'Com amor de verdade' },
+              ].map((item) => (
+                <div key={item.title} className="border-l-2 border-brand pl-4">
+                  <p className="font-bold text-white text-[14px]">{item.title}</p>
+                  <p className="text-white/38 text-[12px] mt-0.5">{item.sub}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── SCENE 5 — CONVERSION (CTA) ──────────────────────────────────────────────
+
+function SceneCTA() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Animated dot grid
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx2d = canvas.getContext('2d')
+    if (!ctx2d) return
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth
+      canvas.height = canvas.offsetHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const COLS = 24
+    const ROWS = 14
+    let frame = 0
+    let rafId = 0
+
+    const draw = () => {
+      ctx2d.clearRect(0, 0, canvas.width, canvas.height)
+      const cellW = canvas.width / COLS
+      const cellH = canvas.height / ROWS
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const wave = Math.sin((c + r + frame * 0.04) * 0.52) * 0.5 + 0.5
+          const alpha = wave * 0.3 + 0.04
+          ctx2d.beginPath()
+          ctx2d.arc(c * cellW + cellW / 2, r * cellH + cellH / 2, 2, 0, Math.PI * 2)
+          ctx2d.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`
+          ctx2d.fill()
+        }
+      }
+      frame++
+      rafId = requestAnimationFrame(draw)
+    }
+    rafId = requestAnimationFrame(draw)
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative min-h-[85vh] flex items-center justify-center overflow-hidden"
+      style={{ background: '#EE5C13' }}
+    >
+      {/* Dark vignette */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/10 to-black/45 pointer-events-none"
+      />
+
+      {/* Particle canvas */}
+      <canvas
+        ref={canvasRef}
+        aria-hidden
+        className="absolute inset-0 w-full h-full pointer-events-none"
+      />
+
+      <div className="relative z-10 max-w-4xl mx-auto px-5 sm:px-8 text-center">
+        <motion.p
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-white/65 text-[11px] font-bold tracking-[0.28em] uppercase mb-6"
+        >
+          É hora de pedir
+        </motion.p>
+
+        <motion.h2
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.85, delay: 0.1 }}
+          className="font-display font-extrabold text-white leading-[0.87] tracking-[-0.04em] mb-8"
+          style={{ fontSize: 'clamp(3.2rem,10vw,9rem)' }}
+        >
+          Pronto para<br />pedir?
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.28 }}
+          className="text-white/72 text-[16px] sm:text-[18px] leading-relaxed mb-12 max-w-[500px] mx-auto"
+        >
+          Personalize o sub dos seus sonhos e receba em 30 minutos. Feito na hora, do seu jeito.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.42 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+        >
+          {/* WhatsApp CTA */}
+          <a
+            href="https://wa.me/5533984619205"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MagneticButton className="group inline-flex items-center gap-3 bg-white text-brand font-bold px-8 py-[18px] rounded-full text-[15px] shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:shadow-[0_16px_55px_rgba(0,0,0,0.35)] transition-all hover:scale-[1.03] active:scale-[0.98]">
+              <svg
+                className="w-5 h-5 shrink-0"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              Chamar no WhatsApp
+            </MagneticButton>
+          </a>
+
+          <Link href="/cardapio">
+            <MagneticButton className="group inline-flex items-center gap-2 bg-transparent border-2 border-white/45 text-white font-bold px-8 py-[17px] rounded-full text-[15px] hover:bg-white/10 hover:border-white/80 transition-all active:scale-[0.98]">
+              Fazer pedido
+              <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+            </MagneticButton>
+          </Link>
         </motion.div>
       </div>
     </section>
@@ -576,19 +848,17 @@ function CtaFinal() {
 }
 
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
+
 export default function HomePage() {
   return (
     <>
-      <Header />
-      <main className="bg-navy">
-        <Hero />
-        <HowItWorks />
-        <FeaturedSection />
-        <PromoBanner />
-        <CombosSection />
-        <BrandSection />
-        <Reviews />
-        <CtaFinal />
+      <HeaderClient />
+      <main>
+        <SceneHero />
+        <SceneCategories />
+        <SceneHowItWorks />
+        <SceneAbout />
+        <SceneCTA />
       </main>
       <Footer />
     </>

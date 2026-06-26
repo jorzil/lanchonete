@@ -134,66 +134,6 @@
   .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
-/* ─── DESIGN SYSTEM · ESCALA TIPOGRÁFICA ──────────────────────────────────
-   Use estas classes em vez de tamanhos arbitrários (text-[13px] etc.).
-   Fluida via clamp() para responsividade automática mobile→desktop.        */
-@layer components {
-  .ds-display {
-    font-family: var(--font-display);
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
-    line-height: 0.96;
-    letter-spacing: -0.04em;
-    font-weight: 800;
-  }
-  .ds-h1 {
-    font-family: var(--font-display);
-    font-size: clamp(1.875rem, 4vw, 2.75rem);
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    font-weight: 800;
-  }
-  .ds-h2 {
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 3vw, 2rem);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    font-weight: 700;
-  }
-  .ds-h3 {
-    font-size: clamp(1.125rem, 2vw, 1.375rem);
-    line-height: 1.25;
-    letter-spacing: -0.01em;
-    font-weight: 700;
-  }
-  .ds-h4 {
-    font-size: 1rem;
-    line-height: 1.4;
-    font-weight: 600;
-  }
-  .ds-body {
-    font-size: 0.9375rem;   /* 15px */
-    line-height: 1.6;
-    font-weight: 400;
-  }
-  .ds-body-sm {
-    font-size: 0.8125rem;   /* 13px */
-    line-height: 1.55;
-    font-weight: 400;
-  }
-  .ds-caption {
-    font-size: 0.75rem;     /* 12px */
-    line-height: 1.4;
-    letter-spacing: 0.01em;
-    font-weight: 500;
-  }
-  .ds-overline {
-    font-size: 0.6875rem;   /* 11px */
-    line-height: 1.3;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-weight: 700;
-  }
-}
 
 /* ─── DESIGN SYSTEM · UTILITÁRIOS DE SOMBRA/RADIUS ──────────────────────── */
 @layer utilities {
@@ -207,56 +147,85 @@
   .rounded-ds-xl { border-radius: var(--radius-xl); }
 }
 
+/* ─── ADMIN THEME OVERRIDE ───────────────────────────────────────────────────
+   Sobrescreve os tokens shadcn/ui para valores claros no painel admin.
+   Aplicado no wrapper do layout E nos portais Radix (Dialog, Sheet, etc.)
+   que renderizam fora do DOM do layout.
+   ──────────────────────────────────────────────────────────────────────────── */
+[data-admin-portal],
+.admin-theme {
+  /* shadcn/ui token overrides */
+  --background: 0 0% 96%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 20 86% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 20 86% 50%;
+
+  /* Override the global body color (white) so all text inside admin defaults to dark */
+  color: #111827;
+  background-color: #F8F9FB;
+  /* Also override the site's custom color tokens */
+  --color-text: #111827;
+  --color-text-2: #6B7280;
+  --color-text-3: #9CA3AF;
+  --color-bg: #F8F9FB;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E7EB;
+}
+
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .font-display { font-family: var(--font-display); }
-
-  /* Wrapper pattern - inspired by Mais Sub packaging paper */
-  .wrapper-pattern {
-    background-color: var(--brand-navy);
-    background-image:
-      radial-gradient(circle at 12px 12px, rgba(238,92,19,0.10) 2px, transparent 2.5px),
-      radial-gradient(circle at 36px 36px, rgba(238,92,19,0.06) 1.5px, transparent 2px);
-    background-size: 48px 48px, 48px 48px;
-  }
-
-  .grid-overlay {
-    background-image:
-      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 80px 80px;
-  }
-
-  /* Sticker shadow */
-  .sticker {
-    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.25));
-  }
 }
 
 /* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slide-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slide-up-sm { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(238,92,19,0.3), 0 0 40px rgba(238,92,19,0.1); }
-  50% { box-shadow: 0 0 50px rgba(238,92,19,0.55), 0 0 100px rgba(238,92,19,0.22); }
+@keyframes fade-in    { from { opacity: 0; }                              to { opacity: 1; } }
+@keyframes slide-up   { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slide-up-sm{ from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-dot  { 0%, 100% { opacity: 1; }                          50% { opacity: 0.4; } }
+@keyframes glow-pulse { 0%, 100% { filter: brightness(1); }               50% { filter: brightness(1.15); } }
+
+.animate-fade-in     { animation: fade-in 0.5s ease both; }
+.animate-slide-up    { animation: slide-up 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-slide-up-sm { animation: slide-up-sm 0.4s ease both; }
+.anim-delay-1  { animation-delay: 0.10s; }
+.anim-delay-2  { animation-delay: 0.20s; }
+.anim-delay-3  { animation-delay: 0.30s; }
+.anim-delay-4  { animation-delay: 0.45s; }
+.anim-delay-5  { animation-delay: 0.60s; }
+.animate-pulse-dot  { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* ─── PERFORMANCE: touch delay & motion preference ───────────────────────── */
+/* Eliminate 300ms tap delay on mobile browsers */
+button, a, [role="button"], input, select, textarea {
+  touch-action: manipulation;
 }
 
-.animate-fade-in     { animation: fade-in 0.5s ease forwards; }
-.animate-slide-up    { animation: slide-up 0.6s cubic-bezier(0.16,1,0.3,1) forwards; }
-.animate-slide-up-sm { animation: slide-up-sm 0.4s ease forwards; }
-.animate-ticker      { animation: ticker 32s linear infinite; }
-.animate-pulse-dot   { animation: pulse-dot 2s ease-in-out infinite; }
-.animate-glow-pulse  { animation: glow-pulse 3s ease-in-out infinite; }
-.animate-spin-slow   { animation: spin-slow 40s linear infinite; }
-.animate-float-slow  { animation: float-slow 6s ease-in-out infinite; }
-.animate-wiggle      { animation: wiggle 0.6s ease-in-out infinite; }
+/* Respect user's OS-level reduced-motion preference.
+   Stops all animations/transitions instantly — critical for low-end phones. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ─── SCROLLBAR ───────────────────────────────────────────────────────────── */
 .scrollbar-hide::-webkit-scrollbar { display: none; }

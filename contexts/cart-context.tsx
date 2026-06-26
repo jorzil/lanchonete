@@ -1,7 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
+import { validateCoupon, incrementCouponUsage } from '@/lib/coupon-storage'
 
 interface CartContextValue {
   items: CartItem[]
@@ -81,21 +82,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), [])
   const closeCart = useCallback(() => setIsOpen(false), [])
 
-  const VALID_COUPONS: Coupon[] = [
-    { code: 'MAISSUB10', discount: 10, type: 'percentage' },
-    { code: 'PRIMEIRODIA', discount: 5, type: 'fixed' },
-    { code: 'BEMVINDO', discount: 15, type: 'percentage' },
-  ]
   const applyCoupon = useCallback((code: string): boolean => {
-    const found = VALID_COUPONS.find((c) => c.code === code.toUpperCase().trim())
-    if (found) { setCoupon(found); return true }
+    const result = validateCoupon(code, subtotal)
+    if (result.valid && result.coupon) {
+      const c = result.coupon
+      setCoupon({ code: c.code, discount: c.discount, type: c.type === 'free_shipping' ? 'fixed' : c.type })
+      return true
+    }
     return false
-  }, [])
+  }, [subtotal])
   const removeCoupon = useCallback(() => setCoupon(null), [])
   const setDeliveryFee = useCallback((fee: number) => setDeliveryFeeState(fee), [])
 
+  const value = useMemo(() => ({
+    items, isOpen, coupon, deliveryFee, subtotal, total, itemCount,
+    addItem, removeItem, updateQuantity, clearCart,
+    toggleCart, openCart, closeCart,
+    applyCoupon, removeCoupon, setDeliveryFee,
+  }), [items, isOpen, coupon, deliveryFee, subtotal, total, itemCount, addItem, removeItem, updateQuantity, clearCart, toggleCart, openCart, closeCart, applyCoupon, removeCoupon, setDeliveryFee])
+
   return (
-    <CartContext.Provider value={{ items, isOpen, coupon, deliveryFee, subtotal, total, itemCount, addItem, removeItem, updateQuantity, clearCart, toggleCart, openCart, closeCart, applyCoupon, removeCoupon, setDeliveryFee }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   )

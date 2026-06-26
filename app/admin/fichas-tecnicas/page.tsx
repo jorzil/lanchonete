@@ -180,7 +180,7 @@ export default function FichasTecnicasPage() {
 
       {/* Editor de ficha */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-theme max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-[#EE5C13]" />

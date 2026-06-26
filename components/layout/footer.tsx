@@ -5,22 +5,16 @@ import { MaisSubMark, MBadge } from '@/components/brand/logo'
 export function Footer() {
   return (
     <footer className="relative bg-navy-deep border-t border-white/8 overflow-hidden">
-      {/* Decorative big M */}
-      <div className="absolute -right-12 -top-12 opacity-[0.04] pointer-events-none">
-        <MBadge size={320} />
-      </div>
-
       <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
 
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <MBadge size={32} />
-            <MaisSubMark className="text-[18px]" />
+          <div className="mb-5">
+            <MaisSubMark />
           </div>
           <p className="text-white/40 text-[13px] leading-relaxed mb-6 max-w-[220px]">
             Subs artesanais com ingredientes selecionados. Do seu jeito.
           </p>
-          <a href="https://wa.me/5533846192055" target="_blank" rel="noopener noreferrer"
+          <a href="https://wa.me/5533984619205" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-brand/12 hover:bg-brand border border-brand/30 hover:border-brand text-brand hover:text-white text-[12.5px] font-semibold px-4 py-2 rounded-full transition-all duration-200">
             <Phone size={13} />
             WhatsApp
@@ -58,11 +52,6 @@ export function Footer() {
                 @maissub.gv
               </a>
             </li>
-            <li>
-              <Link href="/admin" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
-                Área Admin
-              </Link>
-            </li>
           </ul>
         </div>
 
@@ -79,7 +68,7 @@ export function Footer() {
             </li>
             <li className="flex items-center gap-2.5 text-[13px] text-white/45">
               <Phone size={14} className="text-brand shrink-0" />
-              <a href="https://wa.me/5533846192055" className="hover:text-white transition-colors">(33) 8461-9205</a>
+              <a href="https://wa.me/5533984619205" className="hover:text-white transition-colors">(33) 98461-9205</a>
             </li>
           </ul>
           <div className="flex gap-2">

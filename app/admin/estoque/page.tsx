@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Plus, Pencil, Search, AlertTriangle, PackageX, Boxes, DollarSign,
-  ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, Trash2, History,
+  ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, Trash2, History, Copy,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,10 +14,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { formatCurrency } from "@/lib/store"
+import { formatCurrency, usePersistedState, PRODUCTS, type Product } from "@/lib/store"
 import {
   loadIngredients, addIngredient, updateIngredient, deleteIngredient,
   loadSuppliers, addSupplier, registerMovement, loadMovements, getInventoryStats,
+  syncProductsToInventory,
   type Ingredient, type StockUnit, type Supplier, type StockMovement, type MovementType,
 } from "@/lib/inventory-storage"
 
@@ -63,13 +64,17 @@ export default function EstoquePage() {
 
   const [historyOpen, setHistoryOpen] = useState(false)
 
+  const [products, setProducts] = usePersistedState<Product[]>("admin_products", PRODUCTS)
+
   function refresh() {
+    // Sync products → stock before loading so new/renamed products appear immediately
+    syncProductsToInventory(products)
     setIngredients(loadIngredients())
     setSuppliers(loadSuppliers())
     setMovements(loadMovements())
   }
 
-  useEffect(() => { refresh() }, [])
+  useEffect(() => { refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => getInventoryStats(), [ingredients])
 
@@ -97,6 +102,14 @@ export default function EstoquePage() {
     if (!form.name.trim()) return
     if (editing) {
       updateIngredient(editing.id, form)
+      // If linked to a product, sync costPrice back to the products list
+      if (editing.productId && form.avgCost >= 0) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === editing.productId ? { ...p, costPrice: form.avgCost } as typeof p : p
+          )
+        )
+      }
     } else {
       addIngredient(form)
     }
@@ -107,6 +120,37 @@ export default function EstoquePage() {
   function removeIngredient(ing: Ingredient) {
     if (!confirm(`Excluir "${ing.name}"?`)) return
     deleteIngredient(ing.id)
+    refresh()
+  }
+
+  function duplicateIngredient(ing: Ingredient) {
+    const newId = `prod-${Date.now().toString(36)}`
+    const copyName = `${ing.name} (cópia)`
+
+    // If this ingredient is linked to a product, also duplicate in the products list
+    if (ing.productId) {
+      const sourceProduct = products.find((p) => p.id === ing.productId)
+      if (sourceProduct) {
+        const newProduct: Product = { ...sourceProduct, id: newId, name: copyName }
+        const nextProducts = [...products, newProduct]
+        setProducts(nextProducts)
+        // syncProductsToInventory will create the ingredient entry automatically
+        syncProductsToInventory(nextProducts)
+        refresh()
+        return
+      }
+    }
+
+    // For manual ingredients (no productId), just clone the ingredient directly
+    addIngredient({
+      name: copyName,
+      unit: ing.unit,
+      avgCost: ing.avgCost,
+      stock: 0,
+      minStock: ing.minStock,
+      idealStock: ing.idealStock,
+      supplierId: ing.supplierId,
+    })
     refresh()
   }
 
@@ -212,7 +256,12 @@ export default function EstoquePage() {
                   return (
                     <tr key={ing.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{ing.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">{ing.name}</p>
+                          {ing.productId && (
+                            <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full leading-none">produto</span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400">
                           {ing.supplierId ? suppliers.find((s) => s.id === ing.supplierId)?.name ?? "—" : "Sem fornecedor"}
                         </p>
@@ -237,6 +286,7 @@ export default function EstoquePage() {
                           <IconBtn title="Entrada" onClick={() => openMovement(ing, "entrada")}><ArrowDownToLine className="h-4 w-4 text-emerald-600" /></IconBtn>
                           <IconBtn title="Saída" onClick={() => openMovement(ing, "saida")}><ArrowUpFromLine className="h-4 w-4 text-red-600" /></IconBtn>
                           <IconBtn title="Ajuste" onClick={() => openMovement(ing, "ajuste")}><SlidersHorizontal className="h-4 w-4 text-blue-600" /></IconBtn>
+                          <IconBtn title="Duplicar" onClick={() => duplicateIngredient(ing)}><Copy className="h-4 w-4 text-purple-500" /></IconBtn>
                           <IconBtn title="Editar" onClick={() => openEdit(ing)}><Pencil className="h-4 w-4 text-gray-500" /></IconBtn>
                           <IconBtn title="Excluir" onClick={() => removeIngredient(ing)}><Trash2 className="h-4 w-4 text-gray-400" /></IconBtn>
                         </div>
@@ -252,7 +302,7 @@ export default function EstoquePage() {
 
       {/* Modal ingrediente */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="admin-theme max-w-lg">
           <DialogHeader><DialogTitle>{editing ? "Editar ingrediente" : "Novo ingrediente"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -279,11 +329,16 @@ export default function EstoquePage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NumberField label="Custo médio (R$)" value={form.avgCost} onChange={(v) => setForm({ ...form, avgCost: v })} disabled={!!editing} hint={editing ? "Atualizado por entradas" : undefined} />
+              <NumberField label="Custo unitário (R$)" value={form.avgCost} onChange={(v) => setForm({ ...form, avgCost: v })} hint={editing ? "Edita o custo diretamente" : undefined} />
               <NumberField label="Estoque inicial" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} disabled={!!editing} hint={editing ? "Use movimentações" : undefined} />
               <NumberField label="Estoque mínimo" value={form.minStock} onChange={(v) => setForm({ ...form, minStock: v })} />
               <NumberField label="Estoque ideal" value={form.idealStock} onChange={(v) => setForm({ ...form, idealStock: v })} />
             </div>
+            {editing && form.avgCost > 0 && editing.stock > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                ⚠️ Alterar o custo aqui sobrescreve o custo médio ponderado calculado pelas entradas. Use apenas para correções.
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
@@ -294,7 +349,7 @@ export default function EstoquePage() {
 
       {/* Modal movimentação */}
       <Dialog open={movOpen} onOpenChange={setMovOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="admin-theme max-w-md">
           <DialogHeader><DialogTitle>{MOVEMENT_LABELS[movType]} — {movTarget?.name}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -322,7 +377,7 @@ export default function EstoquePage() {
 
       {/* Modal fornecedor */}
       <Dialog open={supOpen} onOpenChange={setSupOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="admin-theme max-w-md">
           <DialogHeader><DialogTitle>Novo fornecedor</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2"><Label>Nome</Label><Input value={supName} onChange={(e) => setSupName(e.target.value)} /></div>
@@ -337,7 +392,7 @@ export default function EstoquePage() {
 
       {/* Modal histórico */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="admin-theme max-w-2xl">
           <DialogHeader><DialogTitle>Histórico de movimentações</DialogTitle></DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto">
             {movements.length === 0 ? (

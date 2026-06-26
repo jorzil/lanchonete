@@ -542,7 +542,7 @@ export default function PdvPage() {
 
       {/* Modal de confirmação */}
       <Dialog open={!!confirmed} onOpenChange={(open) => !open && newSale()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="admin-theme sm:max-w-md">
           {confirmed && (
             <>
               <DialogHeader>
@@ -590,7 +590,7 @@ export default function PdvPage() {
 
       {/* Modal abrir caixa */}
       <Dialog open={openCashModal} onOpenChange={setOpenCashModal}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="admin-theme sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600"><Unlock className="h-5 w-5" /> Abrir caixa</DialogTitle>
           </DialogHeader>
@@ -608,7 +608,7 @@ export default function PdvPage() {
 
       {/* Modal fechar caixa */}
       <Dialog open={closeCashModal} onOpenChange={setCloseCashModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="admin-theme sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Lock className="h-5 w-5 text-[#EE5C13]" /> Fechar caixa</DialogTitle>
           </DialogHeader>
@@ -636,7 +636,7 @@ export default function PdvPage() {
 
       {/* Modal sangria / suprimento */}
       <Dialog open={!!movModal} onOpenChange={(o) => !o && setMovModal(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="admin-theme sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {movModal === "sangria" ? <ArrowUpCircle className="h-5 w-5 text-red-600" /> : <ArrowDownCircle className="h-5 w-5 text-emerald-600" />}

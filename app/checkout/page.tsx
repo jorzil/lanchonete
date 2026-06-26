@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,14 +14,17 @@ import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, generateOrderNumber, MENU, type PaymentMethod, type Order } from '@/lib/store'
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
 import { addOrder } from '@/lib/orders-storage'
+import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
+import { geocodeAddress, calcDeliveryFee, getDeliveryConfig, type FeeResult } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
 interface FormData {
-  name: string; phone: string; orderType: OrderType
+  name: string; phone: string; cpf: string; orderType: OrderType
   cep: string; street: string; number: string; complement: string
-  neighborhood: string; city: string; state: string
+  neighborhood: string; city: string; state: string; reference: string
   paymentMethod: PaymentMethod; notes: string
 }
 
@@ -43,37 +45,45 @@ function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['custo
   return parts.join(' • ')
 }
 
-function Section({ title, icon, children, delay = 0 }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
+function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-navy-surface rounded-2xl p-6 border border-white/6"
-    >
+    <div className="animate-slide-up bg-navy-surface rounded-2xl p-6 border border-white/6">
       <h2 className="font-bold text-white text-[15px] mb-5 flex items-center gap-2">
         {icon && <span className="text-brand">{icon}</span>}
         {title}
       </h2>
       {children}
-    </motion.div>
+    </div>
   )
 }
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee } = useCart()
+  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee, applyCoupon, removeCoupon } = useCart()
   const [form, setForm] = useState<FormData>({
-    name: '', phone: '', orderType: 'entrega', cep: '', street: '', number: '',
-    complement: '', neighborhood: '', city: '', state: '', paymentMethod: 'pix', notes: ''
+    name: '', phone: '', cpf: '', orderType: 'entrega', cep: '', street: '', number: '',
+    complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
+  const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponError, setCouponError] = useState('')
+  const [storeOpen, setStoreOpen] = useState(true)
+
+  useEffect(() => {
+    fetchStoreStatus().then((s) => setStoreOpen(computeIsOpen(s)))
+  }, [])
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const handleOrderType = (type: OrderType) => { setForm((prev) => ({ ...prev, orderType: type })); setDeliveryFee(type === 'entrega' ? 5 : 0) }
+  const handleOrderType = (type: OrderType) => {
+    setForm((prev) => ({ ...prev, orderType: type }))
+    if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
+    else if (feeResult && !feeResult.outsideArea) setDeliveryFee(feeResult.fee)
+    else setDeliveryFee(0)
+  }
 
   const fetchCep = async (cep: string) => {
     const clean = cep.replace(/\D/g, '')
@@ -83,8 +93,32 @@ export default function CheckoutPage() {
       const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
       const data = await res.json()
       if (!data.erro) {
-        setForm((prev) => ({ ...prev, street: data.logradouro || '', neighborhood: data.bairro || '', city: data.localidade || '', state: data.uf || '' }))
+        const street     = data.logradouro || ''
+        const neighborhood = data.bairro || ''
+        const city       = data.localidade || ''
+        const state      = data.uf || ''
+        setForm((prev) => ({ ...prev, street, neighborhood, city, state }))
         toast.success('Endereço encontrado!')
+
+        // Geocode and calculate delivery fee
+        const addressStr = `${street}, ${neighborhood}, ${city}, ${state}, Brasil`
+        const coords = await geocodeAddress(addressStr)
+        if (coords) {
+          const result = calcDeliveryFee(coords.lat, coords.lng)
+          setFeeResult(result)
+          if (result.outsideArea) {
+            const config = getDeliveryConfig()
+            toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
+            setDeliveryFee(0)
+          } else {
+            setDeliveryFee(result.fee)
+            toast.info(`Taxa de entrega: R$${result.fee.toFixed(2)} (${result.distanceKm}km — ${result.zone?.label})`)
+          }
+        } else {
+          // fallback: use first zone fee
+          const config = getDeliveryConfig()
+          setDeliveryFee(config.zones[0]?.fee ?? 5)
+        }
       } else toast.error('CEP não encontrado.')
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
@@ -106,22 +140,75 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!storeOpen) { toast.error('Estamos fechados no momento. Retornaremos em breve.'); return }
     const err = validate()
     if (err) { toast.error(err); return }
+
     setSubmitting(true)
+
+    const orderNumber = generateOrderNumber()
+    const address = form.orderType === 'entrega'
+      ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state }
+      : undefined
+
     const order: Order = {
-      id: `order-${Date.now()}`, orderNumber: generateOrderNumber(), items,
+      id: `order-${Date.now()}`,
+      orderNumber,
+      items,
       customer: { name: form.name, phone: form.phone },
       orderType: form.orderType,
-      address: form.orderType === 'entrega' ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state } : undefined,
-      paymentMethod: form.paymentMethod, subtotal, deliveryFee, discount, total,
-      status: 'novo', notes: form.notes, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      address,
+      paymentMethod: form.paymentMethod,
+      subtotal, deliveryFee, discount, total,
+      status: 'novo',
+      notes: form.notes,
+      coupon: coupon ?? undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
+
+    // Increment coupon usage counter
+    if (coupon) {
+      try { const { incrementCouponUsage } = await import('@/lib/coupon-storage'); incrementCouponUsage(coupon.code) } catch {}
+    }
+
+    // Always save locally as fallback
     addOrder(order)
+
+    // Try to persist to Supabase if configured
+    if (supabaseConfigured) {
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber,
+            customerName: form.name,
+            customerPhone: form.phone,
+            customerCpf: form.cpf || undefined,
+            orderType: form.orderType,
+            items,
+            address: address ? { ...address, reference: form.reference } : undefined,
+            paymentMethod: form.paymentMethod,
+            subtotal, deliveryFee, discount, total,
+            notes: form.notes || undefined,
+          }),
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.error('Supabase save failed:', body)
+          toast.warning('Pedido salvo localmente, mas houve erro no banco. Admin: verifique /admin/setup')
+        }
+      } catch (err) {
+        console.error('Supabase save failed (order still saved locally):', err)
+        toast.warning('Pedido salvo localmente. Admin: verifique a conexão em /admin/setup')
+      }
+    }
+
     const msg = generateOrderMessage(order)
     openWhatsApp(msg)
     clearCart()
-    toast.success(`Pedido ${order.orderNumber} realizado com sucesso!`)
+    toast.success(`Pedido ${orderNumber} realizado com sucesso!`)
     setTimeout(() => { setSubmitting(false); router.push('/') }, 1500)
   }
 
@@ -144,6 +231,12 @@ export default function CheckoutPage() {
     <><Header />
       <main className="pt-16 bg-navy min-h-screen">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {!storeOpen && (
+            <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-center">
+              <p className="text-lg font-bold text-red-400">🔴 Estamos fechados no momento</p>
+              <p className="mt-1 text-sm text-red-300/70">Retornaremos em breve. Você pode navegar pelo cardápio e montar seu pedido.</p>
+            </div>
+          )}
           <div className="mb-8">
             <Link href="/cardapio" className="flex items-center gap-2 text-white/35 hover:text-brand transition-colors text-sm font-medium">
               <ArrowLeft size={16} />Voltar ao cardápio
@@ -163,8 +256,12 @@ export default function CheckoutPage() {
                     <Label htmlFor="phone" className="text-white/50">WhatsApp *</Label>
                     <div className="relative">
                       <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
-                      <Input id="phone" placeholder="(11) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
+                      <Input id="phone" placeholder="(33) 99999-9999" value={form.phone} onChange={set('phone')} required className="pl-9 h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf" className="text-white/50">CPF <span className="text-white/25">(opcional)</span></Label>
+                    <Input id="cpf" placeholder="000.000.000-00" value={form.cpf} onChange={set('cpf')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                   </div>
                 </div>
               </Section>
@@ -208,14 +305,19 @@ export default function CheckoutPage() {
                     <div className="grid sm:grid-cols-3 gap-3">
                       <div className="space-y-2"><Label htmlFor="neighborhood" className="text-white/50">Bairro *</Label><Input id="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={set('neighborhood')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
                       <div className="space-y-2"><Label htmlFor="city" className="text-white/50">Cidade *</Label><Input id="city" placeholder="Cidade" value={form.city} onChange={set('city')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
-                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="SP" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                      <div className="space-y-2"><Label htmlFor="state" className="text-white/50">Estado</Label><Input id="state" placeholder="MG" value={form.state} onChange={set('state')} maxLength={2} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" /></div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reference" className="text-white/50">Ponto de referência <span className="text-white/25">(opcional)</span></Label>
+                      <Input id="reference" placeholder="Ex: próximo ao Supermercado X, casa azul..." value={form.reference} onChange={set('reference')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                     </div>
                   </div>
                 )}
                 {form.orderType === 'retirada' && (
                   <div className="bg-white/5 border border-white/8 rounded-xl p-4 text-sm text-white/60">
                     <p className="font-semibold text-white mb-1">📍 Endereço para retirada:</p>
-                    <p>Rua Exemplo, 123 - Bairro, Cidade - SP</p>
+                    <p>R. 7 de Setembro, 2480 - Centro</p>
+                    <p>Gov. Valadares - MG, CEP 35010-170</p>
                     <p className="text-white/30 mt-1">Seg-Sex: 11h–22h | Sáb-Dom: 11h–23h</p>
                   </div>
                 )}
@@ -233,13 +335,6 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
-                {form.paymentMethod === 'pix' && (
-                  <div className="mt-4 p-4 bg-white/5 rounded-xl text-center border border-dashed border-white/15">
-                    <div className="text-4xl mb-2">📱</div>
-                    <p className="text-sm font-medium text-white/70">Chave PIX: <span className="text-brand font-bold">maissub@email.com</span></p>
-                    <p className="text-xs text-white/30 mt-1">O pedido será confirmado após comprovante no WhatsApp</p>
-                  </div>
-                )}
               </Section>
 
               <Section title="Observações" delay={0.24}>
@@ -248,12 +343,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="lg:col-span-2">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="bg-navy-surface rounded-2xl p-6 border border-white/6 sticky top-24"
-              >
+              <div className="animate-slide-up bg-navy-surface rounded-2xl p-6 border border-white/6 sticky top-24">
                 <h2 className="font-bold text-white text-[15px] mb-4">Resumo do Pedido</h2>
                 <div className="space-y-3 max-h-64 overflow-y-auto mb-4 custom-scrollbar pr-1">
                   {items.map((item) => (
@@ -269,10 +359,50 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="h-px bg-white/8 my-4" />
+
+                {/* Coupon input */}
+                {coupon ? (
+                  <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                    <div>
+                      <p className="text-xs text-emerald-400 font-semibold">Cupom aplicado</p>
+                      <p className="text-sm font-mono font-bold text-emerald-300">{coupon.code}</p>
+                    </div>
+                    <button onClick={removeCoupon} className="text-white/30 hover:text-white/60 text-xs underline">remover</button>
+                  </div>
+                ) : (
+                  <div className="mb-3 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Cupom de desconto"
+                      value={couponInput}
+                      onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError('') }}
+                      className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-brand font-mono uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!couponInput.trim()) return
+                        const ok = applyCoupon(couponInput)
+                        if (!ok) setCouponError('Cupom inválido, expirado ou não disponível.')
+                        else { setCouponInput(''); setCouponError('') }
+                      }}
+                      className="rounded-lg bg-white/8 border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/15 transition-colors"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                )}
+                {couponError && <p className="mb-2 text-xs text-red-400">{couponError}</p>}
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
-                  <div className="flex justify-between text-white/50"><span>Entrega</span><span>{deliveryFee === 0 ? 'Grátis' : formatCurrency(deliveryFee)}</span></div>
+                  <div className="flex justify-between text-white/50">
+                    <span>Entrega{feeResult && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
+                    <span className={feeResult?.outsideArea ? 'text-red-400 text-xs' : ''}>
+                      {feeResult?.outsideArea ? 'Fora da área' : deliveryFee === 0 ? (form.orderType === 'retirada' ? 'Grátis' : '—') : formatCurrency(deliveryFee)}
+                    </span>
+                  </div>
                   <div className="h-px bg-white/8 my-1" />
                   <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-brand">{formatCurrency(total)}</span></div>
                 </div>
@@ -280,7 +410,7 @@ export default function CheckoutPage() {
                   {submitting ? <span className="flex items-center gap-2"><Loader2 size={18} className="animate-spin" />Processando...</span> : 'Confirmar Pedido'}
                 </Button>
                 <p className="text-center text-xs text-white/25 mt-3">Ao confirmar, você será redirecionado para o WhatsApp</p>
-              </motion.div>
+              </div>
             </div>
           </form>
         </div>

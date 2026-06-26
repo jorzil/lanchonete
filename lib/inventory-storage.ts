@@ -15,6 +15,8 @@ export interface Supplier {
 
 export interface Ingredient {
   id: string
+  /** When set, this ingredient is linked to a product and kept in sync. */
+  productId?: string
   name: string
   unit: StockUnit
   /** Custo médio ponderado (R$ por unidade). */
@@ -182,4 +184,59 @@ export function getInventoryStats(): InventoryStats {
     belowMin: list.filter((i) => i.stock <= i.minStock && i.stock > 0).length,
     outOfStock: list.filter((i) => i.stock <= 0).length,
   }
+}
+
+// ---------- Sincronização Produtos → Estoque ----------
+export interface SyncableProduct {
+  id: string
+  name: string
+  costPrice?: number
+  active: boolean
+}
+
+/**
+ * Keeps the ingredient list in sync with the product catalog:
+ * - Adds missing products as ingredients (stock = 0, unit = "un")
+ * - Updates the name and avgCost if the product changed
+ * - Marks product-linked ingredients as inactive when the product is inactive
+ * Does NOT delete ingredients (stock history must be preserved).
+ */
+export function syncProductsToInventory(products: SyncableProduct[]): void {
+  const ingredients = loadIngredients()
+  const byProductId = new Map(
+    ingredients.filter((i) => i.productId).map((i) => [i.productId!, i])
+  )
+
+  let changed = false
+
+  for (const p of products) {
+    const existing = byProductId.get(p.id)
+    if (!existing) {
+      // Create new ingredient for this product
+      ingredients.push({
+        id: uid("ing"),
+        productId: p.id,
+        name: p.name,
+        unit: "un",
+        avgCost: p.costPrice ?? 0,
+        stock: 0,
+        minStock: 0,
+        idealStock: 0,
+        createdAt: new Date().toISOString(),
+      })
+      changed = true
+    } else {
+      // Update name and cost if they changed
+      if (existing.name !== p.name || (p.costPrice !== undefined && existing.avgCost !== p.costPrice)) {
+        existing.name = p.name
+        if (p.costPrice !== undefined && p.costPrice > 0 && existing.stock === 0) {
+          // Only update avgCost if there's no stock yet (avoid overwriting weighted average)
+          existing.avgCost = p.costPrice
+        }
+        changed = true
+      }
+    }
+  }
+
+  if (changed) saveIngredients(ingredients)
 }

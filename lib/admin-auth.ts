@@ -25,18 +25,20 @@ export type ModuleKey =
   | "compras"
   | "financeiro"
   | "clientes"
+  | "cupons"
   | "relatorios"
   | "configuracoes"
+  | "setup"
 
 // Permissões por papel: quais módulos cada papel pode acessar.
 export const ROLE_PERMISSIONS: Record<Role, ModuleKey[]> = {
   admin: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "relatorios", "configuracoes",
+    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes", "setup",
   ],
   gerente: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "relatorios",
+    "compras", "financeiro", "clientes", "cupons", "relatorios",
   ],
   atendente: ["dashboard", "pedidos", "pdv", "clientes"],
   estoque: ["dashboard", "estoque", "compras", "produtos"],
@@ -53,13 +55,8 @@ interface StoredAccount extends AdminUser {
   password: string
 }
 
-// Contas padrão (seed). Em produção viriam de um backend.
 const DEFAULT_ACCOUNTS: StoredAccount[] = [
-  { email: "admin@maissub.com.br", password: "admin123", name: "Administrador", role: "admin" },
-  { email: "gerente@maissub.com.br", password: "gerente123", name: "Gerente", role: "gerente" },
-  { email: "atendente@maissub.com.br", password: "atendente123", name: "Atendente", role: "atendente" },
-  { email: "estoque@maissub.com.br", password: "estoque123", name: "Estoque", role: "estoque" },
-  { email: "cozinha@maissub.com.br", password: "cozinha123", name: "Cozinha", role: "cozinha" },
+  { email: "jorzil", password: "@Maissub2026", name: "Administrador", role: "admin" },
 ]
 
 export interface LoginResult {

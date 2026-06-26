@@ -1,7 +1,43 @@
-import type { CartItem, Order } from '@/lib/store'
-import { MENU, formatCurrency } from '@/lib/store'
+import type { CartItem, Order } from '@/lib/data'
+import { MENU, formatCurrency } from '@/lib/data'
 
-export const WHATSAPP_NUMBER = '5533846192055'
+export const WHATSAPP_NUMBER = '5533984619205'
+
+// ─── Evolution API ────────────────────────────────────────────────────────────
+
+export function isEvolutionConfigured(): boolean {
+  return !!(
+    process.env.EVOLUTION_API_URL &&
+    process.env.EVOLUTION_API_KEY &&
+    process.env.EVOLUTION_INSTANCE_NAME
+  )
+}
+
+export async function sendEvolutionMessage(phone: string, text: string): Promise<{ success: boolean; error?: string }> {
+  const url      = process.env.EVOLUTION_API_URL?.replace(/\/$/, '')
+  const apiKey   = process.env.EVOLUTION_API_KEY
+  const instance = process.env.EVOLUTION_INSTANCE_NAME
+
+  if (!url || !apiKey || !instance) {
+    return { success: false, error: 'Evolution API não configurada' }
+  }
+
+  const digits = phone.replace(/\D/g, '')
+  const number = digits.startsWith('55') ? digits : `55${digits}`
+
+  try {
+    const res = await fetch(`${url}/message/sendText/${instance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: apiKey },
+      body: JSON.stringify({ number, text }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { success: false, error: data?.message ?? `HTTP ${res.status}` }
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro desconhecido' }
+  }
+}
 
 export function generateOrderMessage(order: Order): string {
   const lines: string[] = []
@@ -14,6 +50,9 @@ export function generateOrderMessage(order: Order): string {
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━')
   order.items.forEach((item, index) => {
     lines.push(`\n*${index + 1}. ${item.name}* (x${item.quantity})`)
+    if (item.notes) {
+      lines.push(`   🥖 ${item.notes}`)
+    }
     if (item.customization) {
       const c = item.customization
       lines.push(`   🥖 Tamanho: ${c.size}`)
@@ -26,6 +65,7 @@ export function generateOrderMessage(order: Order): string {
       if (c.sauces && c.sauces.length > 0) { lines.push(`   🥫 Molhos: ${c.sauces.map((s) => MENU.sauces.find((sc) => sc.key === s)?.name || s).join(', ')}`) } else { lines.push('   🥫 Molhos: Sem molho') }
       const extras = Object.entries(c.extras || {}).filter(([, qty]) => qty > 0)
       if (extras.length > 0) lines.push(`   ➕ Extras: ${extras.map(([key, qty]) => { const extra = MENU.extras.find((e) => e.key === key); const price = c.size === '15cm' ? extra?.price15cm : extra?.price30cm; return `${extra?.name || key} x${qty} (+${formatCurrency((price || 0) * qty)})` }).join(', ')}`)
+      if (c.notes) lines.push(`   📝 Obs: ${c.notes}`)
     }
     lines.push(`   💰 Valor: ${formatCurrency(item.price * item.quantity)}`)
   })
@@ -34,7 +74,7 @@ export function generateOrderMessage(order: Order): string {
   lines.push('*💰 RESUMO FINANCEIRO:*')
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━')
   lines.push(`Subtotal: ${formatCurrency(order.subtotal)}`)
-  if (order.discount > 0) lines.push(`Desconto: -${formatCurrency(order.discount)}`)
+  if (order.discount > 0) lines.push(`Desconto: -${formatCurrency(order.discount)}${order.coupon ? ` (cupom: ${order.coupon.code})` : ''}`)
   lines.push(`Taxa de entrega: ${order.deliveryFee === 0 ? '✅ Grátis (Retirada)' : formatCurrency(order.deliveryFee)}`)
   lines.push(`\n*TOTAL: ${formatCurrency(order.total)}*`)
   lines.push('')
