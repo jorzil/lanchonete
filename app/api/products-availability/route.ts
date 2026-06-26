@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 // System row stored in customers table — no extra table needed
 const SYSTEM_PHONE = '__products_config__'
 

@@ -295,16 +295,23 @@ export default function ProdutosPage() {
     try { localStorage.setItem('admin_product_overrides', JSON.stringify(overrides)) } catch {}
   }, [overrides])
 
-  // Carrega do Supabase os produtos desativados (cross-device) e aplica aos overrides
+  // Sincroniza com o Supabase: une os inativos locais (localStorage) com os do
+  // banco, aplica nos overrides e envia o resultado de volta — assim os produtos
+  // já desativados antes desta correção passam a valer no site automaticamente.
   useEffect(() => {
-    fetchDisabledProducts().then((disabled) => {
-      if (disabled.size === 0) return
+    fetchDisabledProducts().then((dbDisabled) => {
+      const merged = mergeOverrides(PRODUCTS, overrides)
+      const localDisabled = merged.filter((p) => !p.active).map((p) => p.id)
+      const union = Array.from(new Set<string>([...localDisabled, ...dbDisabled]))
+      if (union.length === 0) return
       setOverrides((prev) => {
         const next = { ...prev }
-        disabled.forEach((id) => { next[id] = { ...(next[id] ?? {}), active: false } })
+        union.forEach((id) => { next[id] = { ...(next[id] ?? {}), active: false } })
         return next
       })
+      patchDisabledProducts(union)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const products: ProductWithCost[] = mergeOverrides(PRODUCTS, overrides)
