@@ -1,5 +1,13 @@
 import type { Order } from '@/lib/data'
-import { formatCurrency } from '@/lib/data'
+import { formatCurrency, MENU } from '@/lib/data'
+
+// Mapas chave → nome legível para o cupom
+const BREAD_NAMES = new Map(MENU.breads.map((b) => [b.key, b.name]))
+const MEAT_NAMES = new Map(MENU.meats.map((m) => [m.key, m.name]))
+const CHEESE_NAMES = new Map(MENU.cheeses.map((c) => [c.key, c.name]))
+const SALAD_NAMES = new Map(MENU.salads.map((s) => [s.key, s.name]))
+const SAUCE_NAMES = new Map(MENU.sauces.map((s) => [s.key, s.name]))
+const EXTRA_NAMES = new Map(MENU.extras.map((e) => [e.key, e.name]))
 
 export interface PrintJob {
   id: string
@@ -100,13 +108,21 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
     const opts: string[] = []
     if (item.customization) {
       const c = item.customization
-      if (c.bread) opts.push(`Pao: ${c.bread}`)
-      if (c.meat) opts.push(`Carne: ${c.meat}`)
-      if (c.cheeses?.length) opts.push(`Queijos: ${c.cheeses.join(', ')}`)
-      if (c.salads?.length) opts.push(`Saladas: ${c.salads.join(', ')}`)
-      if (c.sauces?.length) opts.push(`Molhos: ${c.sauces.join(', ')}`)
+      if (c.bread) opts.push(`Pao: ${BREAD_NAMES.get(c.bread) ?? c.bread}`)
+      if (c.meat) opts.push(`Carne: ${MEAT_NAMES.get(c.meat) ?? c.meat}`)
+      if (c.cheeses?.length) opts.push(`Queijos: ${c.cheeses.map((k) => CHEESE_NAMES.get(k) ?? k).join(', ')}`)
+      if (c.salads?.length) {
+        const salads = c.salads.filter((s) => s !== 'salada-completa')
+        if (c.salads.includes('salada-completa')) opts.push('Saladas: Salada Completa')
+        else if (salads.length) opts.push(`Saladas: ${salads.map((k) => SALAD_NAMES.get(k) ?? k).join(', ')}`)
+      }
+      if (c.sauces?.length) opts.push(`Molhos: ${c.sauces.map((k) => SAUCE_NAMES.get(k) ?? k).join(', ')}`)
       const extras = Object.entries(c.extras ?? {}).filter(([, q]) => q > 0)
-      if (extras.length) opts.push(`Extras: ${extras.map(([k, q]) => `${k}x${q}`).join(', ')}`)
+      if (extras.length) opts.push(`Adicionais: ${extras.map(([k, q]) => `${EXTRA_NAMES.get(k) ?? k} x${q}`).join(', ')}`)
+      if (c.notes) opts.push(`Obs: ${c.notes}`)
+    } else if (item.notes) {
+      // Itens sem customizacao estruturada (ex: combos) trazem detalhes em notes
+      opts.push(item.notes)
     }
     return `
       <div class="item">

@@ -85,9 +85,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
       quantity: 1,
       image: product!.image,
       notes: noteText,
-      customization: (Object.keys(activeExtras).length > 0 || obs)
-        ? { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces: [], extras: activeExtras, notes: obs }
-        : undefined,
+      customization: { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces: [], extras: activeExtras, notes: obs },
     })
     toast.success(`${product!.name} ${size} adicionado!`)
     handleClose()
