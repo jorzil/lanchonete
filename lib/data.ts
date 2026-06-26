@@ -66,7 +66,7 @@ export interface Order {
 // ─── MENU DATA ────────────────────────────────────────────────────────────────
 export const MENU = {
   sizes: [
-    { key: '15cm' as SizeOption, label: '15cm', price: 21.9, description: 'Perfeito para um lanche individual' },
+    { key: '15cm' as SizeOption, label: '15cm', price: 25.9, description: 'Perfeito para um lanche individual' },
     { key: '30cm' as SizeOption, label: '30cm', price: 37.9, description: 'Ideal para quem tem mais fome' },
   ],
   breads: [
@@ -119,40 +119,40 @@ export const PRODUCTS: Product[] = [
   {
     id: 'sub-bacon-bbq', name: 'Bacon com Barbecue',
     description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
-    price: 21.9, image: '🥖', imageUrl: '/bacon-barbecue.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/bacon-barbecue.jpg', category: 'subs-15cm', active: true,
     badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
   },
   {
     id: 'sub-lombo-especial', name: 'Lombo Especial',
     description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
-    price: 21.9, image: '🥖', imageUrl: '/lombo-especial.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/lombo-especial.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-frango-ranch', name: 'Frango Ranch',
     description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
-    price: 21.9, image: '🥖', imageUrl: '/frango-ranch.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/frango-ranch.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-italiano', name: 'Italiano Premium',
     description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
-    price: 21.9, image: '🥖', imageUrl: '/italiano-premium.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/italiano-premium.jpg', category: 'subs-15cm', active: true,
     badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
   },
   {
     id: 'sub-lombo-defumado', name: 'Lombo Defumado',
     description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
-    price: 21.9, image: '🥖', imageUrl: '/lombo-defumado.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/lombo-defumado.jpg', category: 'subs-15cm', active: true,
   },
   {
     id: 'sub-frango-mais', name: 'Frango Coma+',
     description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
-    price: 21.9, image: '🥖', imageUrl: '/frango-coma.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/frango-coma.jpg', category: 'subs-15cm', active: true,
     badge: { label: '🆕 Novo', color: 'bg-green-500' },
   },
   {
     id: 'sub-ipanema', name: 'Ipanema',
     description: 'Carne suprema com cream cheese, mussarela, bacon, picles, baconese e barbecue',
-    price: 21.9, image: '🥖', imageUrl: '/ipanema.jpg', category: 'subs-15cm', active: true,
+    price: 27.9, image: '🥖', imageUrl: '/ipanema.jpg', category: 'subs-15cm', active: true,
   },
   // ── Cookies ─────────────────────────────────────────────────────────────────
   {
@@ -194,7 +194,7 @@ const _extrasMap = new Map(MENU.extras.map((e) => [e.key, e]))
 
 export function calculateSubTotal(customization: SubCustomization): number {
   const is15 = customization.size === '15cm'
-  let total = is15 ? 21.9 : 37.9
+  let total = is15 ? 25.9 : 37.9
   const extras = customization.extras ?? {}
   for (const [key, qty] of Object.entries(extras)) {
     if (qty > 0) {

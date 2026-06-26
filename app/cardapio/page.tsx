@@ -226,7 +226,7 @@ export default function CardapioPage() {
                   <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Monte Seu Sub</h2>
                   <div className="grid grid-cols-2 gap-3.5">
                     {([
-                      { size: '15cm' as const, price: 21.9, desc: 'Escolha pão, carne, queijo, saladas, molhos e extras — tudo do seu jeito' },
+                      { size: '15cm' as const, price: 25.9, desc: 'Escolha pão, carne, queijo, saladas, molhos e extras — tudo do seu jeito' },
                       { size: '30cm' as const, price: 37.9, desc: 'Versão família — personalize cada detalhe do seu sub tamanho família' },
                     ] as { size: '15cm' | '30cm'; price: number; desc: string }[]).map(({ size, price, desc }) => {
                       const dummyProduct: Product = {

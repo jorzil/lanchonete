@@ -9,8 +9,8 @@ import { toast } from 'sonner'
 import { Plus, Minus } from 'lucide-react'
 
 const SIZES = [
-  { key: '15cm', label: '15cm', price: 21.9, description: 'Perfeito para um lanche individual' },
-  { key: '30cm', label: '30cm', price: 37.9, description: 'Ideal para quem tem mais fome' },
+  { key: '15cm', label: '15cm', price: 27.9, description: 'Perfeito para um lanche individual' },
+  { key: '30cm', label: '30cm', price: 52.9, description: 'Ideal para quem tem mais fome' },
 ]
 
 const EXTRA_EMOJIS: Record<string, string> = {
