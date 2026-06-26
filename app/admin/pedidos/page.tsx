@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { formatCurrency, type Order, type OrderStatus } from "@/lib/store"
+import { formatCurrency, MENU, PRODUCTS, type Order, type OrderStatus, type CartItem } from "@/lib/store"
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
@@ -102,6 +102,41 @@ function beep() {
       osc.stop(end)
     })
   } catch {}
+}
+
+// ─── Detalhes do item (ingredientes do sub pronto + personalização) ──────────
+const _prodById = new Map(PRODUCTS.map((p) => [p.id, p]))
+const _breadNames = new Map(MENU.breads.map((b) => [b.key, b.name]))
+const _meatNames = new Map(MENU.meats.map((m) => [m.key, m.name]))
+const _cheeseNames = new Map(MENU.cheeses.map((c) => [c.key, c.name]))
+const _saladNames = new Map(MENU.salads.map((s) => [s.key, s.name]))
+const _sauceNames = new Map(MENU.sauces.map((s) => [s.key, s.name]))
+const _extraNames = new Map(MENU.extras.map((e) => [e.key, e.name]))
+
+function buildItemDetails(item: CartItem): string[] {
+  const lines: string[] = []
+  const prod = _prodById.get(item.productId)
+  if (prod && (prod.category === "subs-15cm" || prod.category === "subs-30cm") && prod.description) {
+    lines.push(`Ingredientes: ${prod.description}`)
+  }
+  const c = item.customization
+  if (c) {
+    if (c.bread) lines.push(`Pão: ${_breadNames.get(c.bread) ?? c.bread}`)
+    if (c.meat) lines.push(`Carne: ${_meatNames.get(c.meat) ?? c.meat}`)
+    if (c.cheeses?.length) lines.push(`Queijos: ${c.cheeses.map((k) => _cheeseNames.get(k) ?? k).join(", ")}`)
+    if (c.salads?.length) {
+      const salads = c.salads.filter((s) => s !== "salada-completa")
+      if (c.salads.includes("salada-completa")) lines.push("Saladas: Salada Completa")
+      else if (salads.length) lines.push(`Saladas: ${salads.map((k) => _saladNames.get(k) ?? k).join(", ")}`)
+    }
+    if (c.sauces?.length) lines.push(`Molhos: ${c.sauces.map((k) => _sauceNames.get(k) ?? k).join(", ")}`)
+    const extras = Object.entries(c.extras ?? {}).filter(([, q]) => q > 0)
+    if (extras.length) lines.push(`Adicionais: ${extras.map(([k, q]) => `${_extraNames.get(k) ?? k} x${q}`).join(", ")}`)
+    if (c.notes) lines.push(`Obs: ${c.notes}`)
+  } else if (item.notes) {
+    lines.push(item.notes)
+  }
+  return lines
 }
 
 function formatDate(iso: string) {
@@ -486,12 +521,24 @@ export default function PedidosPage() {
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Itens</p>
                 <div className="space-y-2">
-                  {selected.items.map((item, i) => (
-                    <div key={i} className="flex justify-between gap-2">
-                      <span className="text-gray-900">{item.quantity}× {item.name}</span>
-                      <span className="text-gray-600 shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
+                  {selected.items.map((item, i) => {
+                    const details = buildItemDetails(item)
+                    return (
+                      <div key={i}>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-gray-900">{item.quantity}× {item.name}</span>
+                          <span className="text-gray-600 shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                        </div>
+                        {details.length > 0 && (
+                          <ul className="mt-0.5 ml-5 space-y-0.5">
+                            {details.map((d, j) => (
+                              <li key={j} className="text-[11px] text-gray-500 leading-snug">– {d}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 

@@ -1,5 +1,8 @@
 import type { Order } from '@/lib/data'
-import { formatCurrency, MENU } from '@/lib/data'
+import { formatCurrency, MENU, PRODUCTS } from '@/lib/data'
+
+// Produto por id → para listar os ingredientes (descrição) dos subs prontos
+const PRODUCT_BY_ID = new Map(PRODUCTS.map((p) => [p.id, p]))
 
 // Mapas chave → nome legível para o cupom
 const BREAD_NAMES = new Map(MENU.breads.map((b) => [b.key, b.name]))
@@ -106,6 +109,11 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
 
   const itemsHTML = order.items.map(item => {
     const opts: string[] = []
+    // Subs prontos: lista os ingredientes que vêm de fábrica (descrição do produto)
+    const prod = PRODUCT_BY_ID.get(item.productId)
+    if (prod && (prod.category === 'subs-15cm' || prod.category === 'subs-30cm') && prod.description) {
+      opts.push(`Ingredientes: ${prod.description}`)
+    }
     if (item.customization) {
       const c = item.customization
       if (c.bread) opts.push(`Pao: ${BREAD_NAMES.get(c.bread) ?? c.bread}`)
