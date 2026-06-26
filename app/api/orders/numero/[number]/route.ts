@@ -25,14 +25,16 @@ function rowToOrder(row: DbOrder): Order {
   }
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { number: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ number: string }> }) {
   if (!supabaseConfigured) {
     return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 })
   }
+  const { number } = await params
+  const orderNumber = decodeURIComponent(number).toUpperCase()
   const { data, error } = await supabase
     .from('orders')
     .select('*')
-    .eq('order_number', params.number)
+    .eq('order_number', orderNumber)
     .single()
 
   if (error || !data) return NextResponse.json({ error: 'Pedido não encontrado' }, { status: 404 })
