@@ -177,9 +177,21 @@ export const PRODUCTS: Product[] = [
     price: 16.0, image: '🍪', imageUrl: '/ovo-maltine.jpg', category: 'cookies', active: true,
   },
   // ── Bebidas ─────────────────────────────────────────────────────────────────
-  { id: 'refri-lata',  name: 'Refrigerante 350ml',  description: 'Coca-Cola, Guaraná Antarctica, Sprite ou Fanta bem gelados', price: 6.0, image: '🥤', category: 'bebidas', active: true },
-  { id: 'agua',        name: 'Água Mineral 500ml',  description: 'Água mineral natural sem gás, gelada e refrescante',         price: 4.0, image: '💧', category: 'bebidas', active: true },
-  { id: 'suco',        name: 'Suco Natural 400ml',  description: 'Laranja, Limão ou Maracujá espremidos na hora',              price: 9.0, image: '🍊', category: 'bebidas', active: true },
+  { id: 'coca-lata',         name: 'Coca-Cola Lata 350ml',            description: 'Refrigerante Coca-Cola gelado lata 350ml',                  price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'coca-zero-lata',    name: 'Coca-Cola Zero Lata 350ml',       description: 'Refrigerante Coca-Cola Zero Açúcar gelado lata 350ml',      price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'guarana-lata',      name: 'Guaraná Antarctica Lata 350ml',   description: 'Refrigerante Guaraná Antarctica gelado lata 350ml',         price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'guarana-zero-lata', name: 'Guaraná Antarctica Zero Lata 350ml', description: 'Refrigerante Guaraná Antarctica Zero gelado lata 350ml', price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'fanta-laranja-lata',name: 'Fanta Laranja Lata 350ml',        description: 'Refrigerante Fanta Laranja gelado lata 350ml',              price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'fanta-uva-lata',    name: 'Fanta Uva 350ml',                 description: 'Refrigerante Fanta Uva gelado lata 350ml',                 price: 8.0,  image: '🥤', category: 'bebidas', active: true },
+  { id: 'coca-600',          name: 'Coca-Cola 600ml',                 description: 'Refrigerante Coca-Cola garrafa 600ml',                     price: 11.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'coca-zero-600',     name: 'Coca-Cola Zero Açúcar 600ml',     description: 'Refrigerante Coca-Cola Zero Açúcar garrafa 600ml',         price: 11.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'guarana-600',       name: 'Guaraná Antarctica 600ml',        description: 'Refrigerante Guaraná Antarctica garrafa 600ml',            price: 11.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'guarana-zero-600',  name: 'Guaraná Antarctica Zero 600ml',   description: 'Refrigerante Guaraná Antarctica Zero garrafa 600ml',       price: 11.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'h2oh-limoneto',     name: 'H2OH Limoneto 500ml',             description: 'H2OH sabor Limoneto 500ml',                                price: 11.0, image: '🥤', category: 'bebidas', active: true },
+  { id: 'agua-sem-gas',      name: 'Água Mineral sem Gás 500ml',      description: 'Água mineral natural sem gás L\'aqua 500ml',               price: 5.0,  image: '💧', category: 'bebidas', active: true },
+  { id: 'agua-com-gas',      name: 'Água Mineral com Gás 500ml',      description: 'Água mineral Crystal com gás 500ml',                       price: 5.0,  image: '💧', category: 'bebidas', active: true },
+  { id: 'suco-manga',        name: 'Suco Del Valle Manga 290ml',      description: 'Suco Del Valle sabor Manga 290ml',                         price: 7.5,  image: '🧃', category: 'bebidas', active: true },
+  { id: 'suco-uva',          name: 'Suco Del Valle Uva 290ml',        description: 'Suco Del Valle sabor Uva 290ml',                           price: 7.5,  image: '🧃', category: 'bebidas', active: true },
 ]
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
