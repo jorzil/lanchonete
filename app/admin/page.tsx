@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils"
 import { formatCurrency, type Order } from "@/lib/store"
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/mock-orders"
 import { loadOrders } from "@/lib/orders-storage"
+import { supabaseConfigured } from "@/lib/supabase"
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
@@ -110,7 +111,20 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
 
   useEffect(() => {
-    setOrders(loadOrders())
+    async function load() {
+      if (supabaseConfigured) {
+        try {
+          const res = await fetch("/api/orders")
+          if (res.ok) {
+            const { orders: rows } = await res.json()
+            setOrders(rows)
+            return
+          }
+        } catch {}
+      }
+      setOrders(loadOrders())
+    }
+    load()
   }, [])
 
   const hasOrders = orders.length > 0
@@ -148,16 +162,19 @@ export default function AdminDashboard() {
       })
     }
 
-    // Faturamento por mês (últimos 6 meses).
-    // Os 5 primeiros meses usam uma base sintética apenas para dar contexto
-    // visual ao gráfico; o mês atual reflete os dados reais.
-    const monthlyBase = [4820, 5310, 4990, 6120, 5870, monthRevenue]
-    const monthLabels: string[] = []
+    // Faturamento por mês (últimos 6 meses) — dados reais de todas as datas.
+    const byMonth: { month: string; faturamento: number }[] = []
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      monthLabels.push(d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""))
+      const label = d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")
+      const monthRev = valid
+        .filter((o) => {
+          const od = new Date(o.createdAt)
+          return od.getFullYear() === d.getFullYear() && od.getMonth() === d.getMonth()
+        })
+        .reduce((acc, o) => acc + o.total, 0)
+      byMonth.push({ month: label, faturamento: monthRev })
     }
-    const byMonth = monthLabels.map((m, i) => ({ month: m, faturamento: monthlyBase[i] }))
 
     return {
       todayCount: todayOrders.length,
@@ -275,12 +292,9 @@ export default function AdminDashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="mb-1 text-sm font-semibold text-gray-900">
+          <h3 className="mb-4 text-sm font-semibold text-gray-900">
             Faturamento por mês (últimos 6 meses)
           </h3>
-          <p className="mb-4 text-xs text-gray-400">
-            Meses anteriores são ilustrativos; o mês atual usa dados reais.
-          </p>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.byMonth} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>

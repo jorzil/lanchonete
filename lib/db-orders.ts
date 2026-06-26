@@ -137,7 +137,11 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
 export async function listOrders(filters?: { status?: OrderStatus }): Promise<Order[]> {
   if (!supabaseConfigured) throw new Error('Supabase not configured')
 
-  let query = supabase.from('orders').select('*').order('created_at', { ascending: false })
+  let query = supabase
+    .from('orders')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50000) // garante histórico completo (todas as datas), além do padrão de 1000
   if (filters?.status) query = query.eq('status', filters.status)
 
   const { data, error } = await query
