@@ -194,7 +194,7 @@ export default function PedidosPage() {
     if (!msg) return
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
-    const url = `https://web.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
+    const url = `https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
     window.open(url, "_blank", "noopener")
   }
 
