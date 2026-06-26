@@ -21,10 +21,11 @@ async function readFromDb() {
 }
 
 async function writeToDb(value: object) {
-  await supabase.from('customers').upsert(
+  const { error } = await supabase.from('customers').upsert(
     { phone: SYSTEM_PHONE, name: '__system__', address_reference: JSON.stringify(value) },
     { onConflict: 'phone' }
   )
+  return error
 }
 
 export async function GET() {
@@ -42,6 +43,11 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json()
   const disabled = Array.isArray(body.disabled) ? body.disabled : []
   const next = { disabled, updatedAt: new Date().toISOString() }
-  await writeToDb(next)
-  return NextResponse.json(next)
+  const writeErr = await writeToDb(next)
+  if (writeErr) {
+    return NextResponse.json({ ok: false, error: writeErr.message }, { status: 500 })
+  }
+  // Confirma lendo de volta do banco
+  const saved = await readFromDb()
+  return NextResponse.json({ ok: true, disabled: saved?.disabled ?? disabled })
 }

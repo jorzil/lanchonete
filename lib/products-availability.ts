@@ -14,17 +14,18 @@ export async function fetchDisabledProducts(): Promise<Set<string>> {
   return new Set<string>()
 }
 
-export async function patchDisabledProducts(disabled: string[]): Promise<string[]> {
+// Retorna a lista confirmada pelo servidor, ou null se a gravação falhou.
+export async function patchDisabledProducts(disabled: string[]): Promise<string[] | null> {
   try {
     const res = await fetch('/api/products-availability', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ disabled }),
     })
-    if (res.ok) {
-      const data = await res.json()
-      return Array.isArray(data.disabled) ? data.disabled : disabled
-    }
-  } catch {}
-  return disabled
+    const data = await res.json().catch(() => ({}))
+    if (res.ok && data.ok && Array.isArray(data.disabled)) return data.disabled
+    return null
+  } catch {
+    return null
+  }
 }

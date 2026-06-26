@@ -371,17 +371,23 @@ export default function ProdutosPage() {
   }
 
   const [syncing, setSyncing] = useState(false)
-  const [syncedAt, setSyncedAt] = useState<string | null>(null)
+  const [syncMsg, setSyncMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Envia os produtos inativos para o site (Supabase) — vale em todos os aparelhos
   async function syncNow() {
     setSyncing(true)
+    setSyncMsg(null)
     const merged = mergeOverrides(PRODUCTS, overrides)
     const disabled = merged.filter((p) => !p.active).map((p) => p.id)
-    await patchDisabledProducts(disabled)
+    const result = await patchDisabledProducts(disabled)
     syncProductsToInventory(merged)
     setSyncing(false)
-    setSyncedAt(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+    if (result === null) {
+      setSyncMsg({ ok: false, text: 'Falha ao salvar no servidor. Verifique a conexão/Supabase.' })
+    } else {
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      setSyncMsg({ ok: true, text: `${result.length} produto(s) inativo(s) enviados ao site às ${hora}.` })
+    }
   }
 
   const activeCount   = products.filter((p) => p.active).length
@@ -404,7 +410,7 @@ export default function ProdutosPage() {
             title="Enviar produtos inativos para o site"
           >
             <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Sincronizando…' : syncedAt ? `Sincronizado ${syncedAt}` : 'Sincronizar'}
+            {syncing ? 'Sincronizando…' : 'Sincronizar'}
           </button>
           <button
             onClick={openNew}
@@ -415,6 +421,15 @@ export default function ProdutosPage() {
           </button>
         </div>
       </div>
+
+      {syncMsg && (
+        <div className={cn(
+          "rounded-xl border px-4 py-3 text-sm font-medium",
+          syncMsg.ok ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-700"
+        )}>
+          {syncMsg.ok ? "✓ " : "⚠ "}{syncMsg.text}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
