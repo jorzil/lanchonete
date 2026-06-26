@@ -98,6 +98,33 @@ export function setManualOverride(open: boolean | null): StoreStatus {
   return saveStoreStatus({ manualOverride: open })
 }
 
+// ─── Server-synced API functions ──────────────────────────────────────────────
+export async function fetchStoreStatus(): Promise<StoreStatus> {
+  try {
+    const res = await fetch('/api/store-status', { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      return { ...data, isOpen: computeIsOpen(data) }
+    }
+  } catch {}
+  return getStoreStatus()
+}
+
+export async function patchStoreStatus(patch: Partial<StoreStatus>): Promise<StoreStatus> {
+  try {
+    const res = await fetch('/api/store-status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      return { ...data, isOpen: computeIsOpen(data) }
+    }
+  } catch {}
+  return saveStoreStatus(patch)
+}
+
 export function getNextEvent(schedule: StoreSchedule): { type: 'open' | 'close'; time: string; day: string } | null {
   const now = new Date()
   for (let i = 0; i < 8; i++) {

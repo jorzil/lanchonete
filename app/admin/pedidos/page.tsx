@@ -40,10 +40,51 @@ function buildWaMessage(status: string, orderNumber: string): string {
   return msgs[status] ?? ''
 }
 
+// ─── Sirene contínua ────────────────────────────────────────────────────────
+let sirenCtx: AudioContext | null = null
+let sirenOsc: OscillatorNode | null = null
+let sirenGain: GainNode | null = null
+let sirenInterval: ReturnType<typeof setInterval> | null = null
+
+function startSiren() {
+  try {
+    stopSiren()
+    sirenCtx = new AudioContext()
+    sirenOsc = sirenCtx.createOscillator()
+    sirenGain = sirenCtx.createGain()
+    sirenOsc.connect(sirenGain)
+    sirenGain.connect(sirenCtx.destination)
+    sirenOsc.type = 'sawtooth'
+    sirenGain.gain.setValueAtTime(0.3, sirenCtx.currentTime)
+
+    // Sobe e desce o tom em loop (efeito sirene)
+    let up = true
+    sirenOsc.frequency.setValueAtTime(600, sirenCtx.currentTime)
+    sirenOsc.start()
+
+    sirenInterval = setInterval(() => {
+      if (!sirenCtx || !sirenOsc) return
+      const now = sirenCtx.currentTime
+      sirenOsc.frequency.cancelScheduledValues(now)
+      sirenOsc.frequency.setValueAtTime(up ? 600 : 900, now)
+      sirenOsc.frequency.linearRampToValueAtTime(up ? 900 : 600, now + 0.4)
+      up = !up
+    }, 400)
+  } catch {}
+}
+
+function stopSiren() {
+  try {
+    if (sirenInterval) { clearInterval(sirenInterval); sirenInterval = null }
+    if (sirenOsc) { sirenOsc.stop(); sirenOsc = null }
+    if (sirenCtx) { sirenCtx.close(); sirenCtx = null }
+    sirenGain = null
+  } catch {}
+}
+
 function beep() {
   try {
     const ctx = new AudioContext()
-    // Three ascending beeps: dó-mi-sol
     const notes = [523, 659, 784]
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator()
@@ -53,22 +94,6 @@ function beep() {
       osc.type = 'sine'
       osc.frequency.value = freq
       const start = ctx.currentTime + i * 0.18
-      const end = start + 0.15
-      gain.gain.setValueAtTime(0, start)
-      gain.gain.linearRampToValueAtTime(0.5, start + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.001, end)
-      osc.start(start)
-      osc.stop(end)
-    })
-    // Repeat once after a short pause
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = 'sine'
-      osc.frequency.value = freq
-      const start = ctx.currentTime + 0.6 + i * 0.18
       const end = start + 0.15
       gain.gain.setValueAtTime(0, start)
       gain.gain.linearRampToValueAtTime(0.5, start + 0.02)
@@ -153,7 +178,7 @@ export default function PedidosPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
         loadAll()
         if (payload.eventType === "INSERT" && !prevOrderIds.current.has(payload.new.id)) {
-          beep()
+          startSiren()
           const settings = getPrintSettings()
           if (settings.autoPrintOnNew) {
             // order will be loaded in next render; trigger after state update
@@ -187,6 +212,7 @@ export default function PedidosPage() {
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   async function advanceStatus(order: Order, nextStatus: string) {
+    if (nextStatus === 'aceito') stopSiren()
     const id = order.id
     if (supabaseConfigured) {
       try {

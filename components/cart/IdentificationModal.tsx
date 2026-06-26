@@ -9,7 +9,7 @@ import { generateOrderNumber, formatCurrency, type Order, type PaymentMethod } f
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
 import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
-import { getStoreStatus, computeIsOpen } from '@/lib/store-status'
+import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
 import { toast } from 'sonner'
 import type { CartItem } from '@/lib/data'
 
@@ -50,7 +50,7 @@ export function IdentificationModal({ open, onClose, items, subtotal, total, del
   async function handleSend() {
     if (!validate()) return
 
-    const storeStatus = getStoreStatus()
+    const storeStatus = await fetchStoreStatus()
     if (!computeIsOpen(storeStatus)) {
       toast.error('Estamos fechados no momento. Retornaremos em breve.')
       return

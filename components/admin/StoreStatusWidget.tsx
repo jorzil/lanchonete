@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Store, Clock, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  getStoreStatus,
-  setManualOverride,
+  fetchStoreStatus,
+  patchStoreStatus,
   getNextEvent,
   computeIsOpen,
   type StoreStatus,
@@ -14,8 +14,9 @@ import {
 export function StoreStatusWidget() {
   const [status, setStatus] = useState<StoreStatus | null>(null)
 
-  const refresh = useCallback(() => {
-    setStatus(getStoreStatus())
+  const refresh = useCallback(async () => {
+    const s = await fetchStoreStatus()
+    setStatus(s)
   }, [])
 
   useEffect(() => {
@@ -29,13 +30,13 @@ export function StoreStatusWidget() {
   const isOpen = computeIsOpen(status)
   const nextEvent = getNextEvent(status.schedule)
 
-  function toggle() {
-    const next = setManualOverride(isOpen ? false : true)
+  async function toggle() {
+    const next = await patchStoreStatus({ manualOverride: isOpen ? false : true })
     setStatus(next)
   }
 
-  function clearOverride() {
-    const next = setManualOverride(null)
+  async function clearOverride() {
+    const next = await patchStoreStatus({ manualOverride: null })
     setStatus(next)
   }
 

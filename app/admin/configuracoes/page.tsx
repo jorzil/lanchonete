@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { usePersistedState } from "@/lib/store"
 import {
-  getStoreStatus,
-  saveStoreStatus,
-  setManualOverride,
+  fetchStoreStatus,
+  patchStoreStatus,
   computeIsOpen,
   DAY_NAMES,
   type StoreStatus,
@@ -61,7 +60,7 @@ export default function ConfiguracoesPage() {
   const [printSaved, setPrintSaved] = useState(false)
 
   useEffect(() => {
-    setStoreStatus(getStoreStatus())
+    fetchStoreStatus().then(setStoreStatus)
     setPrintSettings(getPrintSettings())
     setPrintQueue(getPrintQueue())
   }, [])
@@ -76,19 +75,19 @@ export default function ConfiguracoesPage() {
   }
 
   // Store status helpers
-  function updateScheduleDay(dayIndex: number, field: keyof DaySchedule, value: string | boolean) {
+  async function updateScheduleDay(dayIndex: number, field: keyof DaySchedule, value: string | boolean) {
     if (!storeStatus) return
     const newSchedule = { ...storeStatus.schedule }
     newSchedule[dayIndex as keyof typeof newSchedule] = {
       ...newSchedule[dayIndex as keyof typeof newSchedule],
       [field]: value,
     }
-    const next = saveStoreStatus({ schedule: newSchedule })
+    const next = await patchStoreStatus({ schedule: newSchedule })
     setStoreStatus(next)
   }
 
-  function handleManualOverride(open: boolean | null) {
-    const next = setManualOverride(open)
+  async function handleManualOverride(open: boolean | null) {
+    const next = await patchStoreStatus({ manualOverride: open })
     setStoreStatus(next)
   }
 

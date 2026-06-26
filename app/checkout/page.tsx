@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
@@ -16,7 +16,7 @@ import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
 import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
-import { getStoreStatus, computeIsOpen } from '@/lib/store-status'
+import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
 import { geocodeAddress, calcDeliveryFee, getDeliveryConfig, type FeeResult } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
@@ -69,6 +69,11 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
+  const [storeOpen, setStoreOpen] = useState(true)
+
+  useEffect(() => {
+    fetchStoreStatus().then((s) => setStoreOpen(computeIsOpen(s)))
+  }, [])
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
@@ -135,6 +140,7 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!storeOpen) { toast.error('Estamos fechados no momento. Retornaremos em breve.'); return }
     const err = validate()
     if (err) { toast.error(err); return }
 
@@ -220,8 +226,6 @@ export default function CheckoutPage() {
         <Footer /></>
     )
   }
-
-  const storeOpen = computeIsOpen(getStoreStatus())
 
   return (
     <><Header />
