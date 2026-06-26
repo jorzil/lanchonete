@@ -177,7 +177,7 @@ export const PRODUCTS: Product[] = [
     price: 16.0, image: '🍪', imageUrl: '/ovo-maltine.jpg', category: 'cookies', active: true,
   },
   // ── Bebidas ─────────────────────────────────────────────────────────────────
-  { id: 'coca-lata',         name: 'Coca-Cola Lata 350ml',               description: 'Refrigerante Coca-Cola gelado lata 350ml',               price: 8.0,  image: '🥤', imageUrl: '/bebidas/coca-lata.png',         category: 'bebidas', active: true },
+  { id: 'coca-lata',         name: 'Coca-Cola Lata 350ml',               description: 'Refrigerante Coca-Cola gelado lata 350ml',               price: 8.0,  image: '🥤', imageUrl: 'https://static.ifood-static.com.br/image/upload/t_medium/pratos/820af392-002c-47b1-bfae-d7ef31743c7f/202511151835_5k5pmjb0s2f.jpeg', category: 'bebidas', active: true },
   { id: 'coca-zero-lata',    name: 'Coca-Cola Zero Lata 350ml',          description: 'Refrigerante Coca-Cola Zero Açúcar gelado lata 350ml',   price: 8.0,  image: '🥤', imageUrl: '/bebidas/coca-zero-lata.png',    category: 'bebidas', active: true },
   { id: 'guarana-lata',      name: 'Guaraná Antarctica Lata 350ml',      description: 'Refrigerante Guaraná Antarctica gelado lata 350ml',      price: 8.0,  image: '🥤', imageUrl: '/bebidas/guarana-lata.png',      category: 'bebidas', active: true },
   { id: 'guarana-zero-lata', name: 'Guaraná Antarctica Zero Lata 350ml', description: 'Refrigerante Guaraná Antarctica Zero gelado lata 350ml', price: 8.0,  image: '🥤', imageUrl: '/bebidas/guarana-zero-lata.png', category: 'bebidas', active: true },

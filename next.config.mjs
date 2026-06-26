@@ -11,6 +11,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.vtexassets.com' },
       { protocol: 'https', hostname: '**.vteximg.com.br' },
       { protocol: 'https', hostname: 'cdn.shopify.com' },
+      { protocol: 'https', hostname: 'static.ifood-static.com.br' },
     ],
   },
 }
