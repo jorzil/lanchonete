@@ -36,10 +36,20 @@ function ProductCard({ product, onCustomize, onAdd }: {
             fill
             className="object-cover card-img"
             sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement
+              target.style.display = 'none'
+              const fallback = target.nextElementSibling as HTMLElement | null
+              if (fallback) fallback.style.display = 'flex'
+            }}
           />
-        ) : (
-          <div className="h-full flex items-center justify-center text-5xl">{product.image}</div>
-        )}
+        ) : null}
+        <div
+          className="h-full items-center justify-center text-5xl"
+          style={{ display: product.imageUrl ? 'none' : 'flex' }}
+        >
+          {product.image}
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-navy-surface/50 via-transparent to-transparent" />
         {product.badge && (
           <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
