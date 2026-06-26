@@ -19,8 +19,8 @@ const CATS = [
   { key: 'all',       label: 'Tudo',          count: PRODUCTS.filter(p => p.active).length },
   { key: 'monte',     label: 'Monte Seu Sub', count: 2 },
   { key: 'subs-15cm', label: 'Subs',          count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
-  { key: 'combos',    label: 'Combos',        count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
   { key: 'cookies',   label: 'Cookies',       count: PRODUCTS.filter(p => p.active && p.category === 'cookies').length },
+  { key: 'combos',    label: 'Combos',        count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
   { key: 'bebidas',   label: 'Bebidas',       count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]
 
@@ -308,12 +308,12 @@ export default function CardapioPage() {
                 </div>
               )}
 
-              {/* Combos */}
-              {filtered.filter(p => p.category === 'combos').length > 0 && (
+              {/* Cookies */}
+              {filtered.filter(p => p.category === 'cookies').length > 0 && (
                 <div>
-                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Combos <span className="text-green-400">— 5% OFF</span></h2>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Cookies</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                    {filtered.filter(p => p.category === 'combos').map((product, i) => (
+                    {filtered.filter(p => p.category === 'cookies').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
@@ -322,12 +322,12 @@ export default function CardapioPage() {
                 </div>
               )}
 
-              {/* Cookies */}
-              {filtered.filter(p => p.category === 'cookies').length > 0 && (
+              {/* Combos */}
+              {filtered.filter(p => p.category === 'combos').length > 0 && (
                 <div>
-                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Cookies</h2>
+                  <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Combos <span className="text-green-400">— 5% OFF</span></h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                    {filtered.filter(p => p.category === 'cookies').map((product, i) => (
+                    {filtered.filter(p => p.category === 'combos').map((product, i) => (
                       <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
