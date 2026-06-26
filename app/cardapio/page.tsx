@@ -18,7 +18,8 @@ const ComboPickerModal = dynamic(() => import('@/components/builder/combo-picker
 const CATS = [
   { key: 'all',       label: 'Tudo',          count: PRODUCTS.filter(p => p.active).length },
   { key: 'monte',     label: 'Monte Seu Sub', count: 2 },
-  { key: 'subs-15cm', label: 'Subs',          count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'subs-15cm', label: 'Subs 15cm',     count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'subs-30cm', label: 'Subs 30cm',     count: PRODUCTS.filter(p => p.active && p.category === 'subs-30cm').length },
   { key: 'cookies',   label: 'Cookies',       count: PRODUCTS.filter(p => p.active && p.category === 'cookies').length },
   { key: 'combos',    label: 'Combos',        count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
   { key: 'bebidas',   label: 'Bebidas',       count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
@@ -138,6 +139,12 @@ export default function CardapioPage() {
     const obs = new IntersectionObserver(([e]) => setSticky(!e.isIntersecting), { threshold: 0 })
     if (sentinelRef.current) obs.observe(sentinelRef.current)
     return () => obs.disconnect()
+  }, [])
+
+  // Pré-seleciona a categoria a partir do ?cat= da URL (ex: vindo da Home)
+  useEffect(() => {
+    const cat = new URLSearchParams(window.location.search).get('cat')
+    if (cat && CATS.some(c => c.key === cat)) setActive(cat)
   }, [])
 
   const showMonte = active === 'all' || active === 'monte'

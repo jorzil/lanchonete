@@ -153,6 +153,45 @@ export const PRODUCTS: Product[] = [
     description: 'Carne suprema com cream cheese, mussarela, bacon, picles, baconese e barbecue',
     price: 27.9, image: '🥖', imageUrl: '/ipanema.jpg', category: 'subs-15cm', active: true,
   },
+  // ── Subs 30cm ────────────────────────────────────────────────────────────────
+  {
+    id: 'sub-bacon-bbq-30', name: 'Bacon com Barbecue 30cm',
+    description: 'Carne suprema com requeijão, cheddar cremoso, cebola roxa, picles e molho barbecue com bacon crocante',
+    price: 52.9, image: '🥖', imageUrl: '/bacon-barbecue.jpg', category: 'subs-30cm', active: true,
+    badge: { label: '🔥 Mais Pedido', color: 'bg-red-500' },
+  },
+  {
+    id: 'sub-lombo-especial-30', name: 'Lombo Especial 30cm',
+    description: 'Lombo suíno, mussarela, alface, tomate, cebola roxa, cebola caramelizada e mostarda com mel',
+    price: 52.9, image: '🥖', imageUrl: '/lombo-especial.jpg', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-frango-ranch-30', name: 'Frango Ranch 30cm',
+    description: 'Frango com cream cheese, cheddar, alface, tomate, cebola roxa e molho ranch',
+    price: 52.9, image: '🥖', imageUrl: '/frango-ranch.jpg', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-italiano-30', name: 'Italiano Premium 30cm',
+    description: 'Carne suprema com requeijão, salaminho italiano, mussarela, rúcula, tomate e baconese',
+    price: 52.9, image: '🥖', imageUrl: '/italiano-premium.jpg', category: 'subs-30cm', active: true,
+    badge: { label: '⭐ Destaque', color: 'bg-amber-500' },
+  },
+  {
+    id: 'sub-lombo-defumado-30', name: 'Lombo Defumado 30cm',
+    description: 'Lombo, cheddar cremoso, bacon crocante, picles e molho barbecue',
+    price: 52.9, image: '🥖', imageUrl: '/lombo-defumado.jpg', category: 'subs-30cm', active: true,
+  },
+  {
+    id: 'sub-frango-mais-30', name: 'Frango Coma+ 30cm',
+    description: 'Frango com cream cheese, mussarela, cebola caramelizada, mostarda com mel e barbecue',
+    price: 52.9, image: '🥖', imageUrl: '/frango-coma.jpg', category: 'subs-30cm', active: true,
+    badge: { label: '🆕 Novo', color: 'bg-green-500' },
+  },
+  {
+    id: 'sub-ipanema-30', name: 'Ipanema 30cm',
+    description: 'Carne suprema com cream cheese, mussarela, bacon, picles, baconese e barbecue',
+    price: 52.9, image: '🥖', imageUrl: '/ipanema.jpg', category: 'subs-30cm', active: true,
+  },
   // ── Cookies ─────────────────────────────────────────────────────────────────
   {
     id: 'cookie-caramelo', name: 'Cookie Caramelo Salgado',

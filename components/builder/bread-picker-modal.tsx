@@ -39,6 +39,11 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
     if (product) fetchDisabledIngredients().then(setDisabled)
   }, [product])
 
+  // Trava o tamanho conforme a categoria do produto (subs-15cm / subs-30cm)
+  useEffect(() => {
+    if (product) setSize(product.category === 'subs-30cm' ? '30cm' : '15cm')
+  }, [product])
+
   const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
   const availExtras = useMemo(() => MENU.extras.filter((e) => !disabled.has(ingKey('extra', e.key))), [disabled])
 
@@ -94,24 +99,22 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           <p className="text-white/40 text-[13px] mt-1">{product.description}</p>
         </DialogHeader>
 
-        {/* Tamanho */}
+        {/* Tamanho (definido pelo produto) */}
         <div className="mt-2">
-          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha o tamanho</p>
-          <div className="grid grid-cols-2 gap-2">
-            {SIZES.map(s => (
-              <button
-                key={s.key}
-                onClick={() => { setSize(s.key); setExtras({}) }}
-                className={`flex flex-col items-center p-3 rounded-xl border-2 transition-all ${
-                  size === s.key ? 'border-brand bg-brand/10' : 'border-white/10 hover:border-white/25 bg-white/5'
-                }`}
-              >
-                <span className="text-[18px] font-black text-white">{s.label}</span>
-                <span className="text-[12px] font-bold text-brand mt-0.5">{formatCurrency(s.price)}</span>
-                <span className="text-[10px] text-white/35 mt-0.5 text-center">{s.description}</span>
-              </button>
-            ))}
-          </div>
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Tamanho</p>
+          {(() => {
+            const s = SIZES.find(x => x.key === size)
+            if (!s) return null
+            return (
+              <div className="flex items-center justify-between p-3 rounded-xl border-2 border-brand bg-brand/10">
+                <div>
+                  <span className="text-[18px] font-black text-white">{s.label}</span>
+                  <span className="block text-[10px] text-white/35">{s.description}</span>
+                </div>
+                <span className="text-[14px] font-bold text-brand">{formatCurrency(s.price)}</span>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Pão */}
