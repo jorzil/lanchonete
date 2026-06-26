@@ -18,6 +18,7 @@ const CATS = [
   { key: 'all',       label: 'Tudo',          count: PRODUCTS.filter(p => p.active).length },
   { key: 'monte',     label: 'Monte Seu Sub', count: 2 },
   { key: 'subs-15cm', label: 'Subs',          count: PRODUCTS.filter(p => p.active && p.category === 'subs-15cm').length },
+  { key: 'combos',    label: 'Combos',        count: PRODUCTS.filter(p => p.active && p.category === 'combos').length },
   { key: 'cookies',   label: 'Cookies',       count: PRODUCTS.filter(p => p.active && p.category === 'cookies').length },
   { key: 'bebidas',   label: 'Bebidas',       count: PRODUCTS.filter(p => p.active && p.category === 'bebidas').length },
 ]

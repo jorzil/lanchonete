@@ -192,6 +192,50 @@ export const PRODUCTS: Product[] = [
   { id: 'agua-com-gas',      name: 'Água Mineral com Gás 500ml',         description: 'Água mineral com gás 500ml',                             price: 5.0,  image: '💧', imageUrl: '/agua-com-gas.png',      category: 'bebidas', active: true },
   { id: 'suco-manga',        name: 'Suco Del Valle Manga 290ml',         description: 'Suco Del Valle sabor Manga 290ml',                       price: 7.5,  image: '🧃', imageUrl: '/suco-manga.png',        category: 'bebidas', active: true },
   { id: 'suco-uva',          name: 'Suco Del Valle Uva 290ml',           description: 'Suco Del Valle sabor Uva 290ml',                         price: 7.5,  image: '🧃', imageUrl: '/suco-uva.png',          category: 'bebidas', active: true },
+  // ── Combos ──────────────────────────────────────────────────────────────────
+  // Lanche 15cm (R$27,90) + Cookie (R$16,00) + Refri lata (R$8,00) = R$51,90 → 5% OFF = R$49,30
+  {
+    id: 'combo-bacon-bbq', name: 'Combo Bacon com Barbecue',
+    description: 'Sub Bacon com Barbecue 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/bacon-barbecue.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-lombo-especial', name: 'Combo Lombo Especial',
+    description: 'Sub Lombo Especial 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/lombo-especial.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-frango-ranch', name: 'Combo Frango Ranch',
+    description: 'Sub Frango Ranch 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/frango-ranch.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-italiano', name: 'Combo Italiano Premium',
+    description: 'Sub Italiano Premium 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/italiano-premium.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-lombo-defumado', name: 'Combo Lombo Defumado',
+    description: 'Sub Lombo Defumado 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/lombo-defumado.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-frango-mais', name: 'Combo Frango Coma+',
+    description: 'Sub Frango Coma+ 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/frango-coma.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-ipanema', name: 'Combo Ipanema',
+    description: 'Sub Ipanema 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
+    price: 49.3, image: '🥪', imageUrl: '/ipanema.jpg', category: 'combos', active: true,
+    badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
 ]
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
