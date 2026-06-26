@@ -110,28 +110,6 @@ function formatDate(iso: string) {
   })
 }
 
-async function sendWhatsApp(phone: string, status: string, orderNumber: string, auto = false) {
-  const msg = buildWaMessage(status, orderNumber)
-  if (!msg) return
-
-  // Try Evolution API first (automatic)
-  try {
-    const res = await fetch('/api/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, text: msg }),
-    })
-    if (res.ok) return // sent automatically ✓
-  } catch {}
-
-  // Fallback: open WhatsApp Web (manual)
-  if (!auto) {
-    const clean = phone.replace(/\D/g, "")
-    const num = clean.startsWith("55") ? clean : `55${clean}`
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank", "noopener")
-  }
-}
-
 export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -211,8 +189,19 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
+  function openWhatsAppWeb(phone: string, status: string, orderNumber: string) {
+    const msg = buildWaMessage(status, orderNumber)
+    if (!msg) return
+    const clean = phone.replace(/\D/g, "")
+    const num = clean.startsWith("55") ? clean : `55${clean}`
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank", "noopener")
+  }
+
   async function advanceStatus(order: Order, nextStatus: string) {
     if (nextStatus === 'aceito') stopSiren()
+    // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
+    // gesture so the browser does not block the popup). Automation fallback.
+    openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber)
     const id = order.id
     if (supabaseConfigured) {
       try {
@@ -542,7 +531,7 @@ export default function PedidosPage() {
                 </button>
                 {!!buildWaMessage(selected.status, selected.orderNumber) && (
                   <button
-                    onClick={() => sendWhatsApp(selected.customer.phone, selected.status, selected.orderNumber)}
+                    onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber)}
                     className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
                   >
                     💬 WhatsApp
