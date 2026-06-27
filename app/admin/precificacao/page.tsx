@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Calculator, Info, Plus, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -77,20 +77,47 @@ export default function PrecificacaoPage() {
   const [s, setS] = useState<CalcState>(DEFAULT_STATE)
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [ingredients, setIngredients] = useState(loadIngredients())
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
+  const loadedRef = useRef(false)
 
   useEffect(() => {
+    // 1) carrega do localStorage na hora
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) setS({ ...DEFAULT_STATE, ...JSON.parse(raw) })
     } catch {}
+    // 2) puxa do banco (cross-device) e sobrepõe se houver
+    fetch("/api/pricing-config", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.config) setS({ ...DEFAULT_STATE, ...data.config })
+      })
+      .catch(() => {})
+      .finally(() => { loadedRef.current = true })
     pullFichas().then(() => {
       setRecipes(loadRecipes())
       setIngredients(loadIngredients())
     })
   }, [])
 
+  // Salva no localStorage + Supabase (debounce) sempre que mudar
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch {}
+    if (!loadedRef.current) return
+    setSaveState("saving")
+    const t = setTimeout(async () => {
+      try {
+        await fetch("/api/pricing-config", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ config: s }),
+        })
+        setSaveState("saved")
+      } catch {
+        setSaveState("idle")
+      }
+    }, 800)
+    return () => clearTimeout(t)
   }, [s])
 
   const set = (patch: Partial<CalcState>) => setS((prev) => ({ ...prev, ...patch }))
@@ -147,10 +174,13 @@ export default function PrecificacaoPage() {
     <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-2">
         <Calculator className="h-6 w-6 text-[#EE5C13]" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Calculadora de Precificação</h1>
           <p className="text-sm text-gray-500">CMV, custos fixos, taxas e margem — preço de venda ideal</p>
         </div>
+        <span className="text-xs text-gray-400">
+          {saveState === "saving" ? "Salvando…" : saveState === "saved" ? "✓ Salvo" : ""}
+        </span>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
