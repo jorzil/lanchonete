@@ -6,14 +6,14 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { formatCurrency, PRODUCTS, type Product } from "@/lib/data"
 import { syncProductsToInventory } from "@/lib/inventory-storage"
-import { fetchDisabledProducts, patchDisabledProducts } from "@/lib/products-availability"
+import { patchDisabledProducts } from "@/lib/products-availability"
+import { fetchProductOverrides, patchProductOverrides, type OverridesMap as ProductOverridesMap } from "@/lib/product-overrides"
 
 // Extend Product locally to support cost price
 type ProductWithCost = Product & { costPrice?: number }
 
 // Overrides persisted per product ID (never the full list)
-type ProductOverride = { active?: boolean; costPrice?: number; price?: number; badge?: Product['badge'] }
-type OverridesMap = Record<string, ProductOverride>
+type OverridesMap = ProductOverridesMap
 
 function mergeOverrides(base: Product[], overrides: OverridesMap): ProductWithCost[] {
   return base.map(p => ({ ...p, ...(overrides[p.id] ?? {}) }))
@@ -295,21 +295,18 @@ export default function ProdutosPage() {
     try { localStorage.setItem('admin_product_overrides', JSON.stringify(overrides)) } catch {}
   }, [overrides])
 
-  // Sincroniza com o Supabase: une os inativos locais (localStorage) com os do
-  // banco, aplica nos overrides e envia o resultado de volta — assim os produtos
-  // já desativados antes desta correção passam a valer no site automaticamente.
+  // Carrega do Supabase os overrides salvos (descrição, preço, ativo…) e mescla
+  // com o que está no localStorage (o banco tem prioridade).
   useEffect(() => {
-    fetchDisabledProducts().then((dbDisabled) => {
-      const merged = mergeOverrides(PRODUCTS, overrides)
-      const localDisabled = merged.filter((p) => !p.active).map((p) => p.id)
-      const union = Array.from(new Set<string>([...localDisabled, ...dbDisabled]))
-      if (union.length === 0) return
+    fetchProductOverrides().then((dbOverrides) => {
+      if (!dbOverrides || Object.keys(dbOverrides).length === 0) return
       setOverrides((prev) => {
         const next = { ...prev }
-        union.forEach((id) => { next[id] = { ...(next[id] ?? {}), active: false } })
+        for (const [id, ov] of Object.entries(dbOverrides)) {
+          next[id] = { ...(next[id] ?? {}), ...ov }
+        }
         return next
       })
-      patchDisabledProducts(union)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -353,12 +350,13 @@ export default function ProdutosPage() {
 
   function save() {
     if (!editing || !editing.name.trim()) return
-    const { id, active, costPrice, price, badge } = editing
-    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, badge } }
+    const { id, active, costPrice, price, badge, name, description, image } = editing
+    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, badge, name, description, image } }
     setOverrides(nextOverrides)
     const merged = mergeOverrides(PRODUCTS, nextOverrides)
     syncProductsToInventory(merged)
     syncDisabledToDb(merged)
+    patchProductOverrides(nextOverrides)
     setOpen(false)
     setEditing(null)
   }
@@ -368,6 +366,7 @@ export default function ProdutosPage() {
     const nextOverrides = { ...overrides, [id]: { ...(overrides[id] ?? {}), active: !current?.active } }
     setOverrides(nextOverrides)
     syncDisabledToDb(mergeOverrides(PRODUCTS, nextOverrides))
+    patchProductOverrides(nextOverrides)
   }
 
   const [syncing, setSyncing] = useState(false)
@@ -379,14 +378,17 @@ export default function ProdutosPage() {
     setSyncMsg(null)
     const merged = mergeOverrides(PRODUCTS, overrides)
     const disabled = merged.filter((p) => !p.active).map((p) => p.id)
-    const result = await patchDisabledProducts(disabled)
+    const [disResult, ovResult] = await Promise.all([
+      patchDisabledProducts(disabled),
+      patchProductOverrides(overrides),
+    ])
     syncProductsToInventory(merged)
     setSyncing(false)
-    if (result === null) {
+    if (disResult === null || ovResult === null) {
       setSyncMsg({ ok: false, text: 'Falha ao salvar no servidor. Verifique a conexão/Supabase.' })
     } else {
       const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      setSyncMsg({ ok: true, text: `${result.length} produto(s) inativo(s) enviados ao site às ${hora}.` })
+      setSyncMsg({ ok: true, text: `Alterações enviadas ao site às ${hora} (${disResult.length} inativo(s)).` })
     }
   }
 

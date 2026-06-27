@@ -9,6 +9,7 @@ import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, type Product } from '@/lib/data'
 import { fetchDisabledProducts } from '@/lib/products-availability'
+import { fetchProductOverrides, type OverridesMap } from '@/lib/product-overrides'
 import { toast } from 'sonner'
 import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
@@ -134,6 +135,7 @@ export default function CardapioPage() {
   const [sticky, setSticky] = useState(false)
   const [idModalOpen, setIdModalOpen] = useState(false)
   const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
+  const [overrides, setOverrides] = useState<OverridesMap>({})
   const sentinelRef = useRef<HTMLDivElement>(null)
   const { addItem, items, subtotal, total, deliveryFee, clearCart } = useCart()
 
@@ -143,10 +145,17 @@ export default function CardapioPage() {
     return () => obs.disconnect()
   }, [])
 
-  // Produtos desativados pelo admin (Supabase) — somem do cardápio
+  // Produtos desativados + edições (descrição/preço) do admin (Supabase)
   useEffect(() => {
     fetchDisabledProducts().then(setDisabledProducts)
+    fetchProductOverrides().then(setOverrides)
   }, [])
+
+  // Aplica as edições do admin sobre os produtos base
+  const effectiveProducts = useMemo(
+    () => PRODUCTS.map(p => ({ ...p, ...(overrides[p.id] ?? {}) })),
+    [overrides]
+  )
 
   // Pré-seleciona a categoria a partir do ?cat= da URL (ex: vindo da Home)
   useEffect(() => {
@@ -157,14 +166,14 @@ export default function CardapioPage() {
   const showMonte = active === 'all' || active === 'monte'
   const filtered = useMemo(() => {
     if (active === 'monte') return []
-    let list = PRODUCTS.filter(p => p.active && !disabledProducts.has(p.id))
+    let list = effectiveProducts.filter(p => p.active && !disabledProducts.has(p.id))
     if (active !== 'all') list = list.filter(p => p.category === active)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
     }
     return list
-  }, [active, search, disabledProducts])
+  }, [active, search, disabledProducts, effectiveProducts])
 
   const handleAdd = (p: Product) => {
     addItem({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image })
