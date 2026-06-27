@@ -32,6 +32,34 @@ const PURCHASE_UNITS: { value: string; label: string; base: StockUnit; factor: n
 
 const UNIT_LABEL: Record<string, string> = { g: "g", ml: "ml", un: "un", fatia: "fatia", pct: "pct", kg: "kg", L: "L" }
 
+// Lista base de ingredientes da Mais Sub (preço de compra → custo por unidade)
+const SEED_INGREDIENTS: { name: string; price: number; qty: number; unit: string }[] = [
+  { name: "Pão 30cm",          price: 4.50,  qty: 1,     unit: "un" },
+  { name: "Pão 15cm",          price: 2.25,  qty: 1,     unit: "un" },
+  { name: "Carne",             price: 32.00, qty: 1,     unit: "kg" },
+  { name: "Frango",            price: 18.00, qty: 1,     unit: "kg" },
+  { name: "Lombo",             price: 23.00, qty: 1,     unit: "kg" },
+  { name: "Requeijão",         price: 53.90, qty: 1.5,   unit: "kg" },
+  { name: "Mussarela",         price: 39.98, qty: 1,     unit: "kg" },
+  { name: "Cheddar",           price: 57.15, qty: 1.8,   unit: "kg" },
+  { name: "Cream Cheese",      price: 30.30, qty: 1.010, unit: "kg" },
+  { name: "Alface",            price: 3.75,  qty: 1,     unit: "un" },
+  { name: "Tomate",            price: 8.50,  qty: 1,     unit: "kg" },
+  { name: "Cebola roxa",       price: 7.95,  qty: 1,     unit: "kg" },
+  { name: "Picles",            price: 19.00, qty: 400,   unit: "g" },
+  { name: "Rúcula",            price: 3.75,  qty: 1,     unit: "un" },
+  { name: "Pimentão",          price: 13.50, qty: 1,     unit: "kg" },
+  { name: "Cenoura",           price: 7.50,  qty: 1,     unit: "kg" },
+  { name: "Salaminho italiano",price: 10.90, qty: 100,   unit: "g" },
+  { name: "Bacon",             price: 32.90, qty: 1,     unit: "kg" },
+  { name: "Baconese",          price: 56.00, qty: 1.1,   unit: "kg" },
+  { name: "Barbecue",          price: 29.00, qty: 1.1,   unit: "kg" },
+  { name: "Mostarda e mel",    price: 36.00, qty: 1.1,   unit: "kg" },
+  { name: "Maionese temperada",price: 39.00, qty: 1.1,   unit: "kg" },
+  { name: "Ranch",             price: 34.00, qty: 1.1,   unit: "kg" },
+  { name: "Chipotle",          price: 49.00, qty: 1.1,   unit: "kg" },
+]
+
 function loadProducts(): Product[] {
   if (typeof window === "undefined") return PRODUCTS
   try {
@@ -104,6 +132,28 @@ export default function FichasTecnicasPage() {
     pushFichas()
   }
 
+  // Cadastra a lista base de ingredientes (ignora os que já existem pelo nome)
+  function seedIngredients() {
+    const existing = new Set(loadIngredients().map((i) => i.name.trim().toLowerCase()))
+    let added = 0
+    for (const seed of SEED_INGREDIENTS) {
+      if (existing.has(seed.name.trim().toLowerCase())) continue
+      const u = PURCHASE_UNITS.find((x) => x.value === seed.unit) ?? PURCHASE_UNITS[0]
+      addIngredient({
+        name: seed.name,
+        unit: u.base,
+        avgCost: seed.price / (seed.qty * u.factor),
+        stock: 0,
+        minStock: 0,
+        idealStock: 0,
+      })
+      added++
+    }
+    refresh()
+    pushFichas()
+    alert(added > 0 ? `${added} ingrediente(s) adicionado(s)!` : "Todos os ingredientes da lista já estavam cadastrados.")
+  }
+
   // Pré-visualização do custo por unidade base no formulário
   const ingPreview = useMemo(() => {
     const u = PURCHASE_UNITS.find((x) => x.value === ingUnit) ?? PURCHASE_UNITS[0]
@@ -172,9 +222,14 @@ export default function FichasTecnicasPage() {
           <h1 className="text-2xl font-bold text-gray-900">Fichas Técnicas</h1>
           <p className="text-sm text-gray-500">Composição, custo (CMV) e margem por produto</p>
         </div>
-        <Button onClick={() => { resetIngForm(); setIngOpen(true) }} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A] self-start">
-          <Plus className="mr-1 h-4 w-4" /> Novo ingrediente
-        </Button>
+        <div className="flex gap-2 self-start">
+          <Button variant="outline" onClick={seedIngredients}>
+            Carregar lista base
+          </Button>
+          <Button onClick={() => { resetIngForm(); setIngOpen(true) }} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
+            <Plus className="mr-1 h-4 w-4" /> Novo ingrediente
+          </Button>
+        </div>
       </div>
 
       {/* Ingredientes & custos */}
