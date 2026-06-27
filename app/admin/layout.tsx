@@ -20,6 +20,7 @@ import {
   Menu,
   Activity,
   Sandwich,
+  Calculator,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/produtos", label: "Produtos", icon: Package, module: "produtos" },
   { href: "/admin/disponibilidade", label: "Disponibilidade", icon: Sandwich, module: "produtos" },
   { href: "/admin/fichas-tecnicas", label: "Fichas Técnicas", icon: ClipboardList, module: "produtos" },
+  { href: "/admin/precificacao", label: "Precificação", icon: Calculator, module: "produtos" },
   { href: "/admin/estoque", label: "Estoque", icon: Boxes, module: "estoque" },
   { href: "/admin/compras", label: "Compras", icon: Truck, module: "compras" },
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
@@ -60,6 +62,7 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/produtos": "Produtos",
   "/admin/disponibilidade": "Disponibilidade",
   "/admin/fichas-tecnicas": "Fichas Técnicas",
+  "/admin/precificacao": "Precificação",
   "/admin/estoque": "Estoque",
   "/admin/compras": "Compras",
   "/admin/financeiro": "Financeiro",
