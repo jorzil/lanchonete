@@ -21,6 +21,7 @@ import {
   syncProductsToInventory,
   type Ingredient, type StockUnit, type Supplier, type StockMovement, type MovementType,
 } from "@/lib/inventory-storage"
+import { pullFichas, pushFichas } from "@/lib/fichas-sync"
 
 const UNITS: { value: StockUnit; label: string }[] = [
   { value: "un", label: "Unidade" },
@@ -74,7 +75,10 @@ export default function EstoquePage() {
     setMovements(loadMovements())
   }
 
-  useEffect(() => { refresh() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // No carregamento, puxa ingredientes + custos do Supabase (cross-device)
+  useEffect(() => {
+    pullFichas().then(() => refresh())
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => getInventoryStats(), [ingredients])
 
@@ -115,12 +119,14 @@ export default function EstoquePage() {
     }
     setEditOpen(false)
     refresh()
+    pushFichas()
   }
 
   function removeIngredient(ing: Ingredient) {
     if (!confirm(`Excluir "${ing.name}"?`)) return
     deleteIngredient(ing.id)
     refresh()
+    pushFichas()
   }
 
   function duplicateIngredient(ing: Ingredient) {
@@ -137,6 +143,7 @@ export default function EstoquePage() {
         // syncProductsToInventory will create the ingredient entry automatically
         syncProductsToInventory(nextProducts)
         refresh()
+        pushFichas()
         return
       }
     }
@@ -152,6 +159,7 @@ export default function EstoquePage() {
       supplierId: ing.supplierId,
     })
     refresh()
+    pushFichas()
   }
 
   // ---------- Movimentação ----------
@@ -177,6 +185,7 @@ export default function EstoquePage() {
     })
     setMovOpen(false)
     refresh()
+    pushFichas()
   }
 
   // ---------- Fornecedor ----------
