@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { formatCurrency, PRODUCTS, type Product } from "@/lib/store"
-import { loadIngredients, addIngredient, deleteIngredient, type Ingredient, type StockUnit } from "@/lib/inventory-storage"
+import { loadIngredients, addIngredient, updateIngredient, deleteIngredient, effectiveCost, type Ingredient, type StockUnit } from "@/lib/inventory-storage"
 import {
   loadRecipes, getRecipe, upsertRecipe, deleteRecipe, calcRecipeCost,
   type Recipe, type RecipeItem,
@@ -92,6 +92,9 @@ export default function FichasTecnicasPage() {
   const [ingPrice, setIngPrice] = useState(0)   // preço de compra (R$)
   const [ingQty, setIngQty] = useState(0)       // quantidade comprada
   const [ingUnit, setIngUnit] = useState("kg")  // unidade de compra
+  const [ingDerived, setIngDerived] = useState(false)   // é derivado de outro?
+  const [ingParent, setIngParent] = useState("")        // ingrediente pai
+  const [ingYield, setIngYield] = useState(2)           // rende N por 1 do pai
 
   function refresh() {
     setProducts(loadProducts())
@@ -106,22 +109,39 @@ export default function FichasTecnicasPage() {
 
   function resetIngForm() {
     setIngName(""); setIngPrice(0); setIngQty(0); setIngUnit("kg")
+    setIngDerived(false); setIngParent(""); setIngYield(2)
   }
 
-  // Cria o ingrediente convertendo o preço de compra em custo por unidade base
+  // Cria o ingrediente. Pode ser comprado (preço/qtd/unidade) ou derivado de
+  // outro (ex: Pão 15cm = metade do Pão 30cm).
   function saveIngredient() {
-    const u = PURCHASE_UNITS.find((x) => x.value === ingUnit) ?? PURCHASE_UNITS[0]
-    if (!ingName.trim() || ingPrice <= 0 || ingQty <= 0) return
-    const baseQty = ingQty * u.factor            // ex: 1 kg → 1000 g
-    const avgCost = ingPrice / baseQty           // custo por unidade base (R$/g, R$/ml, R$/un)
-    addIngredient({
-      name: ingName.trim(),
-      unit: u.base,
-      avgCost,
-      stock: 0,
-      minStock: 0,
-      idealStock: 0,
-    })
+    if (!ingName.trim()) return
+    if (ingDerived) {
+      const parent = ingredients.find((i) => i.id === ingParent)
+      if (!parent || ingYield <= 0) return
+      addIngredient({
+        name: ingName.trim(),
+        unit: parent.unit,
+        avgCost: parent.avgCost / ingYield, // custo inicial; recalculado pelo pai
+        stock: 0,
+        minStock: 0,
+        idealStock: 0,
+        parentId: parent.id,
+        conversion: ingYield,
+      })
+    } else {
+      const u = PURCHASE_UNITS.find((x) => x.value === ingUnit) ?? PURCHASE_UNITS[0]
+      if (ingPrice <= 0 || ingQty <= 0) return
+      const baseQty = ingQty * u.factor
+      addIngredient({
+        name: ingName.trim(),
+        unit: u.base,
+        avgCost: ingPrice / baseQty,
+        stock: 0,
+        minStock: 0,
+        idealStock: 0,
+      })
+    }
     resetIngForm()
     setIngOpen(false)
     refresh()
@@ -152,9 +172,16 @@ export default function FichasTecnicasPage() {
       })
       added++
     }
+    // Vincula o Pão 15cm ao Pão 30cm (rende 2) para automatizar o estoque
+    const all = loadIngredients()
+    const pao30 = all.find((i) => i.name.trim().toLowerCase() === "pão 30cm")
+    const pao15 = all.find((i) => i.name.trim().toLowerCase() === "pão 15cm")
+    if (pao30 && pao15 && !pao15.parentId) {
+      updateIngredient(pao15.id, { parentId: pao30.id, conversion: 2 })
+    }
     refresh()
     pushFichas()
-    alert(added > 0 ? `${added} ingrediente(s) adicionado(s)!` : "Todos os ingredientes da lista já estavam cadastrados.")
+    alert(added > 0 ? `${added} ingrediente(s) adicionado(s)!` : "Lista já cadastrada. Vínculo Pão 15cm → Pão 30cm verificado.")
   }
 
   // Pré-visualização do custo por unidade base no formulário
@@ -259,15 +286,24 @@ export default function FichasTecnicasPage() {
               </thead>
               <tbody>
                 {ingredients.map((ing) => {
+                  const cost = effectiveCost(ing, ingredients)
+                  const parent = ing.parentId ? ingredients.find((i) => i.id === ing.parentId) : null
                   const perK = (ing.unit === "g" || ing.unit === "ml")
-                    ? `${formatCurrency(ing.avgCost * 1000)}/${ing.unit === "g" ? "kg" : "L"}`
+                    ? `${formatCurrency(cost * 1000)}/${ing.unit === "g" ? "kg" : "L"}`
                     : "—"
                   return (
                     <tr key={ing.id} className="border-b border-gray-50 last:border-0">
-                      <td className="py-2 pr-3 font-medium text-gray-800">{ing.name}</td>
+                      <td className="py-2 pr-3 font-medium text-gray-800">
+                        {ing.name}
+                        {parent && (
+                          <span className="ml-1.5 text-[10px] font-normal text-blue-600">
+                            (rende {ing.conversion}× de {parent.name})
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 px-3 text-gray-500">{UNIT_LABEL[ing.unit] ?? ing.unit}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-gray-800">
-                        {formatCurrency(ing.avgCost)}/{UNIT_LABEL[ing.unit] ?? ing.unit}
+                        {formatCurrency(cost)}/{UNIT_LABEL[ing.unit] ?? ing.unit}
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums text-gray-400">{perK}</td>
                       <td className="py-2 pl-3 text-right">
@@ -393,7 +429,7 @@ export default function FichasTecnicasPage() {
                 <div className="max-h-[40vh] space-y-2 overflow-y-auto">
                   {items.map((item, idx) => {
                     const ing = ingredients.find((i) => i.id === item.ingredientId)
-                    const lineCost = ing ? ing.avgCost * item.quantity : 0
+                    const lineCost = ing ? effectiveCost(ing, ingredients) * item.quantity : 0
                     return (
                       <div key={idx} className="flex items-center gap-2">
                         <Select value={item.ingredientId} onValueChange={(v) => updateItem(idx, { ingredientId: v })}>
@@ -439,47 +475,92 @@ export default function FichasTecnicasPage() {
               <Input value={ingName} onChange={(e) => setIngName(e.target.value)} placeholder="Ex: Queijo mussarela" />
             </div>
 
-            <div className="rounded-lg bg-gray-50 p-3 space-y-3">
-              <p className="text-xs font-semibold text-gray-500">Quanto você pagou na compra?</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Preço (R$)</Label>
-                  <Input type="number" min="0" step="any" value={ingPrice || ""}
-                    onChange={(e) => setIngPrice(parseFloat(e.target.value) || 0)} placeholder="30,00" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Quantidade</Label>
-                  <Input type="number" min="0" step="any" value={ingQty || ""}
-                    onChange={(e) => setIngQty(parseFloat(e.target.value) || 0)} placeholder="1" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Unidade</Label>
-                  <Select value={ingUnit} onValueChange={setIngUnit}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {PURCHASE_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <p className="text-[11px] text-gray-400">
-                Ex: comprei 1 kg de queijo por R$ 30 → o sistema calcula o custo por grama.
-              </p>
-            </div>
+            {/* Toggle: comprado x derivado */}
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={ingDerived} onChange={(e) => setIngDerived(e.target.checked)} className="h-4 w-4 accent-[#EE5C13]" />
+              É derivado de outro ingrediente (ex: Pão 15cm vem do Pão 30cm)
+            </label>
 
-            {ingPreview && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
-                <p className="text-[11px] uppercase text-emerald-600">Custo calculado</p>
-                <p className="text-lg font-bold text-emerald-800">
-                  {formatCurrency(ingPreview.avgCost)} <span className="text-sm font-medium">/ {UNIT_LABEL[ingPreview.base]}</span>
-                </p>
+            {ingDerived ? (
+              <div className="rounded-lg bg-blue-50 p-3 space-y-3 border border-blue-100">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Vem de qual ingrediente?</Label>
+                    <Select value={ingParent} onValueChange={setIngParent}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {ingredients.filter((i) => !i.parentId).map((i) => (
+                          <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Rende quantos? (por 1)</Label>
+                    <Input type="number" min="1" step="any" value={ingYield || ""}
+                      onChange={(e) => setIngYield(parseFloat(e.target.value) || 0)} placeholder="2" />
+                  </div>
+                </div>
+                {(() => {
+                  const parent = ingredients.find((i) => i.id === ingParent)
+                  if (!parent || ingYield <= 0) return (
+                    <p className="text-[11px] text-blue-500">Ex: 1 Pão 30cm rende 2 Pães 15cm → o custo e o estoque se ajustam sozinhos.</p>
+                  )
+                  return (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-center text-sm">
+                      <span className="text-emerald-700">Custo: </span>
+                      <strong className="text-emerald-800">{formatCurrency(parent.avgCost / ingYield)}/{UNIT_LABEL[parent.unit] ?? parent.unit}</strong>
+                      <span className="text-emerald-600"> · baixa {(1 / ingYield).toFixed(2)} de {parent.name} por venda</span>
+                    </div>
+                  )
+                })()}
               </div>
+            ) : (
+              <>
+                <div className="rounded-lg bg-gray-50 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-gray-500">Quanto você pagou na compra?</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Preço (R$)</Label>
+                      <Input type="number" min="0" step="any" value={ingPrice || ""}
+                        onChange={(e) => setIngPrice(parseFloat(e.target.value) || 0)} placeholder="30,00" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Quantidade</Label>
+                      <Input type="number" min="0" step="any" value={ingQty || ""}
+                        onChange={(e) => setIngQty(parseFloat(e.target.value) || 0)} placeholder="1" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Unidade</Label>
+                      <Select value={ingUnit} onValueChange={setIngUnit}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PURCHASE_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Ex: comprei 1 kg de queijo por R$ 30 → o sistema calcula o custo por grama.
+                  </p>
+                </div>
+
+                {ingPreview && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                    <p className="text-[11px] uppercase text-emerald-600">Custo calculado</p>
+                    <p className="text-lg font-bold text-emerald-800">
+                      {formatCurrency(ingPreview.avgCost)} <span className="text-sm font-medium">/ {UNIT_LABEL[ingPreview.base]}</span>
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIngOpen(false)}>Cancelar</Button>
-            <Button onClick={saveIngredient} disabled={!ingName.trim() || ingPrice <= 0 || ingQty <= 0}
+            <Button onClick={saveIngredient}
+              disabled={!ingName.trim() || (ingDerived ? (!ingParent || ingYield <= 0) : (ingPrice <= 0 || ingQty <= 0))}
               className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
               Salvar ingrediente
             </Button>

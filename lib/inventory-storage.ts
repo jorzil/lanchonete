@@ -28,7 +28,23 @@ export interface Ingredient {
   /** Estoque ideal (meta de compra). */
   idealStock: number
   supplierId?: string
+  /** Ingrediente "pai" do qual este é derivado (ex: Pão 15cm vem do Pão 30cm). */
+  parentId?: string
+  /** Quantas unidades deste ingrediente saem de 1 unidade do pai (ex: 2). */
+  conversion?: number
   createdAt: string
+}
+
+/**
+ * Custo efetivo por unidade. Para ingredientes derivados, é o custo do pai
+ * dividido pelo rendimento (conversion).
+ */
+export function effectiveCost(ing: Ingredient, all: Ingredient[]): number {
+  if (ing.parentId && ing.conversion && ing.conversion > 0) {
+    const parent = all.find((i) => i.id === ing.parentId)
+    if (parent) return parent.avgCost / ing.conversion
+  }
+  return ing.avgCost
 }
 
 export type MovementType = "entrada" | "saida" | "ajuste"

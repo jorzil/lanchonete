@@ -5,6 +5,7 @@
 import {
   loadIngredients,
   registerMovement,
+  effectiveCost,
   type Ingredient,
 } from "@/lib/inventory-storage"
 
@@ -79,7 +80,7 @@ export function calcRecipeCost(recipe: Recipe, ingredients?: Ingredient[]): Reci
   const list = ingredients ?? loadIngredients()
   const cost = recipe.items.reduce((acc, item) => {
     const ing = list.find((i) => i.id === item.ingredientId)
-    return acc + (ing ? ing.avgCost * item.quantity : 0)
+    return acc + (ing ? effectiveCost(ing, list) * item.quantity : 0)
   }, 0)
   const salePrice = recipe.salePrice
   const margin = salePrice - cost
@@ -95,13 +96,25 @@ export function calcRecipeCost(recipe: Recipe, ingredients?: Ingredient[]): Reci
 export function consumeStockForProduct(productId: string, soldQty = 1): void {
   const recipe = getRecipe(productId)
   if (!recipe) return
+  const list = loadIngredients()
   for (const item of recipe.items) {
     if (item.quantity <= 0) continue
-    registerMovement({
-      ingredientId: item.ingredientId,
-      type: "saida",
-      quantity: item.quantity * soldQty,
-      reason: `Venda: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""}`,
-    })
+    const ing = list.find((i) => i.id === item.ingredientId)
+    // Ingrediente derivado: dá baixa no PAI, convertendo pela proporção.
+    if (ing?.parentId && ing.conversion && ing.conversion > 0) {
+      registerMovement({
+        ingredientId: ing.parentId,
+        type: "saida",
+        quantity: (item.quantity * soldQty) / ing.conversion,
+        reason: `Venda: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""} (via ${ing.name})`,
+      })
+    } else {
+      registerMovement({
+        ingredientId: item.ingredientId,
+        type: "saida",
+        quantity: item.quantity * soldQty,
+        reason: `Venda: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""}`,
+      })
+    }
   }
 }
