@@ -22,6 +22,7 @@ import {
   type Ingredient, type StockUnit, type Supplier, type StockMovement, type MovementType,
 } from "@/lib/inventory-storage"
 import { pullFichas, pushFichas } from "@/lib/fichas-sync"
+import { fetchProductOverrides } from "@/lib/product-overrides"
 
 const UNITS: { value: StockUnit; label: string }[] = [
   { value: "un", label: "Unidade" },
@@ -75,9 +76,30 @@ export default function EstoquePage() {
     setMovements(loadMovements())
   }
 
-  // No carregamento, puxa ingredientes + custos do Supabase (cross-device)
+  // No carregamento: puxa ingredientes do banco + aplica o custo (costPrice)
+  // cadastrado em Produtos aos ingredientes ligados a cada produto.
   useEffect(() => {
-    pullFichas().then(() => refresh())
+    (async () => {
+      await pullFichas()
+      const ov = await fetchProductOverrides()
+      const merged = PRODUCTS.map((p) => ({ ...p, ...(ov[p.id] ?? {}) }))
+      setProducts(merged)
+      syncProductsToInventory(merged)
+      // Garante que ingredientes ligados a produtos com custo > 0 recebam o custo
+      const list = loadIngredients()
+      let changed = false
+      for (const ing of list) {
+        const pid = ing.productId
+        const cost = pid ? (ov[pid] as { costPrice?: number })?.costPrice : undefined
+        if (pid && cost && cost > 0 && (ing.avgCost === 0 || ing.stock === 0)) {
+          if (ing.avgCost !== cost) { updateIngredient(ing.id, { avgCost: cost }); changed = true }
+        }
+      }
+      setIngredients(loadIngredients())
+      setSuppliers(loadSuppliers())
+      setMovements(loadMovements())
+      if (changed) pushFichas()
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stats = useMemo(() => getInventoryStats(), [ingredients])
