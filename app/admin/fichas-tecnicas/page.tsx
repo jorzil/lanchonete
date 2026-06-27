@@ -17,6 +17,7 @@ import {
   loadRecipes, getRecipe, upsertRecipe, deleteRecipe, calcRecipeCost,
   type Recipe, type RecipeItem,
 } from "@/lib/recipes-storage"
+import { pullFichas, pushFichas } from "@/lib/fichas-sync"
 
 // Unidade de compra → unidade base usada na receita + fator de conversão
 const PURCHASE_UNITS: { value: string; label: string; base: StockUnit; factor: number }[] = [
@@ -66,7 +67,11 @@ export default function FichasTecnicasPage() {
     setIngredients(loadIngredients())
     setRecipes(loadRecipes())
   }
-  useEffect(() => { refresh() }, [])
+
+  // No carregamento, puxa ingredientes + fichas do Supabase (cross-device)
+  useEffect(() => {
+    pullFichas().then(() => refresh())
+  }, [])
 
   function resetIngForm() {
     setIngName(""); setIngPrice(0); setIngQty(0); setIngUnit("kg")
@@ -89,12 +94,14 @@ export default function FichasTecnicasPage() {
     resetIngForm()
     setIngOpen(false)
     refresh()
+    pushFichas()
   }
 
   function removeIngredient(id: string) {
     if (!confirm("Remover este ingrediente?")) return
     deleteIngredient(id)
     refresh()
+    pushFichas()
   }
 
   // Pré-visualização do custo por unidade base no formulário
@@ -142,12 +149,14 @@ export default function FichasTecnicasPage() {
     upsertRecipe({ productId: product.id, productName: product.name, salePrice, items })
     setOpen(false)
     refresh()
+    pushFichas()
   }
 
   function remove(p: Product) {
     if (!confirm(`Remover ficha técnica de "${p.name}"?`)) return
     deleteRecipe(p.id)
     refresh()
+    pushFichas()
   }
 
   // Custo da ficha em edição (ao vivo)
