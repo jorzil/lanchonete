@@ -58,6 +58,9 @@ const SEED_INGREDIENTS: { name: string; price: number; qty: number; unit: string
   { name: "Maionese temperada",price: 39.00, qty: 1.1,   unit: "kg" },
   { name: "Ranch",             price: 34.00, qty: 1.1,   unit: "kg" },
   { name: "Chipotle",          price: 49.00, qty: 1.1,   unit: "kg" },
+  { name: "Peito de peru",     price: 68.00, qty: 1,     unit: "kg" },
+  { name: "Presunto",          price: 30.00, qty: 1,     unit: "kg" },
+  { name: "Cebola caramelizada",price: 38.00, qty: 1,    unit: "kg" },
 ]
 
 function loadProducts(): Product[] {
