@@ -12,11 +12,24 @@ import {
 } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { formatCurrency, PRODUCTS, type Product } from "@/lib/store"
-import { loadIngredients, type Ingredient } from "@/lib/inventory-storage"
+import { loadIngredients, addIngredient, deleteIngredient, type Ingredient, type StockUnit } from "@/lib/inventory-storage"
 import {
   loadRecipes, getRecipe, upsertRecipe, deleteRecipe, calcRecipeCost,
   type Recipe, type RecipeItem,
 } from "@/lib/recipes-storage"
+
+// Unidade de compra → unidade base usada na receita + fator de conversão
+const PURCHASE_UNITS: { value: string; label: string; base: StockUnit; factor: number }[] = [
+  { value: "kg",    label: "Quilo (kg)",      base: "g",  factor: 1000 },
+  { value: "g",     label: "Grama (g)",       base: "g",  factor: 1 },
+  { value: "L",     label: "Litro (L)",       base: "ml", factor: 1000 },
+  { value: "ml",    label: "Mililitro (ml)",  base: "ml", factor: 1 },
+  { value: "un",    label: "Unidade (un)",    base: "un", factor: 1 },
+  { value: "fatia", label: "Fatia",           base: "fatia", factor: 1 },
+  { value: "pct",   label: "Pacote (pct)",    base: "pct", factor: 1 },
+]
+
+const UNIT_LABEL: Record<string, string> = { g: "g", ml: "ml", un: "un", fatia: "fatia", pct: "pct", kg: "kg", L: "L" }
 
 function loadProducts(): Product[] {
   if (typeof window === "undefined") return PRODUCTS
@@ -41,12 +54,56 @@ export default function FichasTecnicasPage() {
   const [salePrice, setSalePrice] = useState(0)
   const [items, setItems] = useState<RecipeItem[]>([])
 
+  // Cadastro de ingredientes
+  const [ingOpen, setIngOpen] = useState(false)
+  const [ingName, setIngName] = useState("")
+  const [ingPrice, setIngPrice] = useState(0)   // preço de compra (R$)
+  const [ingQty, setIngQty] = useState(0)       // quantidade comprada
+  const [ingUnit, setIngUnit] = useState("kg")  // unidade de compra
+
   function refresh() {
     setProducts(loadProducts())
     setIngredients(loadIngredients())
     setRecipes(loadRecipes())
   }
   useEffect(() => { refresh() }, [])
+
+  function resetIngForm() {
+    setIngName(""); setIngPrice(0); setIngQty(0); setIngUnit("kg")
+  }
+
+  // Cria o ingrediente convertendo o preço de compra em custo por unidade base
+  function saveIngredient() {
+    const u = PURCHASE_UNITS.find((x) => x.value === ingUnit) ?? PURCHASE_UNITS[0]
+    if (!ingName.trim() || ingPrice <= 0 || ingQty <= 0) return
+    const baseQty = ingQty * u.factor            // ex: 1 kg → 1000 g
+    const avgCost = ingPrice / baseQty           // custo por unidade base (R$/g, R$/ml, R$/un)
+    addIngredient({
+      name: ingName.trim(),
+      unit: u.base,
+      avgCost,
+      stock: 0,
+      minStock: 0,
+      idealStock: 0,
+    })
+    resetIngForm()
+    setIngOpen(false)
+    refresh()
+  }
+
+  function removeIngredient(id: string) {
+    if (!confirm("Remover este ingrediente?")) return
+    deleteIngredient(id)
+    refresh()
+  }
+
+  // Pré-visualização do custo por unidade base no formulário
+  const ingPreview = useMemo(() => {
+    const u = PURCHASE_UNITS.find((x) => x.value === ingUnit) ?? PURCHASE_UNITS[0]
+    if (ingPrice <= 0 || ingQty <= 0) return null
+    const avgCost = ingPrice / (ingQty * u.factor)
+    return { avgCost, base: u.base }
+  }, [ingPrice, ingQty, ingUnit])
 
   const recipeByProduct = useMemo(() => {
     const map = new Map<string, Recipe>()
@@ -108,13 +165,59 @@ export default function FichasTecnicasPage() {
           <h1 className="text-2xl font-bold text-gray-900">Fichas Técnicas</h1>
           <p className="text-sm text-gray-500">Composição, custo (CMV) e margem por produto</p>
         </div>
+        <Button onClick={() => { resetIngForm(); setIngOpen(true) }} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A] self-start">
+          <Plus className="mr-1 h-4 w-4" /> Novo ingrediente
+        </Button>
       </div>
 
-      {noIngredients && (
-        <Card className="border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Cadastre ingredientes no módulo <strong>Estoque</strong> antes de montar as fichas técnicas.
-        </Card>
-      )}
+      {/* Ingredientes & custos */}
+      <Card className="p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900">Ingredientes &amp; Custos</h2>
+          <span className="text-xs text-gray-400">{ingredients.length} cadastrado(s)</span>
+        </div>
+        {ingredients.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-sm text-gray-400">
+            Nenhum ingrediente. Clique em <strong>Novo ingrediente</strong> para começar a precificar.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                  <th className="py-2 pr-3 font-medium">Ingrediente</th>
+                  <th className="py-2 px-3 font-medium">Unidade</th>
+                  <th className="py-2 px-3 font-medium text-right">Custo / unidade</th>
+                  <th className="py-2 px-3 font-medium text-right">Equivale a</th>
+                  <th className="py-2 pl-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingredients.map((ing) => {
+                  const perK = (ing.unit === "g" || ing.unit === "ml")
+                    ? `${formatCurrency(ing.avgCost * 1000)}/${ing.unit === "g" ? "kg" : "L"}`
+                    : "—"
+                  return (
+                    <tr key={ing.id} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-3 font-medium text-gray-800">{ing.name}</td>
+                      <td className="py-2 px-3 text-gray-500">{UNIT_LABEL[ing.unit] ?? ing.unit}</td>
+                      <td className="py-2 px-3 text-right tabular-nums text-gray-800">
+                        {formatCurrency(ing.avgCost)}/{UNIT_LABEL[ing.unit] ?? ing.unit}
+                      </td>
+                      <td className="py-2 px-3 text-right tabular-nums text-gray-400">{perK}</td>
+                      <td className="py-2 pl-3 text-right">
+                        <button onClick={() => removeIngredient(ing.id)} className="rounded-md p-1.5 hover:bg-gray-100">
+                          <Trash2 className="h-4 w-4 text-gray-400" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -207,7 +310,14 @@ export default function FichasTecnicasPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Ingredientes</Label>
-                <Button size="sm" variant="outline" onClick={addItem}><Plus className="mr-1 h-3.5 w-3.5" /> Adicionar</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { resetIngForm(); setIngOpen(true) }}>
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Novo ingrediente
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={addItem} disabled={ingredients.length === 0}>
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar à ficha
+                  </Button>
+                </div>
               </div>
 
               {items.length === 0 ? (
@@ -227,8 +337,9 @@ export default function FichasTecnicasPage() {
                             {ingredients.map((i) => <SelectItem key={i.id} value={i.id}>{i.name} ({i.unit})</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <Input type="number" min="0" step="any" className="w-24" value={item.quantity}
+                        <Input type="number" min="0" step="any" className="w-20" value={item.quantity}
                           onChange={(e) => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })} />
+                        <span className="w-8 text-xs text-gray-400">{ing ? (UNIT_LABEL[ing.unit] ?? ing.unit) : ""}</span>
                         <span className="w-20 text-right text-xs tabular-nums text-gray-500">{formatCurrency(lineCost)}</span>
                         <button onClick={() => removeItem(idx)} className="rounded-md p-1.5 hover:bg-gray-100">
                           <Trash2 className="h-4 w-4 text-gray-400" />
@@ -244,6 +355,69 @@ export default function FichasTecnicasPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">Salvar ficha</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cadastro de ingrediente */}
+      <Dialog open={ingOpen} onOpenChange={setIngOpen}>
+        <DialogContent className="admin-theme max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-[#EE5C13]" /> Novo ingrediente
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do ingrediente</Label>
+              <Input value={ingName} onChange={(e) => setIngName(e.target.value)} placeholder="Ex: Queijo mussarela" />
+            </div>
+
+            <div className="rounded-lg bg-gray-50 p-3 space-y-3">
+              <p className="text-xs font-semibold text-gray-500">Quanto você pagou na compra?</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Preço (R$)</Label>
+                  <Input type="number" min="0" step="any" value={ingPrice || ""}
+                    onChange={(e) => setIngPrice(parseFloat(e.target.value) || 0)} placeholder="30,00" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Quantidade</Label>
+                  <Input type="number" min="0" step="any" value={ingQty || ""}
+                    onChange={(e) => setIngQty(parseFloat(e.target.value) || 0)} placeholder="1" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Unidade</Label>
+                  <Select value={ingUnit} onValueChange={setIngUnit}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PURCHASE_UNITS.map((u) => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Ex: comprei 1 kg de queijo por R$ 30 → o sistema calcula o custo por grama.
+              </p>
+            </div>
+
+            {ingPreview && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center">
+                <p className="text-[11px] uppercase text-emerald-600">Custo calculado</p>
+                <p className="text-lg font-bold text-emerald-800">
+                  {formatCurrency(ingPreview.avgCost)} <span className="text-sm font-medium">/ {UNIT_LABEL[ingPreview.base]}</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIngOpen(false)}>Cancelar</Button>
+            <Button onClick={saveIngredient} disabled={!ingName.trim() || ingPrice <= 0 || ingQty <= 0}
+              className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
+              Salvar ingrediente
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
