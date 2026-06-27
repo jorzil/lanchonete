@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Calculator, Info } from "lucide-react"
+import { Calculator, Info, Plus, Trash2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,10 +15,12 @@ import { pullFichas } from "@/lib/fichas-sync"
 
 const STORAGE_KEY = "mais_sub_pricing_calc"
 
+interface FixedCost { id: string; name: string; value: number }
+
 interface CalcState {
   cmv: number            // custo dos ingredientes (R$)
   embalagem: number      // R$ por unidade
-  custoFixoMensal: number // R$/mês
+  custosFixos: FixedCost[] // categorias de custo fixo (luz, água, aluguel…)
   vendasMes: number      // unidades/mês
   taxaCartao: number     // %
   imposto: number        // %
@@ -28,10 +30,18 @@ interface CalcState {
   margemValor: number    // R$ de lucro por unidade
 }
 
+const DEFAULT_FIXED: FixedCost[] = [
+  { id: "f1", name: "Aluguel", value: 0 },
+  { id: "f2", name: "Energia (luz)", value: 0 },
+  { id: "f3", name: "Água", value: 0 },
+  { id: "f4", name: "Internet", value: 0 },
+  { id: "f5", name: "Salários", value: 0 },
+]
+
 const DEFAULT_STATE: CalcState = {
   cmv: 0,
   embalagem: 0,
-  custoFixoMensal: 0,
+  custosFixos: DEFAULT_FIXED,
   vendasMes: 0,
   taxaCartao: 0,
   imposto: 0,
@@ -85,6 +95,20 @@ export default function PrecificacaoPage() {
 
   const set = (patch: Partial<CalcState>) => setS((prev) => ({ ...prev, ...patch }))
 
+  // Gestão das categorias de custo fixo
+  const custosFixos = s.custosFixos ?? []
+  const totalFixoMensal = custosFixos.reduce((acc, c) => acc + (c.value || 0), 0)
+
+  function addFixo() {
+    set({ custosFixos: [...custosFixos, { id: `f${Date.now()}`, name: "", value: 0 }] })
+  }
+  function updateFixo(id: string, patch: Partial<FixedCost>) {
+    set({ custosFixos: custosFixos.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
+  }
+  function removeFixo(id: string) {
+    set({ custosFixos: custosFixos.filter((c) => c.id !== id) })
+  }
+
   // Carrega o CMV de uma ficha técnica existente
   function loadFromRecipe(productId: string) {
     const r = recipes.find((x) => x.productId === productId)
@@ -94,7 +118,8 @@ export default function PrecificacaoPage() {
   }
 
   const result = useMemo(() => {
-    const fixoUnit = s.vendasMes > 0 ? s.custoFixoMensal / s.vendasMes : 0
+    const custoFixoMensal = (s.custosFixos ?? []).reduce((acc, c) => acc + (c.value || 0), 0)
+    const fixoUnit = s.vendasMes > 0 ? custoFixoMensal / s.vendasMes : 0
     const custoTotal = s.cmv + s.embalagem + fixoUnit
     const taxasPct = s.taxaCartao + s.imposto + s.marketplace
     let precoSugerido = 0
@@ -157,13 +182,51 @@ export default function PrecificacaoPage() {
 
           {/* Custos fixos */}
           <Card className="p-5 space-y-4">
-            <h2 className="font-bold text-gray-900">2. Custos fixos</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <NumberField label="Custo fixo mensal total" hint="Aluguel, energia, salários, internet…" prefix="R$" value={s.custoFixoMensal} onChange={(v) => set({ custoFixoMensal: v })} />
-              <NumberField label="Vendas estimadas / mês" hint="Quantidade de produtos vendidos" suffix="un" value={s.vendasMes} onChange={(v) => set({ vendasMes: v })} />
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-gray-900">2. Custos fixos mensais</h2>
+              <button onClick={addFixo} className="inline-flex items-center gap-1 text-sm font-semibold text-[#EE5C13] hover:underline">
+                <Plus size={15} /> Adicionar categoria
+              </button>
             </div>
-            <div className="rounded-lg bg-gray-50 px-4 py-2.5 text-sm text-gray-600">
-              Custo fixo por produto: <strong className="text-gray-900">{formatCurrency(result.fixoUnit)}</strong>
+
+            <div className="space-y-2">
+              {custosFixos.map((c) => (
+                <div key={c.id} className="flex items-center gap-2">
+                  <Input
+                    value={c.name}
+                    onChange={(e) => updateFixo(c.id, { name: e.target.value })}
+                    placeholder="Ex: Luz, Água, Aluguel…"
+                    className="flex-1"
+                  />
+                  <div className="relative w-32">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">R$</span>
+                    <Input
+                      type="number" min="0" step="any" value={c.value || ""}
+                      onChange={(e) => updateFixo(c.id, { value: parseFloat(e.target.value) || 0 })}
+                      className="pl-9" placeholder="0"
+                    />
+                  </div>
+                  <button onClick={() => removeFixo(c.id)} className="rounded-md p-2 hover:bg-gray-100">
+                    <Trash2 className="h-4 w-4 text-gray-400" />
+                  </button>
+                </div>
+              ))}
+              {custosFixos.length === 0 && (
+                <p className="rounded-lg border border-dashed border-gray-200 py-4 text-center text-sm text-gray-400">
+                  Nenhuma categoria. Clique em “Adicionar categoria”.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2.5 text-sm">
+              <span className="text-gray-600">Total fixo mensal</span>
+              <strong className="text-gray-900">{formatCurrency(totalFixoMensal)}</strong>
+            </div>
+
+            <NumberField label="Vendas estimadas / mês" hint="Quantidade de produtos vendidos no mês" suffix="un" value={s.vendasMes} onChange={(v) => set({ vendasMes: v })} />
+
+            <div className="rounded-lg bg-orange-50 border border-orange-100 px-4 py-2.5 text-sm text-gray-700">
+              Custo fixo por produto: <strong className="text-[#EE5C13]">{formatCurrency(result.fixoUnit)}</strong>
             </div>
           </Card>
 
