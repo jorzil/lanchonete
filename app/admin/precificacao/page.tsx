@@ -23,7 +23,9 @@ interface CalcState {
   taxaCartao: number     // %
   imposto: number        // %
   marketplace: number    // % (iFood etc.)
+  margemModo: "pct" | "valor" // como definir o lucro
   margemLucro: number    // % desejada sobre venda
+  margemValor: number    // R$ de lucro por unidade
 }
 
 const DEFAULT_STATE: CalcState = {
@@ -34,7 +36,9 @@ const DEFAULT_STATE: CalcState = {
   taxaCartao: 0,
   imposto: 0,
   marketplace: 0,
+  margemModo: "pct",
   margemLucro: 30,
+  margemValor: 0,
 }
 
 function NumberField({ label, hint, value, onChange, prefix, suffix }: {
@@ -92,14 +96,26 @@ export default function PrecificacaoPage() {
   const result = useMemo(() => {
     const fixoUnit = s.vendasMes > 0 ? s.custoFixoMensal / s.vendasMes : 0
     const custoTotal = s.cmv + s.embalagem + fixoUnit
-    const pctSobreVenda = s.taxaCartao + s.imposto + s.marketplace + s.margemLucro
-    const divisor = 1 - pctSobreVenda / 100
-    const precoSugerido = divisor > 0 ? custoTotal / divisor : 0
-    const taxasReais = precoSugerido * (s.taxaCartao + s.imposto + s.marketplace) / 100
+    const taxasPct = s.taxaCartao + s.imposto + s.marketplace
+    let precoSugerido = 0
+    let invalid = false
+    if (s.margemModo === "pct") {
+      // Preço = custo / (1 - (taxas% + margem%))
+      const divisor = 1 - (taxasPct + s.margemLucro) / 100
+      invalid = divisor <= 0
+      precoSugerido = invalid ? 0 : custoTotal / divisor
+    } else {
+      // Lucro fixo em R$: Preço = (custo + lucro) / (1 - taxas%)
+      const divisor = 1 - taxasPct / 100
+      invalid = divisor <= 0
+      precoSugerido = invalid ? 0 : (custoTotal + s.margemValor) / divisor
+    }
+    const taxasReais = precoSugerido * taxasPct / 100
     const lucro = precoSugerido - custoTotal - taxasReais
     const margemReal = precoSugerido > 0 ? (lucro / precoSugerido) * 100 : 0
     const markup = custoTotal > 0 ? (lucro / custoTotal) * 100 : 0
-    return { fixoUnit, custoTotal, pctSobreVenda, precoSugerido, taxasReais, lucro, margemReal, markup, invalid: divisor <= 0 }
+    const pctSobreVenda = taxasPct + (s.margemModo === "pct" ? s.margemLucro : margemReal)
+    return { fixoUnit, custoTotal, pctSobreVenda, precoSugerido, taxasReais, lucro, margemReal, markup, invalid }
   }, [s])
 
   return (
@@ -164,7 +180,25 @@ export default function PrecificacaoPage() {
           {/* Lucro */}
           <Card className="p-5 space-y-4">
             <h2 className="font-bold text-gray-900">4. Lucro desejado</h2>
-            <NumberField label="Margem de lucro sobre a venda" hint="Quanto você quer de lucro líquido em % do preço" suffix="%" value={s.margemLucro} onChange={(v) => set({ margemLucro: v })} />
+            <div className="inline-flex rounded-lg border border-gray-200 p-1">
+              <button
+                onClick={() => set({ margemModo: "pct" })}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${s.margemModo === "pct" ? "bg-[#EE5C13] text-white" : "text-gray-500 hover:text-gray-800"}`}
+              >
+                Por % (margem)
+              </button>
+              <button
+                onClick={() => set({ margemModo: "valor" })}
+                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${s.margemModo === "valor" ? "bg-[#EE5C13] text-white" : "text-gray-500 hover:text-gray-800"}`}
+              >
+                Por valor (R$)
+              </button>
+            </div>
+            {s.margemModo === "pct" ? (
+              <NumberField label="Margem de lucro sobre a venda" hint="Lucro líquido em % do preço de venda" suffix="%" value={s.margemLucro} onChange={(v) => set({ margemLucro: v })} />
+            ) : (
+              <NumberField label="Lucro desejado por produto" hint="Quanto você quer ganhar (líquido) em cada venda" prefix="R$" value={s.margemValor} onChange={(v) => set({ margemValor: v })} />
+            )}
           </Card>
         </div>
 
