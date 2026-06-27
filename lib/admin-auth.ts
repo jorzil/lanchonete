@@ -28,13 +28,14 @@ export type ModuleKey =
   | "cupons"
   | "relatorios"
   | "configuracoes"
+  | "usuarios"
   | "setup"
 
 // Permissões por papel: quais módulos cada papel pode acessar.
 export const ROLE_PERMISSIONS: Record<Role, ModuleKey[]> = {
   admin: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
-    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes", "setup",
+    "compras", "financeiro", "clientes", "cupons", "relatorios", "configuracoes", "usuarios", "setup",
   ],
   gerente: [
     "dashboard", "pedidos", "pdv", "produtos", "estoque",
@@ -59,13 +60,78 @@ const DEFAULT_ACCOUNTS: StoredAccount[] = [
   { email: "jorzil", password: "@Maissub2026", name: "Administrador", role: "admin" },
 ]
 
+const ACCOUNTS_KEY = "admin_accounts"
+
+// ---------- Contas criadas pelo admin (localStorage) ----------
+export function loadStoredAccounts(): StoredAccount[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? (parsed as StoredAccount[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function saveStoredAccounts(list: StoredAccount[]): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list)) } catch {}
+}
+
+/** Todas as contas: as fixas (seed) + as criadas pelo admin (estas têm prioridade). */
+function getAllAccounts(): StoredAccount[] {
+  const stored = loadStoredAccounts()
+  const byEmail = new Map<string, StoredAccount>()
+  for (const a of DEFAULT_ACCOUNTS) byEmail.set(a.email.toLowerCase(), a)
+  for (const a of stored) byEmail.set(a.email.toLowerCase(), a)
+  return [...byEmail.values()]
+}
+
+/** Lista de usuários para a tela de gestão (sem expor senha de quem não é editável). */
+export interface ManagedUser extends AdminUser { isDefault: boolean }
+export function listManagedUsers(): ManagedUser[] {
+  const stored = loadStoredAccounts()
+  const storedEmails = new Set(stored.map((a) => a.email.toLowerCase()))
+  const defaults = DEFAULT_ACCOUNTS
+    .filter((d) => !storedEmails.has(d.email.toLowerCase()))
+    .map((d) => ({ email: d.email, name: d.name, role: d.role, isDefault: true }))
+  const custom = stored.map((a) => ({ email: a.email, name: a.name, role: a.role, isDefault: false }))
+  return [...defaults, ...custom]
+}
+
+export interface AccountInput { email: string; name: string; role: Role; password: string }
+
+export function upsertAccount(input: AccountInput): { ok: boolean; error?: string } {
+  const email = input.email.trim().toLowerCase()
+  if (!email || !input.name.trim() || !input.password) {
+    return { ok: false, error: "Preencha nome, usuário e senha." }
+  }
+  const list = loadStoredAccounts()
+  const idx = list.findIndex((a) => a.email.toLowerCase() === email)
+  const account: StoredAccount = { email, name: input.name.trim(), role: input.role, password: input.password }
+  if (idx >= 0) list[idx] = account
+  else list.push(account)
+  saveStoredAccounts(list)
+  return { ok: true }
+}
+
+export function deleteAccount(email: string): void {
+  saveStoredAccounts(loadStoredAccounts().filter((a) => a.email.toLowerCase() !== email.toLowerCase()))
+}
+
+export function getAccountPassword(email: string): string {
+  const found = loadStoredAccounts().find((a) => a.email.toLowerCase() === email.toLowerCase())
+  return found?.password ?? ""
+}
+
 export interface LoginResult {
   ok: boolean
   error?: string
 }
 
 function findAccount(email: string): StoredAccount | undefined {
-  return DEFAULT_ACCOUNTS.find((a) => a.email === email)
+  return getAllAccounts().find((a) => a.email.toLowerCase() === email)
 }
 
 /** Realiza login. Em sucesso grava token + usuário no localStorage. */

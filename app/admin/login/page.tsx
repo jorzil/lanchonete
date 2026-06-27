@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login, isAuthenticated } from "@/lib/admin-auth"
+import { pullAdminUsers } from "@/lib/admin-users-sync"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -18,12 +19,16 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/admin")
+    // Puxa as contas criadas pelo admin para permitir login em qualquer aparelho
+    pullAdminUsers()
   }, [router])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
+    // Garante que as contas do banco estão carregadas antes de validar
+    await pullAdminUsers()
     const result = login(email, password)
     if (result.ok) {
       router.replace("/admin")
