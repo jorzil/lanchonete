@@ -12,11 +12,21 @@ export async function pullFichas(): Promise<boolean> {
     const res = await fetch('/api/fichas-tecnicas', { cache: 'no-store' })
     if (!res.ok) return false
     const data = await res.json()
-    const ingredients = Array.isArray(data.ingredients) ? (data.ingredients as Ingredient[]) : null
-    const recipes = Array.isArray(data.recipes) ? (data.recipes as Recipe[]) : null
-    if (ingredients) saveIngredients(ingredients)
-    if (recipes) saveRecipes(recipes)
-    return !!(ingredients || recipes)
+    const ingredients = Array.isArray(data.ingredients) ? (data.ingredients as Ingredient[]) : []
+    const recipes = Array.isArray(data.recipes) ? (data.recipes as Recipe[]) : []
+
+    // Só sobrescreve o local quando o banco realmente tem dados — evita apagar
+    // o que já existe no aparelho quando o banco ainda está vazio.
+    if (ingredients.length > 0) saveIngredients(ingredients)
+    if (recipes.length > 0) saveRecipes(recipes)
+
+    // Se o banco está vazio mas há dados locais, sobe o local para semear o banco.
+    if (ingredients.length === 0 && recipes.length === 0) {
+      if (loadIngredients().length > 0 || loadRecipes().length > 0) {
+        await pushFichas()
+      }
+    }
+    return true
   } catch {
     return false
   }

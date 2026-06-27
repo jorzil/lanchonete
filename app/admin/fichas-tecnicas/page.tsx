@@ -165,8 +165,6 @@ export default function FichasTecnicasPage() {
     return calcRecipeCost({ productId: product.id, productName: product.name, salePrice, items, updatedAt: "" }, ingredients)
   }, [product, salePrice, items, ingredients])
 
-  const noIngredients = ingredients.length === 0
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -276,7 +274,7 @@ export default function FichasTecnicasPage() {
               )}
 
               <div className="mt-auto flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditor(p)} disabled={noIngredients}>
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => openEditor(p)}>
                   <Pencil className="mr-1 h-3.5 w-3.5" /> {recipe ? "Editar" : "Montar"}
                 </Button>
                 {recipe && (
