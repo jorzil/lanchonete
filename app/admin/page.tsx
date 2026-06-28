@@ -107,8 +107,22 @@ const QUICK_LINKS = [
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
 ]
 
+type Period = "hoje" | "ontem" | "7d" | "30d" | "mes" | "tudo" | "custom"
+const PERIOD_LABELS: { key: Period; label: string }[] = [
+  { key: "hoje", label: "Hoje" },
+  { key: "ontem", label: "Ontem" },
+  { key: "7d", label: "7 dias" },
+  { key: "30d", label: "30 dias" },
+  { key: "mes", label: "Este mês" },
+  { key: "tudo", label: "Tudo" },
+  { key: "custom", label: "Personalizado" },
+]
+
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [period, setPeriod] = useState<Period>("hoje")
+  const [customStart, setCustomStart] = useState("")
+  const [customEnd, setCustomEnd] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -129,6 +143,45 @@ export default function AdminDashboard() {
 
   const hasOrders = orders.length > 0
   const newCount = useMemo(() => orders.filter((o) => o.status === "novo").length, [orders])
+
+  // Pedidos filtrados pelo período selecionado
+  const periodOrders = useMemo(() => {
+    const now = new Date()
+    const sod = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+    let from: Date | null = null, to: Date | null = null
+    if (period === "hoje") from = sod(now)
+    else if (period === "ontem") { const y = new Date(now); y.setDate(y.getDate() - 1); from = sod(y); to = sod(now) }
+    else if (period === "7d") { const d = new Date(now); d.setDate(d.getDate() - 7); from = d }
+    else if (period === "30d") { const d = new Date(now); d.setDate(d.getDate() - 30); from = d }
+    else if (period === "mes") from = new Date(now.getFullYear(), now.getMonth(), 1)
+    else if (period === "custom") {
+      if (customStart) from = sod(new Date(customStart + "T00:00:00"))
+      if (customEnd) to = new Date(customEnd + "T23:59:59")
+    }
+    return orders.filter((o) => {
+      const d = new Date(o.createdAt)
+      if (from && d < from) return false
+      if (to && d > to) return false
+      return true
+    })
+  }, [orders, period, customStart, customEnd])
+
+  // KPIs do período
+  const periodStats = useMemo(() => {
+    const valid = periodOrders.filter((o) => o.status !== "cancelado")
+    const revenue = valid.reduce((s, o) => s + o.total, 0)
+    const count = valid.length
+    const ticket = count ? revenue / count : 0
+    const cancelled = periodOrders.filter((o) => o.status === "cancelado").length
+    const sources = ["site", "whatsapp", "ifood", "pdv"] as const
+    const bySource = sources.map((src) => {
+      const list = valid.filter((o) => (o.source ?? "site") === src)
+      return { src, count: list.length, revenue: list.reduce((s, o) => s + o.total, 0) }
+    })
+    return { revenue, count, ticket, cancelled, bySource }
+  }, [periodOrders])
+
+  const periodLabel = PERIOD_LABELS.find((p) => p.key === period)?.label ?? ""
 
   const stats = useMemo(() => {
     const valid = orders.filter((o) => o.status !== "cancelado")
@@ -212,6 +265,30 @@ export default function AdminDashboard() {
         <p className="text-sm text-gray-500">Visão geral da operação da Mais Sub</p>
       </div>
 
+      {/* Filtro de período */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {PERIOD_LABELS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setPeriod(p.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              period === p.key ? "bg-[#EE5C13] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+        {period === "custom" && (
+          <div className="flex items-center gap-2 ml-1">
+            <input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)}
+              className="h-8 rounded-lg border border-gray-200 px-2 text-xs text-gray-700" />
+            <span className="text-gray-400 text-xs">até</span>
+            <input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)}
+              className="h-8 rounded-lg border border-gray-200 px-2 text-xs text-gray-700" />
+          </div>
+        )}
+      </div>
+
       {newCount > 0 && (
         <Link
           href="/admin/pedidos"
@@ -223,45 +300,42 @@ export default function AdminDashboard() {
         </Link>
       )}
 
-      {/* KPIs */}
+      {/* KPIs do período */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          title="Pedidos hoje"
-          value={String(stats.todayCount)}
-          sub={`${stats.weekCount} na semana · ${stats.monthCount} no mês`}
-          growth={12.5}
+          title="Pedidos no período"
+          value={String(periodStats.count)}
+          sub={periodLabel}
           icon={ShoppingBag}
           empty={!hasOrders}
         />
         <KpiCard
-          title="Faturamento hoje"
-          value={formatCurrency(stats.todayRevenue)}
-          sub={`Semana: ${formatCurrency(stats.weekRevenue)}`}
-          growth={8.3}
+          title="Faturamento no período"
+          value={formatCurrency(periodStats.revenue)}
+          sub={periodLabel}
           icon={DollarSign}
           empty={!hasOrders}
         />
         <KpiCard
-          title="Faturamento no mês"
-          value={formatCurrency(stats.monthRevenue)}
-          growth={15.2}
-          icon={CalendarDays}
+          title="Ticket médio"
+          value={formatCurrency(periodStats.ticket)}
+          icon={Receipt}
           empty={!hasOrders}
         />
         <KpiCard
-          title="Ticket médio"
-          value={formatCurrency(stats.ticket)}
-          growth={-2.1}
-          icon={Receipt}
+          title="Cancelados"
+          value={String(periodStats.cancelled)}
+          sub={periodLabel}
+          icon={CalendarDays}
           empty={!hasOrders}
         />
       </div>
 
-      {/* Por origem (mês) */}
+      {/* Por origem (período) */}
       <Card className="p-5">
-        <h3 className="mb-4 text-sm font-semibold text-gray-900">Pedidos por origem (mês)</h3>
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Pedidos por origem · {periodLabel}</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.bySource.map((s) => {
+          {periodStats.bySource.map((s) => {
             const meta = ORDER_SOURCE_LABELS[s.src]
             return (
               <div key={s.src} className="rounded-xl border border-gray-100 p-3">
