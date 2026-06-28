@@ -38,6 +38,7 @@ import {
   type PaymentMethod,
 } from "@/lib/store"
 import { addOrder } from "@/lib/orders-storage"
+import { supabaseConfigured } from "@/lib/supabase"
 import { consumeStockForProduct } from "@/lib/recipes-storage"
 import { getCurrentUser } from "@/lib/admin-auth"
 import {
@@ -208,7 +209,7 @@ export default function PdvPage() {
     setReceived("")
   }
 
-  function finishSale() {
+  async function finishSale() {
     if (items.length === 0) return
     if (!getOpenSession()) {
       toast.error("Abra o caixa antes de registrar vendas.")
@@ -216,9 +217,10 @@ export default function PdvPage() {
       return
     }
     const nowIso = new Date().toISOString()
+    const orderNumber = generateOrderNumber()
     const order: Order = {
       id: `pdv-${Date.now()}`,
-      orderNumber: generateOrderNumber(),
+      orderNumber,
       items,
       customer: { name: "Venda no balcão (PDV)", phone: "" },
       orderType: "retirada",
@@ -229,8 +231,34 @@ export default function PdvPage() {
       total,
       status: "entregue", // venda presencial = já entregue
       notes: notes.trim() || undefined,
+      source: "pdv",
       createdAt: nowIso,
       updatedAt: nowIso,
+    }
+
+    // Salva no Supabase (Central de Pedidos + relatórios). Fallback: localStorage.
+    if (supabaseConfigured) {
+      try {
+        await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderNumber,
+            customerName: "Venda no balcão (PDV)",
+            customerPhone: "pdv-balcao",
+            orderType: "retirada",
+            items,
+            paymentMethod: payment,
+            subtotal,
+            deliveryFee: 0,
+            discount,
+            total,
+            notes: notes.trim() || undefined,
+            source: "pdv",
+            status: "entregue",
+          }),
+        })
+      } catch {}
     }
     addOrder(order)
     // Baixa automática de estoque conforme as fichas técnicas

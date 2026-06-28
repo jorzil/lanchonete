@@ -76,6 +76,7 @@ export interface CreateOrderPayload {
   notes?: string
   source?: 'site' | 'whatsapp' | 'pdv' | 'ifood'
   externalId?: string
+  status?: string
 }
 
 // ─── Upsert customer, then insert order ───────────────────────────────────
@@ -128,7 +129,7 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
     discount: data.discount,
     total: data.total,
     notes: data.notes ?? null,
-    status: 'novo',
+    status: data.status ?? 'novo',
     source: data.source ?? 'site',
     external_id: data.externalId ?? null,
   }
