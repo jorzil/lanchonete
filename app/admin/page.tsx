@@ -29,7 +29,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { formatCurrency, type Order } from "@/lib/store"
+import { formatCurrency, ORDER_SOURCE_LABELS, type Order } from "@/lib/store"
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/mock-orders"
 import { loadOrders } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
@@ -176,6 +176,13 @@ export default function AdminDashboard() {
       byMonth.push({ month: label, faturamento: monthRev })
     }
 
+    // Por origem (mês)
+    const sources = ["site", "whatsapp", "ifood", "pdv"] as const
+    const bySource = sources.map((src) => {
+      const list = monthOrders.filter((o) => (o.source ?? "site") === src)
+      return { src, count: list.length, revenue: sum(list) }
+    })
+
     return {
       todayCount: todayOrders.length,
       weekCount: weekOrders.length,
@@ -186,6 +193,7 @@ export default function AdminDashboard() {
       ticket,
       byDay,
       byMonth,
+      bySource,
     }
   }, [orders])
 
@@ -248,6 +256,23 @@ export default function AdminDashboard() {
           empty={!hasOrders}
         />
       </div>
+
+      {/* Por origem (mês) */}
+      <Card className="p-5">
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Pedidos por origem (mês)</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {stats.bySource.map((s) => {
+            const meta = ORDER_SOURCE_LABELS[s.src]
+            return (
+              <div key={s.src} className="rounded-xl border border-gray-100 p-3">
+                <p className="text-sm font-medium text-gray-500">{meta.emoji} {meta.label}</p>
+                <p className="mt-1 text-xl font-bold text-gray-900">{s.count}</p>
+                <p className="text-xs text-gray-400">{formatCurrency(s.revenue)}</p>
+              </div>
+            )
+          })}
+        </div>
+      </Card>
 
       {/* Acesso rápido */}
       <Card className="p-5">

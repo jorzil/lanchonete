@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { formatCurrency, MENU, PRODUCTS, type Order, type OrderStatus, type CartItem } from "@/lib/store"
+import { formatCurrency, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type OrderStatus, type OrderSource, type CartItem } from "@/lib/store"
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
@@ -149,6 +149,7 @@ export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loaded, setLoaded] = useState(false)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos">("todos")
+  const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Order | null>(null)
@@ -216,9 +217,10 @@ export default function PedidosPage() {
     const q = query.trim().toLowerCase()
     return orders
       .filter((o) => statusFilter === "todos" || o.status === statusFilter)
+      .filter((o) => sourceFilter === "todos" || (o.source ?? "site") === sourceFilter)
       .filter((o) => !q || o.customer.name.toLowerCase().includes(q) || o.orderNumber.toLowerCase().includes(q))
       .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-  }, [orders, statusFilter, query])
+  }, [orders, statusFilter, sourceFilter, query])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -239,9 +241,18 @@ export default function PedidosPage() {
 
   async function advanceStatus(order: Order, nextStatus: string) {
     if (nextStatus === 'aceito') stopSiren()
-    // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
-    // gesture so the browser does not block the popup).
-    openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode)
+    // Pedidos do iFood: para o WhatsApp manual é dispensável; sincroniza com a API.
+    if (order.source === 'ifood' && order.externalId) {
+      fetch('/api/integrations/ifood/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ externalId: order.externalId, status: nextStatus }),
+      }).catch(() => {})
+    } else {
+      // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
+      // gesture so the browser does not block the popup).
+      openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode)
+    }
     const id = order.id
     if (supabaseConfigured) {
       try {
@@ -358,6 +369,22 @@ export default function PedidosPage() {
             ))}
           </div>
 
+          {/* Filtro por origem */}
+          <div className="flex gap-1.5 flex-wrap">
+            {([["todos", "Todas origens"], ["site", "🌐 Site"], ["whatsapp", "📱 WhatsApp"], ["ifood", "🍔 iFood"], ["pdv", "🏪 PDV"]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => { setSourceFilter(key as OrderSource | "todos"); setPage(1) }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  sourceFilter === key ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* Search */}
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -376,6 +403,7 @@ export default function PedidosPage() {
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                     <th className="px-5 py-3 font-medium">Pedido</th>
+                    <th className="px-5 py-3 font-medium">Origem</th>
                     <th className="px-5 py-3 font-medium">Cliente</th>
                     <th className="px-5 py-3 font-medium">Data</th>
                     <th className="px-5 py-3 font-medium text-right">Total</th>
@@ -400,6 +428,11 @@ export default function PedidosPage() {
                         <td className="px-5 py-3">
                           <span className="font-medium text-gray-900">{o.orderNumber}</span>
                           {isNew && <span className="ml-2 text-[10px] font-bold text-orange-600 uppercase tracking-wide animate-pulse">novo</span>}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600">
+                            {ORDER_SOURCE_LABELS[o.source ?? "site"].emoji} {ORDER_SOURCE_LABELS[o.source ?? "site"].label}
+                          </span>
                         </td>
                         <td className="px-5 py-3">
                           <div className="text-gray-900 font-medium">{o.customer.name}</div>
@@ -460,7 +493,7 @@ export default function PedidosPage() {
                   })}
                   {pageItems.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-10 text-center text-gray-400">
+                      <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
                         Nenhum pedido encontrado.
                       </td>
                     </tr>

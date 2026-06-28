@@ -22,6 +22,7 @@ import {
   Sandwich,
   Calculator,
   Users as UsersIcon,
+  Plug,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -53,6 +54,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/entrega", label: "Entrega", icon: Truck, module: "configuracoes" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
+  { href: "/admin/integracoes/ifood", label: "Integração iFood", icon: Plug, module: "configuracoes" },
   { href: "/admin/usuarios", label: "Usuários", icon: UsersIcon, module: "usuarios" },
   { href: "/admin/setup", label: "Diagnóstico", icon: Activity, module: "setup" },
 ]
@@ -74,6 +76,7 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/relatorios": "Relatórios",
   "/admin/configuracoes": "Configurações",
   "/admin/usuarios": "Usuários",
+  "/admin/integracoes/ifood": "Integração iFood",
 }
 
 function SidebarContent({

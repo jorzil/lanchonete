@@ -22,6 +22,8 @@ interface DbOrder {
   status: string
   notes: string | null
   whatsapp_sent_at: Record<string, string>
+  source?: string | null
+  external_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -49,6 +51,8 @@ function rowToOrder(row: DbOrder): Order {
     status: row.status as OrderStatus,
     notes: row.notes ?? undefined,
     deliveryCode: addr?.deliveryCode,
+    source: (row.source as Order['source']) ?? 'site',
+    externalId: row.external_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -70,6 +74,8 @@ export interface CreateOrderPayload {
   discount: number
   total: number
   notes?: string
+  source?: 'site' | 'whatsapp' | 'pdv' | 'ifood'
+  externalId?: string
 }
 
 // ─── Upsert customer, then insert order ───────────────────────────────────
@@ -108,26 +114,36 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
     : null
 
   // 2. Insert order
-  const { data: row, error: orderErr } = await supabase
-    .from('orders')
-    .insert({
-      order_number: data.orderNumber,
-      customer_id: customer?.id ?? null,
-      customer_name: data.customerName,
-      customer_phone: data.customerPhone,
-      order_type: data.orderType,
-      items: data.items,
-      address: addressWithCode,
-      payment_method: data.paymentMethod,
-      subtotal: data.subtotal,
-      delivery_fee: data.deliveryFee,
-      discount: data.discount,
-      total: data.total,
-      notes: data.notes ?? null,
-      status: 'novo',
-    })
-    .select()
-    .single()
+  const baseInsert: Record<string, unknown> = {
+    order_number: data.orderNumber,
+    customer_id: customer?.id ?? null,
+    customer_name: data.customerName,
+    customer_phone: data.customerPhone,
+    order_type: data.orderType,
+    items: data.items,
+    address: addressWithCode,
+    payment_method: data.paymentMethod,
+    subtotal: data.subtotal,
+    delivery_fee: data.deliveryFee,
+    discount: data.discount,
+    total: data.total,
+    notes: data.notes ?? null,
+    status: 'novo',
+    source: data.source ?? 'site',
+    external_id: data.externalId ?? null,
+  }
+
+  let { data: row, error: orderErr } = await supabase
+    .from('orders').insert(baseInsert).select().single()
+
+  // Fallback: se as colunas source/external_id ainda não existem no banco,
+  // reenvia sem elas (a migração está documentada em docs/IFOOD_INTEGRATION.md).
+  if (orderErr && /column .*(source|external_id)/i.test(orderErr.message)) {
+    const { source, external_id, ...withoutSource } = baseInsert
+    void source; void external_id
+    ;({ data: row, error: orderErr } = await supabase
+      .from('orders').insert(withoutSource).select().single())
+  }
 
   if (orderErr) throw new Error(orderErr.message)
   return rowToOrder(row as DbOrder)

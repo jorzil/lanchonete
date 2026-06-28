@@ -55,6 +55,15 @@ export type PaymentMethod    = 'pix' | 'cartao-credito' | 'cartao-debito' | 'din
 export interface Coupon      { code: string; discount: number; type: 'percentage' | 'fixed' }
 export interface LoyaltyPoints { customerId: string; points: number; history: { date: string; points: number; description: string }[] }
 
+export type OrderSource = 'site' | 'whatsapp' | 'pdv' | 'ifood'
+
+export const ORDER_SOURCE_LABELS: Record<OrderSource, { label: string; emoji: string }> = {
+  site:     { label: 'Site',     emoji: '🌐' },
+  whatsapp: { label: 'WhatsApp', emoji: '📱' },
+  pdv:      { label: 'PDV',      emoji: '🏪' },
+  ifood:    { label: 'iFood',    emoji: '🍔' },
+}
+
 export interface Order {
   id: string; orderNumber: string; items: CartItem[]
   customer: Customer; address?: Address
@@ -62,6 +71,8 @@ export interface Order {
   subtotal: number; deliveryFee: number; discount: number; total: number
   status: OrderStatus; notes?: string; createdAt: string; updatedAt: string; coupon?: Coupon
   deliveryCode?: string // código de 4 dígitos p/ o motoboy confirmar a entrega
+  source?: OrderSource  // origem do pedido (site/whatsapp/pdv/ifood)
+  externalId?: string   // id do pedido na plataforma externa (ex: iFood)
 }
 
 // ─── MENU DATA ────────────────────────────────────────────────────────────────

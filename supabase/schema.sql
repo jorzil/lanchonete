@@ -36,9 +36,16 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL DEFAULT 'novo' CHECK (status IN ('novo','aceito','em_preparo','pronto','saiu_entrega','entregue','cancelado')),
   notes TEXT,
   whatsapp_sent_at JSONB DEFAULT '{}',
+  source TEXT DEFAULT 'site',          -- origem: site | whatsapp | pdv | ifood
+  external_id TEXT,                    -- id do pedido na plataforma externa (iFood)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migração para bancos já existentes (rodar uma vez no SQL Editor do Supabase):
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'site';
+-- ALTER TABLE orders ADD COLUMN IF NOT EXISTS external_id TEXT;
+-- CREATE INDEX IF NOT EXISTS idx_orders_external_id ON orders(external_id);
 
 -- Enable RLS
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
