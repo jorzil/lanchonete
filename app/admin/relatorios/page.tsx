@@ -12,8 +12,23 @@ import type { Order } from "@/lib/data"
 
 const COLORS = ["#EE5C13", "#0B2C5C", "#163A6E", "#FF6B1A", "#6366f1", "#10b981", "#f59e0b"]
 
+type Period = 'hoje' | 'ontem' | '7d' | '30d' | 'mes' | 'tudo' | 'custom'
+
+const PERIOD_LABELS: { key: Period; label: string }[] = [
+  { key: 'hoje', label: 'Hoje' },
+  { key: 'ontem', label: 'Ontem' },
+  { key: '7d', label: '7 dias' },
+  { key: '30d', label: '30 dias' },
+  { key: 'mes', label: 'Este mês' },
+  { key: 'tudo', label: 'Tudo' },
+  { key: 'custom', label: 'Personalizado' },
+]
+
 export default function RelatoriosPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [period, setPeriod] = useState<Period>('30d')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -30,7 +45,31 @@ export default function RelatoriosPage() {
 
   const coupons = useMemo(() => getCoupons(), [])
 
+  // Filtra pedidos pelo período selecionado
+  const orders_ = useMemo(() => {
+    const now = new Date()
+    const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+    let from: Date | null = null
+    let to: Date | null = null
+    if (period === 'hoje') { from = startOfDay(now) }
+    else if (period === 'ontem') { const y = new Date(now); y.setDate(y.getDate() - 1); from = startOfDay(y); to = startOfDay(now) }
+    else if (period === '7d') { const d = new Date(now); d.setDate(d.getDate() - 7); from = d }
+    else if (period === '30d') { const d = new Date(now); d.setDate(d.getDate() - 30); from = d }
+    else if (period === 'mes') { from = new Date(now.getFullYear(), now.getMonth(), 1) }
+    else if (period === 'custom') {
+      if (customStart) from = startOfDay(new Date(customStart + 'T00:00:00'))
+      if (customEnd) { to = new Date(customEnd + 'T23:59:59') }
+    }
+    return orders.filter(o => {
+      const d = new Date(o.createdAt)
+      if (from && d < from) return false
+      if (to && d > to) return false
+      return true
+    })
+  }, [orders, period, customStart, customEnd])
+
   const data = useMemo(() => {
+    const orders = orders_
     const valid = orders.filter(o => o.status !== 'cancelado')
 
     // Payment breakdown
@@ -66,7 +105,7 @@ export default function RelatoriosPage() {
     const cancelRate = orders.length ? (orders.filter(o => o.status === 'cancelado').length / orders.length) * 100 : 0
 
     return { payment, topProducts, dailyRevenue, statusBreakdown, revenue, avgTicket, totalDiscount, cancelRate, totalOrders: orders.length, validOrders: valid.length }
-  }, [orders])
+  }, [orders_])
 
   // Coupon stats
   const couponStats = useMemo(() => {
@@ -87,7 +126,33 @@ export default function RelatoriosPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
-        <p className="text-sm text-gray-500">{orders.length === 0 ? 'Nenhum pedido ainda' : `${orders.length} pedidos carregados`}</p>
+        <p className="text-sm text-gray-500">
+          {data.totalOrders} pedido(s) no período · {PERIOD_LABELS.find(p => p.key === period)?.label}
+        </p>
+      </div>
+
+      {/* Filtro de período */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {PERIOD_LABELS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => setPeriod(p.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              period === p.key ? 'bg-[#EE5C13] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+        {period === 'custom' && (
+          <div className="flex items-center gap-2 ml-1">
+            <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+              className="h-8 rounded-lg border border-gray-200 px-2 text-xs text-gray-700" />
+            <span className="text-gray-400 text-xs">até</span>
+            <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+              className="h-8 rounded-lg border border-gray-200 px-2 text-xs text-gray-700" />
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
@@ -105,7 +170,7 @@ export default function RelatoriosPage() {
         ))}
       </div>
 
-      {orders.length === 0 ? (
+      {data.totalOrders === 0 ? (
         <Card className="p-10 text-center text-gray-400">
           <p className="text-4xl mb-3">📊</p>
           <p className="font-medium">Nenhum dado disponível ainda.</p>
