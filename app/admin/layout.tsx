@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { StoreStatusWidget } from "@/components/admin/StoreStatusWidget"
+import { Logo } from "@/components/brand/logo"
 import {
   isAuthenticated,
   logout,
@@ -94,16 +95,9 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-white">
       {/* Logo */}
-      <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EE5C13]">
-          <Sandwich className="h-[18px] w-[18px] text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold leading-tight text-gray-900">
-            Mais<span className="text-[#EE5C13]">Sub</span>
-          </p>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-gray-400">ERP</p>
-        </div>
+      <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-4">
+        <Logo height={40} />
+        <p className="text-[10px] font-medium uppercase tracking-widest text-gray-400">ERP</p>
       </div>
 
       {/* Nav */}

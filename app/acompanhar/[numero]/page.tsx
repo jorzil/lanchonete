@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { MapPin, Phone, Package, CheckCircle2, ChefHat, Bike, PartyPopper, XCircle, Clock, RotateCcw, Sandwich } from 'lucide-react'
+import { Logo } from '@/components/brand/logo'
 import { formatCurrency, type Order, type OrderStatus } from '@/lib/data'
 import { loadOrders } from '@/lib/orders-storage'
 import { supabaseConfigured, supabase } from '@/lib/supabase'
@@ -123,12 +124,9 @@ export default function AcompanharPage() {
   return (
     <div className="min-h-screen bg-[#0B1F3A]">
       {/* Header */}
-      <header className="bg-[#0B2C5C] border-b border-white/10 px-4 py-4 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EE5C13] shrink-0">
-          <Sandwich className="h-5 w-5 text-white" />
-        </div>
+      <header className="bg-[#0B2C5C] border-b border-white/10 px-4 py-3 flex items-center gap-3">
+        <Logo height={40} />
         <div>
-          <p className="text-white font-black text-base leading-tight">Mais<span className="text-[#EE5C13]">Sub</span></p>
           <p className="text-white/40 text-[11px]">Acompanhe seu pedido</p>
         </div>
         <button

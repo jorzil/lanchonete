@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, EyeOff, Lock, Mail, Sandwich } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { Logo } from "@/components/brand/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,14 +44,8 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#EE5C13] shadow-lg shadow-orange-200">
-            <Sandwich className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Mais<span className="text-[#EE5C13]">Sub</span>{" "}
-            <span className="font-normal text-gray-400">ERP</span>
-          </h1>
-          <p className="mt-1 text-[13px] text-gray-400">Painel administrativo</p>
+          <Logo height={64} />
+          <p className="mt-3 text-[13px] text-gray-400">Painel administrativo · ERP</p>
         </div>
 
         {/* Card */}
