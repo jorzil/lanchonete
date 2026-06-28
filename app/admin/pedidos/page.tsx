@@ -56,20 +56,45 @@ let sirenOsc: OscillatorNode | null = null
 let sirenGain: GainNode | null = null
 let sirenInterval: ReturnType<typeof setInterval> | null = null
 
+// Mantém UM contexto de áudio vivo e desbloqueado (autoplay policy dos browsers).
+function ensureAudio(): AudioContext | null {
+  try {
+    if (!sirenCtx) {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      sirenCtx = new Ctx()
+    }
+    if (sirenCtx.state === 'suspended') sirenCtx.resume()
+    return sirenCtx
+  } catch { return null }
+}
+
+// Desbloqueia o áudio na primeira interação do usuário (clique/tecla/toque).
+function unlockAudio() {
+  const ctx = ensureAudio()
+  if (!ctx) return
+  // toca um silêncio mínimo só para "destravar"
+  try {
+    const o = ctx.createOscillator(); const g = ctx.createGain()
+    g.gain.value = 0; o.connect(g); g.connect(ctx.destination)
+    o.start(); o.stop(ctx.currentTime + 0.01)
+  } catch {}
+}
+
 function startSiren() {
   try {
     stopSiren()
-    sirenCtx = new AudioContext()
-    sirenOsc = sirenCtx.createOscillator()
-    sirenGain = sirenCtx.createGain()
+    const ctx = ensureAudio()
+    if (!ctx) return
+    sirenOsc = ctx.createOscillator()
+    sirenGain = ctx.createGain()
     sirenOsc.connect(sirenGain)
-    sirenGain.connect(sirenCtx.destination)
+    sirenGain.connect(ctx.destination)
     sirenOsc.type = 'sawtooth'
-    sirenGain.gain.setValueAtTime(0.3, sirenCtx.currentTime)
+    sirenGain.gain.setValueAtTime(0.3, ctx.currentTime)
 
     // Sobe e desce o tom em loop (efeito sirene)
     let up = true
-    sirenOsc.frequency.setValueAtTime(600, sirenCtx.currentTime)
+    sirenOsc.frequency.setValueAtTime(600, ctx.currentTime)
     sirenOsc.start()
 
     sirenInterval = setInterval(() => {
@@ -87,8 +112,8 @@ function stopSiren() {
   try {
     if (sirenInterval) { clearInterval(sirenInterval); sirenInterval = null }
     if (sirenOsc) { sirenOsc.stop(); sirenOsc = null }
-    if (sirenCtx) { sirenCtx.close(); sirenCtx = null }
     sirenGain = null
+    // NÃO fecha o contexto — mantém desbloqueado para os próximos pedidos
   } catch {}
 }
 
@@ -161,6 +186,14 @@ export default function PedidosPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos">("todos")
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [soundReady, setSoundReady] = useState(false)
+
+  function testSiren() {
+    unlockAudio()
+    setSoundReady(true)
+    startSiren()
+    setTimeout(() => stopSiren(), 1500)
+  }
 
   function copyStatusMessage(order: Order) {
     const msg = buildStatusMessage(order.status, order.orderNumber, order.deliveryCode)
@@ -201,6 +234,19 @@ export default function PedidosPage() {
     local.forEach((o) => prevOrderIds.current.add(o.id))
     setLoaded(true)
   }
+
+  // Desbloqueia o áudio na primeira interação (exigência dos navegadores)
+  useEffect(() => {
+    const onInteract = () => { unlockAudio(); setSoundReady(true) }
+    window.addEventListener("click", onInteract, { once: true })
+    window.addEventListener("keydown", onInteract, { once: true })
+    window.addEventListener("touchstart", onInteract, { once: true })
+    return () => {
+      window.removeEventListener("click", onInteract)
+      window.removeEventListener("keydown", onInteract)
+      window.removeEventListener("touchstart", onInteract)
+    }
+  }, [])
 
   useEffect(() => {
     loadAll()
@@ -344,9 +390,19 @@ export default function PedidosPage() {
             )}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadAll} className="text-xs">
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline" size="sm"
+            onClick={testSiren}
+            className={cn("text-xs", soundReady ? "text-emerald-600 border-emerald-200" : "text-amber-600 border-amber-300")}
+            title="Testar/ativar o som de alerta"
+          >
+            {soundReady ? "🔔 Som ativo" : "🔕 Ativar som"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadAll} className="text-xs">
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {isEmpty ? (
