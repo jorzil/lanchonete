@@ -480,6 +480,7 @@ export default function PedidosPage() {
                     <th className="px-5 py-3 font-medium">Cliente</th>
                     <th className="px-5 py-3 font-medium">Data</th>
                     <th className="px-5 py-3 font-medium text-right">Total</th>
+                    <th className="px-5 py-3 font-medium">Pagamento</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 text-right font-medium">Ações</th>
                   </tr>
@@ -518,6 +519,9 @@ export default function PedidosPage() {
                         </td>
                         <td className="px-5 py-3 text-gray-500 text-xs">{formatDate(o.createdAt)}</td>
                         <td className="px-5 py-3 font-semibold text-gray-900 text-right">{formatCurrency(o.total)}</td>
+                        <td className="px-5 py-3 text-gray-600 text-xs">
+                          {PAYMENT_LABELS[o.paymentMethod as keyof typeof PAYMENT_LABELS] ?? o.paymentMethod}
+                        </td>
                         <td className="px-5 py-3">
                           <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium border", cfg.cls)}>
                             {cfg.label}
@@ -576,7 +580,7 @@ export default function PedidosPage() {
                   })}
                   {pageItems.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-10 text-center text-gray-400">
+                      <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
                         Nenhum pedido encontrado.
                       </td>
                     </tr>
