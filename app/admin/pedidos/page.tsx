@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2, Bell, Wifi, WifiOff, Printer } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, Eye, MapPin, Phone, FileText, Inbox, Trash2, Bell, Wifi, WifiOff, Printer, Copy, Check } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -38,6 +38,16 @@ function buildWaMessage(status: string, orderNumber: string): string {
     cancelado:    `❌ *Seu pedido #${orderNumber} foi cancelado.* Lamentamos o inconveniente. Entre em contato: (33) 98461-9205`,
   }
   return msgs[status] ?? ''
+}
+
+// Mensagem completa (inclui o código de entrega quando "saiu para entrega")
+function buildStatusMessage(status: string, orderNumber: string, deliveryCode?: string): string {
+  let msg = buildWaMessage(status, orderNumber)
+  if (!msg) return ''
+  if (status === 'saiu_entrega' && deliveryCode) {
+    msg += `\n\n🔐 *Código de entrega:* ${deliveryCode}\nInforme este código ao entregador para confirmar o recebimento.`
+  }
+  return msg
 }
 
 // ─── Sirene contínua ────────────────────────────────────────────────────────
@@ -150,6 +160,17 @@ export default function PedidosPage() {
   const [loaded, setLoaded] = useState(false)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos">("todos")
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
+  const [copied, setCopied] = useState(false)
+
+  function copyStatusMessage(order: Order) {
+    const msg = buildStatusMessage(order.status, order.orderNumber, order.deliveryCode)
+    if (!msg) return
+    try {
+      navigator.clipboard?.writeText(msg)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {}
+  }
   const [query, setQuery] = useState("")
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Order | null>(null)
@@ -227,12 +248,8 @@ export default function PedidosPage() {
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string) {
-    let msg = buildWaMessage(status, orderNumber)
+    const msg = buildStatusMessage(status, orderNumber, deliveryCode)
     if (!msg) return
-    // Na saída para entrega, inclui o código que o cliente informa ao motoboy.
-    if (status === 'saiu_entrega' && deliveryCode) {
-      msg += `\n\n🔐 *Código de entrega:* ${deliveryCode}\nInforme este código ao entregador para confirmar o recebimento.`
-    }
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
     const url = `https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
@@ -622,12 +639,22 @@ export default function PedidosPage() {
                   <Printer size={15} /> Imprimir Cupom
                 </button>
                 {!!buildWaMessage(selected.status, selected.orderNumber) && (
-                  <button
-                    onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
-                  >
-                    💬 WhatsApp
-                  </button>
+                  <>
+                    <button
+                      onClick={() => copyStatusMessage(selected)}
+                      className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-2.5 px-3 text-sm transition-colors"
+                      title="Copiar mensagem do status"
+                    >
+                      {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
+                      {copied ? "Copiado!" : "Copiar"}
+                    </button>
+                    <button
+                      onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+                    >
+                      💬 WhatsApp
+                    </button>
+                  </>
                 )}
               </div>
             </div>
