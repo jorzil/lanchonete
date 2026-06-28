@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { PRODUCTS, MENU, formatCurrency, type Product } from '@/lib/data'
 import { useCart } from '@/contexts/cart-context'
 import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
+import { fetchDisabledProducts } from '@/lib/products-availability'
 import { toast } from 'sonner'
 
-const COOKIES = PRODUCTS.filter(p => p.active && p.category === 'cookies')
+const ALL_COOKIES = PRODUCTS.filter(p => p.active && p.category === 'cookies')
 // Bebidas do combo: latas 350ml + sucos
-const LATAS = PRODUCTS.filter(p => p.active && p.category === 'bebidas' && (p.id.includes('lata') || p.id.includes('suco')))
+const ALL_LATAS = PRODUCTS.filter(p => p.active && p.category === 'bebidas' && (p.id.includes('lata') || p.id.includes('suco')))
 
 interface ComboPickerModalProps {
   product: Product | null
@@ -22,13 +23,19 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
   const [cookie, setCookie] = useState<string>('')
   const [refri, setRefri] = useState<string>('')
   const [disabled, setDisabled] = useState<Set<string>>(new Set())
+  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
   const { addItem } = useCart()
 
   useEffect(() => {
-    if (product) fetchDisabledIngredients().then(setDisabled)
+    if (product) {
+      fetchDisabledIngredients().then(setDisabled)
+      fetchDisabledProducts().then(setDisabledProducts)
+    }
   }, [product])
 
   const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
+  const COOKIES = useMemo(() => ALL_COOKIES.filter((c) => !disabledProducts.has(c.id)), [disabledProducts])
+  const LATAS = useMemo(() => ALL_LATAS.filter((r) => !disabledProducts.has(r.id)), [disabledProducts])
 
   if (!product) return null
 
