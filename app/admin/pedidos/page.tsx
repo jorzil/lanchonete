@@ -12,7 +12,7 @@ import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
 import { updateOrderStatus, deleteDbOrder } from "@/lib/db-orders"
-import { printOrder, getPrintSettings } from "@/lib/print-order"
+import { printOrder, getPrintSettings, getPrintQueue } from "@/lib/print-order"
 
 const PAGE_SIZE = 8
 
@@ -187,6 +187,17 @@ export default function PedidosPage() {
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [soundReady, setSoundReady] = useState(false)
+  const [printedIds, setPrintedIds] = useState<Set<string>>(new Set())
+
+  function refreshPrinted() {
+    setPrintedIds(new Set(getPrintQueue().filter((j) => j.status === "printed").map((j) => j.orderId)))
+  }
+  useEffect(() => { refreshPrinted() }, [])
+
+  function handlePrint(order: Order) {
+    printOrder(order)
+    setTimeout(refreshPrinted, 500)
+  }
 
   function testSiren() {
     unlockAudio()
@@ -502,6 +513,17 @@ export default function PedidosPage() {
                         <td className="px-5 py-3">
                           <span className="font-medium text-gray-900">{o.orderNumber}</span>
                           {isNew && <span className="ml-2 text-[10px] font-bold text-orange-600 uppercase tracking-wide animate-pulse">novo</span>}
+                          <div className="mt-1">
+                            {printedIds.has(o.id) ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                <Printer size={9} /> Impresso
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                                <Printer size={9} /> Não impresso
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-3">
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600">
@@ -561,7 +583,7 @@ export default function PedidosPage() {
                             <Button
                               variant="ghost" size="sm"
                               className="text-blue-400 hover:text-blue-600 hover:bg-blue-50"
-                              onClick={() => printOrder(o)}
+                              onClick={() => handlePrint(o)}
                               title="Imprimir cupom"
                             >
                               <Printer className="h-4 w-4" />
@@ -703,7 +725,7 @@ export default function PedidosPage() {
               {/* Actions row */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => printOrder(selected)}
+                  onClick={() => handlePrint(selected)}
                   className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-2.5 text-sm transition-colors"
                 >
                   <Printer size={15} /> Imprimir Cupom
