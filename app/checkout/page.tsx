@@ -25,7 +25,7 @@ interface FormData {
   name: string; phone: string; cpf: string; orderType: OrderType
   cep: string; street: string; number: string; complement: string
   neighborhood: string; city: string; state: string; reference: string
-  paymentMethod: PaymentMethod; notes: string
+  paymentMethod: PaymentMethod; notes: string; changeFor: string
 }
 
 const PAYMENT_OPTIONS = [
@@ -62,7 +62,7 @@ export default function CheckoutPage() {
   const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee, applyCoupon, removeCoupon } = useCart()
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', cpf: '', orderType: 'entrega', cep: '', street: '', number: '',
-    complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: ''
+    complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: '', changeFor: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
   const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
@@ -151,6 +151,13 @@ export default function CheckoutPage() {
       ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state }
       : undefined
 
+    // Troco: anexa às observações quando pagamento em dinheiro
+    const changeForNum = Number(form.changeFor)
+    const trocoNote = form.paymentMethod === 'dinheiro' && changeForNum > total
+      ? `Troco para ${formatCurrency(changeForNum)} (troco: ${formatCurrency(changeForNum - total)})`
+      : ''
+    const finalNotes = [form.notes, trocoNote].filter(Boolean).join(' • ')
+
     const order: Order = {
       id: `order-${Date.now()}`,
       orderNumber,
@@ -161,7 +168,7 @@ export default function CheckoutPage() {
       paymentMethod: form.paymentMethod,
       subtotal, deliveryFee, discount, total,
       status: 'novo',
-      notes: form.notes,
+      notes: finalNotes,
       coupon: coupon ?? undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -191,7 +198,7 @@ export default function CheckoutPage() {
             address: address ? { ...address, reference: form.reference } : undefined,
             paymentMethod: form.paymentMethod,
             subtotal, deliveryFee, discount, total,
-            notes: form.notes || undefined,
+            notes: finalNotes || undefined,
           }),
         })
         if (!res.ok) {
@@ -335,6 +342,29 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
+
+                {form.paymentMethod === 'dinheiro' && (
+                  <div className="mt-4 space-y-2">
+                    <label className="text-[13px] text-white/60 font-medium">Precisa de troco? Troco para quanto?</label>
+                    <input
+                      type="number" min="0" step="any" inputMode="decimal"
+                      value={form.changeFor}
+                      onChange={set('changeFor')}
+                      placeholder={`Ex: ${Math.ceil(total / 10) * 10}`}
+                      className="w-full h-11 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/25 outline-none focus:border-brand/40"
+                    />
+                    {Number(form.changeFor) > 0 && (
+                      Number(form.changeFor) >= total ? (
+                        <p className="text-sm text-emerald-400 font-semibold">
+                          Troco: {formatCurrency(Number(form.changeFor) - total)}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-amber-400">O valor informado é menor que o total ({formatCurrency(total)}).</p>
+                      )
+                    )}
+                    <p className="text-[11px] text-white/30">Deixe em branco se for pagar com o valor exato / não precisa de troco.</p>
+                  </div>
+                )}
               </Section>
 
               <Section title="Observações" delay={0.24}>

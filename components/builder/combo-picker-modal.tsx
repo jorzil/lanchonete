@@ -9,7 +9,8 @@ import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability
 import { toast } from 'sonner'
 
 const COOKIES = PRODUCTS.filter(p => p.active && p.category === 'cookies')
-const LATAS = PRODUCTS.filter(p => p.active && p.category === 'bebidas' && p.id.includes('lata'))
+// Bebidas do combo: latas 350ml + sucos
+const LATAS = PRODUCTS.filter(p => p.active && p.category === 'bebidas' && (p.id.includes('lata') || p.id.includes('suco')))
 
 interface ComboPickerModalProps {
   product: Product | null
@@ -118,7 +119,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
 
         {/* Refrigerante */}
         <div className="mt-4">
-          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha o refrigerante (lata 350ml)</p>
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha a bebida</p>
           <div className="space-y-2">
             {LATAS.map(r => (
               <button
@@ -128,7 +129,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
                   refri === r.id ? 'border-brand bg-brand/10' : 'border-white/10 hover:border-white/25 bg-white/5'
                 }`}
               >
-                <span className="text-2xl">🥤</span>
+                <span className="text-2xl">{r.image}</span>
                 <p className="text-[13px] font-bold text-white flex-1">{r.name}</p>
                 {refri === r.id && (
                   <span className="ml-auto h-4 w-4 rounded-full bg-brand flex items-center justify-center">
