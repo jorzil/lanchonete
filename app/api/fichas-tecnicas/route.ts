@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // System row stored in customers table — no extra table needed
 const SYSTEM_PHONE = '__fichas_config__'
 
-const DEFAULT_CONFIG = { ingredients: [] as unknown[], recipes: [] as unknown[] }
+const DEFAULT_CONFIG = { ingredients: [] as unknown[], recipes: [] as unknown[], movements: [] as unknown[] }
 
 async function readFromDb() {
   const { data } = await supabase
@@ -44,6 +44,7 @@ export async function PATCH(req: NextRequest) {
   const next = {
     ingredients: Array.isArray(body.ingredients) ? body.ingredients : [],
     recipes: Array.isArray(body.recipes) ? body.recipes : [],
+    movements: Array.isArray(body.movements) ? body.movements : [],
     updatedAt: new Date().toISOString(),
   }
   const writeErr = await writeToDb(next)

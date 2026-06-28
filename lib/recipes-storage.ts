@@ -89,32 +89,53 @@ export function calcRecipeCost(recipe: Recipe, ingredients?: Ingredient[]): Reci
   return { cost, salePrice, margin, marginPct, markup }
 }
 
+const SOURCE_TAG: Record<string, string> = {
+  site: "Site", whatsapp: "WhatsApp", pdv: "PDV", ifood: "iFood",
+}
+
 /**
- * Dá baixa no estoque dos ingredientes de um produto vendido.
- * Multiplica as quantidades da ficha pela quantidade vendida.
+ * Dá baixa no estoque de um produto vendido.
+ * - Se houver ficha técnica: consome os ingredientes da ficha.
+ * - Senão: dá baixa no próprio produto (ingrediente ligado por productId),
+ *   ex.: bebidas e itens revendidos.
+ * `source` registra a origem da venda no histórico (PDV, iFood, Site…).
  */
-export function consumeStockForProduct(productId: string, soldQty = 1): void {
-  const recipe = getRecipe(productId)
-  if (!recipe) return
+export function consumeStockForProduct(productId: string, soldQty = 1, source = "pdv"): void {
+  const tag = SOURCE_TAG[source] ?? source
   const list = loadIngredients()
-  for (const item of recipe.items) {
-    if (item.quantity <= 0) continue
-    const ing = list.find((i) => i.id === item.ingredientId)
-    // Ingrediente derivado: dá baixa no PAI, convertendo pela proporção.
-    if (ing?.parentId && ing.conversion && ing.conversion > 0) {
-      registerMovement({
-        ingredientId: ing.parentId,
-        type: "saida",
-        quantity: (item.quantity * soldQty) / ing.conversion,
-        reason: `Venda: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""} (via ${ing.name})`,
-      })
-    } else {
-      registerMovement({
-        ingredientId: item.ingredientId,
-        type: "saida",
-        quantity: item.quantity * soldQty,
-        reason: `Venda: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""}`,
-      })
+  const recipe = getRecipe(productId)
+
+  if (recipe && recipe.items.length > 0) {
+    for (const item of recipe.items) {
+      if (item.quantity <= 0) continue
+      const ing = list.find((i) => i.id === item.ingredientId)
+      if (ing?.parentId && ing.conversion && ing.conversion > 0) {
+        registerMovement({
+          ingredientId: ing.parentId,
+          type: "saida",
+          quantity: (item.quantity * soldQty) / ing.conversion,
+          reason: `Venda ${tag}: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""} (via ${ing.name})`,
+        })
+      } else {
+        registerMovement({
+          ingredientId: item.ingredientId,
+          type: "saida",
+          quantity: item.quantity * soldQty,
+          reason: `Venda ${tag}: ${recipe.productName}${soldQty > 1 ? ` ×${soldQty}` : ""}`,
+        })
+      }
     }
+    return
+  }
+
+  // Sem ficha técnica → dá baixa no produto em si (ingrediente ligado ao produto)
+  const linked = list.find((i) => i.productId === productId)
+  if (linked) {
+    registerMovement({
+      ingredientId: linked.id,
+      type: "saida",
+      quantity: soldQty,
+      reason: `Venda ${tag}: ${linked.name}${soldQty > 1 ? ` ×${soldQty}` : ""}`,
+    })
   }
 }

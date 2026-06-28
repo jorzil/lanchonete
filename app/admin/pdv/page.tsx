@@ -40,6 +40,7 @@ import {
 import { addOrder } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
 import { consumeStockForProduct } from "@/lib/recipes-storage"
+import { pullFichas, pushFichas } from "@/lib/fichas-sync"
 import { getCurrentUser } from "@/lib/admin-auth"
 import {
   getOpenSession, openCash, closeCash, addCashMovement, registerCashSale, getSummary,
@@ -90,6 +91,7 @@ export default function PdvPage() {
   const [movNote, setMovNote] = useState("")
 
   useEffect(() => { setSession(getOpenSession()) }, [])
+  useEffect(() => { pullFichas() }, []) // carrega ingredientes/estoque do banco
 
   const summary = useMemo(() => (session ? getSummary(session) : null), [session])
 
@@ -261,8 +263,9 @@ export default function PdvPage() {
       } catch {}
     }
     addOrder(order)
-    // Baixa automática de estoque conforme as fichas técnicas
-    items.forEach((i) => consumeStockForProduct(i.productId, i.quantity))
+    // Baixa automática de estoque (ficha técnica ou produto direto), origem PDV
+    items.forEach((i) => consumeStockForProduct(i.productId, i.quantity, "pdv"))
+    pushFichas() // sincroniza a baixa de estoque com o banco
     // Registra a venda no caixa
     registerCashSale(total, payment)
     setSession(getOpenSession())
