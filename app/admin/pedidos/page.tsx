@@ -160,15 +160,15 @@ export default function PedidosPage() {
   const [loaded, setLoaded] = useState(false)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos">("todos")
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
-  const [copied, setCopied] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   function copyStatusMessage(order: Order) {
     const msg = buildStatusMessage(order.status, order.orderNumber, order.deliveryCode)
     if (!msg) return
     try {
       navigator.clipboard?.writeText(msg)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
+      setCopiedId(order.id)
+      setTimeout(() => setCopiedId(null), 1800)
     } catch {}
   }
   const [query, setQuery] = useState("")
@@ -485,6 +485,16 @@ export default function PedidosPage() {
                                 Cancelar
                               </button>
                             )}
+                            {!!buildWaMessage(o.status, o.orderNumber) && (
+                              <Button
+                                variant="ghost" size="sm"
+                                className={cn("hover:bg-gray-100", copiedId === o.id ? "text-emerald-600" : "text-gray-400 hover:text-gray-700")}
+                                onClick={() => copyStatusMessage(o)}
+                                title="Copiar mensagem do status"
+                              >
+                                {copiedId === o.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                              </Button>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => setSelected(o)}>
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -645,8 +655,8 @@ export default function PedidosPage() {
                       className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl py-2.5 px-3 text-sm transition-colors"
                       title="Copiar mensagem do status"
                     >
-                      {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
-                      {copied ? "Copiado!" : "Copiar"}
+                      {copiedId === selected.id ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
+                      {copiedId === selected.id ? "Copiado!" : "Copiar"}
                     </button>
                     <button
                       onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode)}
