@@ -208,23 +208,23 @@ export const PRODUCTS: Product[] = [
   {
     id: 'cookie-caramelo', name: 'Cookie Caramelo Salgado',
     description: 'Cookie artesanal recheado com caramelo salgado, crocante por fora e macio por dentro',
-    price: 14.9, image: '🍪', imageUrl: '/caramelo-salgado.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/caramelo-salgado.jpg', category: 'cookies', active: true,
     badge: { label: '🔥 Favorito', color: 'bg-amber-500' },
   },
   {
     id: 'cookie-nutella', name: 'Cookie Nutella',
     description: 'Cookie artesanal recheado com Nutella cremosa, irresistível a cada mordida',
-    price: 14.9, image: '🍪', imageUrl: '/nutela.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/nutela.jpg', category: 'cookies', active: true,
   },
   {
     id: 'cookie-kinder', name: 'Cookie Kinder Bueno',
     description: 'Cookie artesanal com recheio de Kinder Bueno e avelã, uma combinação incrível',
-    price: 14.9, image: '🍪', imageUrl: '/kinder.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/kinder.jpg', category: 'cookies', active: true,
   },
   {
     id: 'cookie-ovomaltine', name: 'Cookie Ovomaltine',
     description: 'Cookie artesanal crocante com recheio de Ovomaltine, sabor único e marcante',
-    price: 14.9, image: '🍪', imageUrl: '/ovo-maltine.jpg', category: 'cookies', active: true,
+    price: 16.0, image: '🍪', imageUrl: '/ovo-maltine.jpg', category: 'cookies', active: true,
   },
   // ── Bebidas ─────────────────────────────────────────────────────────────────
   { id: 'coca-lata',         name: 'Coca-Cola Lata 350ml',               description: 'Refrigerante Coca-Cola gelado lata 350ml',               price: 8.0,  image: '🥤', imageUrl: '/coca-lata.png',         category: 'bebidas', active: true },

@@ -10,12 +10,10 @@ import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU, PRODUCTS } from '@/lib/store'
 import { fetchDisabledProducts } from '@/lib/products-availability'
+import { fetchOrderBumps, logBumpAdd, type OrderBumpOffer } from '@/lib/order-bumps'
 import { toast } from 'sonner'
 
-// Itens candidatos a order bump / cross-sell (cookies + bebidas)
-const BUMP_POOL = PRODUCTS.filter(
-  (p) => p.active && (p.category === 'cookies' || p.category === 'bebidas')
-)
+const PRODUCT_BY_ID = new Map(PRODUCTS.map((p) => [p.id, p]))
 
 // O(1) lookup Maps — built once, never recreated
 const _meatMap   = new Map(MENU.meats.map((m) => [m.key, m.name]))
@@ -40,21 +38,28 @@ export function CartPanel() {
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
   const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
+  const [offers, setOffers] = useState<OrderBumpOffer[]>([])
 
-  useEffect(() => { if (isOpen) fetchDisabledProducts().then(setDisabledProducts) }, [isOpen])
+  useEffect(() => {
+    if (isOpen) {
+      fetchDisabledProducts().then(setDisabledProducts)
+      fetchOrderBumps().then((c) => setOffers(c.offers))
+    }
+  }, [isOpen])
 
-  // Sugestões: 1 cookie + 1 bebida que ainda não estão no carrinho
+  // Ofertas de order bump habilitadas, com produto válido, não desativado e não no carrinho
   const suggestions = useMemo(() => {
     const inCart = new Set(items.map((i) => i.productId))
-    const avail = BUMP_POOL.filter((p) => !disabledProducts.has(p.id) && !inCart.has(p.id))
-    const cookie = avail.find((p) => p.category === 'cookies')
-    const drink = avail.find((p) => p.category === 'bebidas')
-    return [cookie, drink].filter(Boolean) as typeof BUMP_POOL
-  }, [items, disabledProducts])
+    return offers
+      .filter((o) => o.enabled)
+      .map((o) => ({ offer: o, product: PRODUCT_BY_ID.get(o.productId) }))
+      .filter((x) => x.product && x.product.active && !disabledProducts.has(x.product.id) && !inCart.has(x.product.id))
+  }, [items, disabledProducts, offers])
 
-  function addBump(p: (typeof BUMP_POOL)[number]) {
-    addItem({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image })
-    toast.success(`${p.name} adicionado!`)
+  function addBump(offer: OrderBumpOffer, product: NonNullable<ReturnType<typeof PRODUCT_BY_ID.get>>) {
+    addItem({ productId: product.id, name: product.name, price: offer.bumpPrice, quantity: 1, image: product.image })
+    logBumpAdd(product.id)
+    toast.success(`${product.name} adicionado por ${formatCurrency(offer.bumpPrice)}!`)
   }
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
@@ -119,23 +124,30 @@ export function CartPanel() {
               {/* Order bump / cross-sell */}
               {suggestions.length > 0 && (
                 <div className="rounded-xl border-2 border-dashed border-brand/30 bg-orange-50/40 p-3">
-                  <p className="text-xs font-black text-brand uppercase tracking-widest mb-2">😋 Que tal adicionar?</p>
+                  <p className="text-xs font-black text-brand uppercase tracking-widest mb-2">😋 Aproveite e adicione</p>
                   <div className="space-y-2">
-                    {suggestions.map((p) => (
-                      <div key={p.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{p.image}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-bold text-gray-900 truncate">{p.name}</p>
-                          <p className="text-brand font-black text-sm">{formatCurrency(p.price)}</p>
+                    {suggestions.map(({ offer, product }) => {
+                      const p = product!
+                      const hasDiscount = offer.bumpPrice < p.price
+                      return (
+                        <div key={offer.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{p.image}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-bold text-gray-900 truncate">{p.name}</p>
+                            <p className="text-sm">
+                              {hasDiscount && <span className="text-gray-400 line-through mr-1.5 text-xs">{formatCurrency(p.price)}</span>}
+                              <span className="text-brand font-black">{formatCurrency(offer.bumpPrice)}</span>
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => addBump(offer, p)}
+                            className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
+                          >
+                            <Plus size={13} /> Adicionar
+                          </button>
                         </div>
-                        <button
-                          onClick={() => addBump(p)}
-                          className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
-                        >
-                          <Plus size={13} /> Adicionar
-                        </button>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

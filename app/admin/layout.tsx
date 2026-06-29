@@ -23,6 +23,7 @@ import {
   Calculator,
   Users as UsersIcon,
   Plug,
+  Megaphone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/financeiro", label: "Financeiro", icon: Wallet, module: "financeiro" },
   { href: "/admin/clientes", label: "Clientes", icon: Users, module: "clientes" },
   { href: "/admin/cupons", label: "Cupons", icon: Tag, module: "cupons" },
+  { href: "/admin/ofertas", label: "Ofertas / Bump", icon: Megaphone, module: "produtos" },
   { href: "/admin/entrega", label: "Entrega", icon: Truck, module: "configuracoes" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
@@ -73,6 +75,7 @@ const BREADCRUMBS: Record<string, string> = {
   "/admin/financeiro": "Financeiro",
   "/admin/clientes": "Clientes",
   "/admin/cupons": "Cupons",
+  "/admin/ofertas": "Ofertas / Bump",
   "/admin/entrega": "Entrega",
   "/admin/relatorios": "Relatórios",
   "/admin/configuracoes": "Configurações",
