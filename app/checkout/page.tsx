@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, generateOrderNumber, MENU, type PaymentMethod, type Order } from '@/lib/store'
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
@@ -370,6 +371,8 @@ export default function CheckoutPage() {
               <Section title="Observações" delay={0.24}>
                 <Textarea placeholder="Alguma observação para seu pedido? Ex: sem cebola, campainha não funciona..." value={form.notes} onChange={set('notes')} className="resize-none h-24 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
               </Section>
+
+              <OrderBumpSuggestions variant="dark" />
             </div>
 
             <div className="lg:col-span-2">

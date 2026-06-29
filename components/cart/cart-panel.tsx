@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Trash2, Plus, Minus, ShoppingBag, Tag, Truck, Store } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -8,12 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
-import { formatCurrency, MENU, PRODUCTS } from '@/lib/store'
-import { fetchDisabledProducts } from '@/lib/products-availability'
-import { fetchOrderBumps, logBumpAdd, type OrderBumpOffer } from '@/lib/order-bumps'
+import { formatCurrency, MENU } from '@/lib/store'
+import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
 import { toast } from 'sonner'
-
-const PRODUCT_BY_ID = new Map(PRODUCTS.map((p) => [p.id, p]))
 
 // O(1) lookup Maps — built once, never recreated
 const _meatMap   = new Map(MENU.meats.map((m) => [m.key, m.name]))
@@ -34,45 +31,9 @@ function customizationSummary(c: NonNullable<import('@/lib/store').CartItem['cus
 }
 
 export function CartPanel() {
-  const { items, isOpen, closeCart, addItem, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
+  const { items, isOpen, closeCart, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
-  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
-  const [offers, setOffers] = useState<OrderBumpOffer[]>([])
-  const [picks, setPicks] = useState<Record<string, string>>({}) // offerId -> productId escolhido
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchDisabledProducts().then(setDisabledProducts)
-      fetchOrderBumps().then((c) => setOffers(c.offers))
-    }
-  }, [isOpen])
-
-  // Monta as ofertas: produto específico OU categoria (cliente escolhe o sabor)
-  const suggestions = useMemo(() => {
-    const inCart = new Set(items.map((i) => i.productId))
-    const avail = (p: typeof PRODUCTS[number]) => p.active && !disabledProducts.has(p.id) && !inCart.has(p.id)
-    const out: { offer: OrderBumpOffer; products: typeof PRODUCTS }[] = []
-    for (const o of offers.filter((x) => x.enabled)) {
-      if (o.category) {
-        const list = PRODUCTS.filter((p) => p.category === o.category && avail(p))
-        if (list.length > 0) out.push({ offer: o, products: list })
-      } else if (o.productId) {
-        const p = PRODUCT_BY_ID.get(o.productId)
-        if (p && avail(p)) out.push({ offer: o, products: [p] })
-      }
-    }
-    return out
-  }, [items, disabledProducts, offers])
-
-  function addBump(offer: OrderBumpOffer, products: typeof PRODUCTS) {
-    const chosenId = offer.category ? (picks[offer.id] ?? products[0]?.id) : products[0]?.id
-    const product = products.find((p) => p.id === chosenId) ?? products[0]
-    if (!product) return
-    addItem({ productId: product.id, name: product.name, price: offer.bumpPrice, quantity: 1, image: product.image })
-    logBumpAdd(product.id)
-    toast.success(`${product.name} adicionado por ${formatCurrency(offer.bumpPrice)}!`)
-  }
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
 
@@ -134,47 +95,7 @@ export function CartPanel() {
               ))}
 
               {/* Order bump / cross-sell */}
-              {suggestions.length > 0 && (
-                <div className="rounded-xl border-2 border-dashed border-brand/30 bg-orange-50/40 p-3">
-                  <p className="text-xs font-black text-brand uppercase tracking-widest mb-2">😋 Aproveite e adicione</p>
-                  <div className="space-y-2">
-                    {suggestions.map(({ offer, products }) => {
-                      const isCategory = !!offer.category
-                      const selectedId = isCategory ? (picks[offer.id] ?? products[0].id) : products[0].id
-                      const selected = products.find((p) => p.id === selectedId) ?? products[0]
-                      const hasDiscount = offer.bumpPrice < selected.price
-                      return (
-                        <div key={offer.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{selected.image}</div>
-                          <div className="flex-1 min-w-0">
-                            {isCategory ? (
-                              <select
-                                value={selectedId}
-                                onChange={(e) => setPicks((prev) => ({ ...prev, [offer.id]: e.target.value }))}
-                                className="w-full text-[13px] font-bold text-gray-900 bg-transparent border border-gray-200 rounded-md px-1.5 py-1 outline-none focus:border-brand"
-                              >
-                                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                              </select>
-                            ) : (
-                              <p className="text-[13px] font-bold text-gray-900 truncate">{selected.name}</p>
-                            )}
-                            <p className="text-sm mt-0.5">
-                              {hasDiscount && <span className="text-gray-400 line-through mr-1.5 text-xs">{formatCurrency(selected.price)}</span>}
-                              <span className="text-brand font-black">{formatCurrency(offer.bumpPrice)}</span>
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => addBump(offer, products)}
-                            className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
-                          >
-                            <Plus size={13} /> Adicionar
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+              <OrderBumpSuggestions variant="light" />
             </div>
 
             <div className="px-4 pb-6 pt-4 border-t-2 border-gray-200 space-y-4 bg-gradient-to-b from-gray-50 to-white">

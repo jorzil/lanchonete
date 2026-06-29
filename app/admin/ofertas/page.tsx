@@ -128,6 +128,36 @@ export default function OfertasPage() {
                   {prod && o.bumpPrice < prod.price && (
                     <p className="w-full text-[11px] text-emerald-600">Desconto de {formatCurrency(prod.price - o.bumpPrice)} ({Math.round((1 - o.bumpPrice / prod.price) * 100)}%)</p>
                   )}
+
+                  {/* Seleção de quais produtos da categoria entram na oferta */}
+                  {o.category && (() => {
+                    const catProducts = PRODUCTS.filter((p) => p.category === o.category)
+                    const selected = o.productIds && o.productIds.length > 0 ? new Set(o.productIds) : null // null = todos
+                    const isOn = (id: string) => (selected ? selected.has(id) : true)
+                    function toggle(id: string) {
+                      const current = selected ? new Set(selected) : new Set(catProducts.map((p) => p.id))
+                      if (current.has(id)) current.delete(id); else current.add(id)
+                      updateOffer(o.id, { productIds: [...current] })
+                    }
+                    return (
+                      <div className="w-full border-t border-gray-100 pt-2 mt-1">
+                        <p className="text-[11px] font-semibold text-gray-500 mb-1.5">Quais aparecem para o cliente:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {catProducts.map((p) => (
+                            <button
+                              key={p.id}
+                              onClick={() => toggle(p.id)}
+                              className={`text-[11px] font-medium px-2 py-1 rounded-full border transition-colors ${
+                                isOn(p.id) ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-gray-50 border-gray-200 text-gray-400"
+                              }`}
+                            >
+                              {isOn(p.id) ? "✓ " : ""}{p.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

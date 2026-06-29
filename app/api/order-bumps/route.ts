@@ -9,7 +9,14 @@ const SYSTEM_PHONE = '__order_bumps__'
 const DEFAULT = {
   offers: [
     { id: 'b1', category: 'cookies', bumpPrice: 14.9, enabled: true },
-    { id: 'b2', category: 'bebidas', bumpPrice: 6.9, enabled: true },
+    {
+      id: 'b2', category: 'bebidas', bumpPrice: 6.9, enabled: true,
+      // só refri lata + suco Del Valle (sem garrafas 600ml / água)
+      productIds: [
+        'coca-lata', 'coca-zero-lata', 'guarana-lata', 'guarana-zero-lata',
+        'fanta-laranja-lata', 'fanta-uva-lata', 'suco-manga', 'suco-uva',
+      ],
+    },
   ],
   metrics: {} as Record<string, number>,
 }
