@@ -8,7 +8,6 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight, Star } from 'lucide-react'
 import { HeaderClient } from '@/components/layout/header-client'
-import { MaisSubHero } from '@/components/home/mais-sub-hero'
 import { Footer } from '@/components/layout/footer'
 import { PRODUCTS } from '@/lib/data'
 
@@ -855,7 +854,14 @@ export default function HomePage() {
     <>
       <HeaderClient />
       <main>
-        <MaisSubHero />
+        {/* Hero original (estático e leve, sem runtime) */}
+        <iframe
+          src="/hero.html"
+          title="Mais Sub"
+          className="block w-full border-0"
+          style={{ height: '100svh', minHeight: 560 }}
+          scrolling="no"
+        />
         <SceneCategories />
         <SceneHowItWorks />
         <SceneAbout />
