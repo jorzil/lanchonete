@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/store"
 import {
-  getCoupons, addCoupon, updateCoupon, deleteCoupon,
+  getCoupons, addCoupon, updateCoupon, deleteCoupon, pullCoupons, pushCoupons,
   type CouponDef, type CouponType,
 } from "@/lib/coupon-storage"
 
@@ -38,9 +38,9 @@ export default function CuponsPage() {
   const [error, setError] = useState('')
   const [toDelete, setToDelete] = useState<CouponDef | null>(null)
 
-  useEffect(() => { setCoupons(getCoupons()) }, [])
+  useEffect(() => { pullCoupons().then(() => setCoupons(getCoupons())) }, [])
 
-  function refresh() { setCoupons(getCoupons()) }
+  function refresh() { setCoupons(getCoupons()); pushCoupons() }
 
   function set<K extends keyof typeof EMPTY_FORM>(key: K, value: typeof EMPTY_FORM[K]) {
     setForm(p => ({ ...p, [key]: value }))

@@ -155,3 +155,37 @@ export function calcCouponDiscount(coupon: CouponDef, subtotal: number): number 
 function formatR$(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
+// ─── Sincronização com o Supabase (cross-device) ──────────────────────────────
+// Puxa os cupons do banco para o localStorage. Retorna true se trouxe dados.
+export async function pullCoupons(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/coupons', { cache: 'no-store' })
+    if (!res.ok) return false
+    const data = await res.json()
+    if (Array.isArray(data.coupons)) {
+      saveCoupons(data.coupons as CouponDef[])
+      return true
+    }
+    // Banco vazio: semeia com o que existe localmente (ou os padrões)
+    await pushCoupons()
+    return false
+  } catch {
+    return false
+  }
+}
+
+// Envia os cupons locais para o banco.
+export async function pushCoupons(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/coupons', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ coupons: getCoupons() }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return res.ok && data.ok
+  } catch {
+    return false
+  }
+}

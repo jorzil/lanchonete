@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Trash2, Plus, Minus, ShoppingBag, Tag, Truck, Store } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
+import { pullCoupons } from '@/lib/coupon-storage'
 import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
 import { toast } from 'sonner'
 
@@ -34,6 +35,9 @@ export function CartPanel() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
+
+  // Puxa os cupons do banco ao abrir o carrinho (para validar cupons criados no admin)
+  useEffect(() => { if (isOpen) pullCoupons() }, [isOpen])
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
 
