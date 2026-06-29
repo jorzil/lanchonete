@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Trash2, Plus, Minus, ShoppingBag, Tag, Truck, Store } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -8,8 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
-import { formatCurrency, MENU } from '@/lib/store'
+import { formatCurrency, MENU, PRODUCTS } from '@/lib/store'
+import { fetchDisabledProducts } from '@/lib/products-availability'
 import { toast } from 'sonner'
+
+// Itens candidatos a order bump / cross-sell (cookies + bebidas)
+const BUMP_POOL = PRODUCTS.filter(
+  (p) => p.active && (p.category === 'cookies' || p.category === 'bebidas')
+)
 
 // O(1) lookup Maps — built once, never recreated
 const _meatMap   = new Map(MENU.meats.map((m) => [m.key, m.name]))
@@ -30,9 +36,26 @@ function customizationSummary(c: NonNullable<import('@/lib/store').CartItem['cus
 }
 
 export function CartPanel() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
+  const { items, isOpen, closeCart, addItem, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
+  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
+
+  useEffect(() => { if (isOpen) fetchDisabledProducts().then(setDisabledProducts) }, [isOpen])
+
+  // Sugestões: 1 cookie + 1 bebida que ainda não estão no carrinho
+  const suggestions = useMemo(() => {
+    const inCart = new Set(items.map((i) => i.productId))
+    const avail = BUMP_POOL.filter((p) => !disabledProducts.has(p.id) && !inCart.has(p.id))
+    const cookie = avail.find((p) => p.category === 'cookies')
+    const drink = avail.find((p) => p.category === 'bebidas')
+    return [cookie, drink].filter(Boolean) as typeof BUMP_POOL
+  }, [items, disabledProducts])
+
+  function addBump(p: (typeof BUMP_POOL)[number]) {
+    addItem({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image })
+    toast.success(`${p.name} adicionado!`)
+  }
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
 
@@ -92,6 +115,30 @@ export function CartPanel() {
                   </div>
                 </div>
               ))}
+
+              {/* Order bump / cross-sell */}
+              {suggestions.length > 0 && (
+                <div className="rounded-xl border-2 border-dashed border-brand/30 bg-orange-50/40 p-3">
+                  <p className="text-xs font-black text-brand uppercase tracking-widest mb-2">😋 Que tal adicionar?</p>
+                  <div className="space-y-2">
+                    {suggestions.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{p.image}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-bold text-gray-900 truncate">{p.name}</p>
+                          <p className="text-brand font-black text-sm">{formatCurrency(p.price)}</p>
+                        </div>
+                        <button
+                          onClick={() => addBump(p)}
+                          className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
+                        >
+                          <Plus size={13} /> Adicionar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="px-4 pb-6 pt-4 border-t-2 border-gray-200 space-y-4 bg-gradient-to-b from-gray-50 to-white">
