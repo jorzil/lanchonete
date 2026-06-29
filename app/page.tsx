@@ -8,6 +8,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight, Star } from 'lucide-react'
 import { HeaderClient } from '@/components/layout/header-client'
+import { HeroFrame } from '@/components/home/hero-frame'
 import { Footer } from '@/components/layout/footer'
 import { PRODUCTS } from '@/lib/data'
 
@@ -854,14 +855,8 @@ export default function HomePage() {
     <>
       <HeaderClient />
       <main>
-        {/* Hero original (estático e leve, sem runtime) */}
-        <iframe
-          src="/hero.html"
-          title="Mais Sub"
-          className="block w-full border-0"
-          style={{ height: '100svh', minHeight: 560 }}
-          scrolling="no"
-        />
+        {/* Hero original (estático, altura ajustada ao conteúdo) */}
+        <HeroFrame />
         <SceneCategories />
         <SceneHowItWorks />
         <SceneAbout />
