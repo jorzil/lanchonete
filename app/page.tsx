@@ -8,6 +8,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { ArrowRight, Star } from 'lucide-react'
 import { HeaderClient } from '@/components/layout/header-client'
+import { MaisSubHero } from '@/components/home/mais-sub-hero'
 import { Footer } from '@/components/layout/footer'
 import { PRODUCTS } from '@/lib/data'
 
@@ -854,7 +855,7 @@ export default function HomePage() {
     <>
       <HeaderClient />
       <main>
-        <SceneHero />
+        <MaisSubHero />
         <SceneCategories />
         <SceneHowItWorks />
         <SceneAbout />
