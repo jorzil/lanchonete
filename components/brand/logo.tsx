@@ -1,6 +1,10 @@
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
+// Logo oficial Mais Sub (proporção ~1.44:1)
+const LOGO_SRC = '/logo.png'
+const RATIO = 1.44
+
 interface LogoProps {
   className?: string
   height?: number
@@ -9,9 +13,9 @@ interface LogoProps {
 export function Logo({ className, height = 48 }: LogoProps) {
   return (
     <Image
-      src="/logo.svg"
+      src={LOGO_SRC}
       alt="Mais Sub"
-      width={Math.round(height * 1.7)}
+      width={Math.round(height * RATIO)}
       height={height}
       className={cn('object-contain', className)}
       priority
@@ -23,10 +27,10 @@ export function Logo({ className, height = 48 }: LogoProps) {
 export function LogoNavbar({ className }: { className?: string }) {
   return (
     <Image
-      src="/logo.svg"
+      src={LOGO_SRC}
       alt="Mais Sub"
-      width={80}
-      height={47}
+      width={84}
+      height={Math.round(84 / RATIO)}
       className={cn('object-contain', className)}
       priority
     />
@@ -37,10 +41,10 @@ export function LogoNavbar({ className }: { className?: string }) {
 export function LogoHero({ className }: { className?: string }) {
   return (
     <Image
-      src="/logo.svg"
+      src={LOGO_SRC}
       alt="Mais Sub"
       width={300}
-      height={176}
+      height={Math.round(300 / RATIO)}
       className={cn('object-contain drop-shadow-2xl', className)}
       priority
     />
@@ -60,10 +64,10 @@ export function MaisSubWordmark({ size = 'md', className }: { size?: string; cla
 export function MBadge({ size = 64, className }: { size?: number; className?: string }) {
   return (
     <Image
-      src="/logo.svg"
+      src={LOGO_SRC}
       alt="Mais Sub"
       width={size}
-      height={Math.round(size * 0.6)}
+      height={Math.round(size / RATIO)}
       className={cn('object-contain', className)}
     />
   )
