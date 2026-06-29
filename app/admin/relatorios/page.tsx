@@ -107,20 +107,20 @@ export default function RelatoriosPage() {
     return { payment, topProducts, dailyRevenue, statusBreakdown, revenue, avgTicket, totalDiscount, cancelRate, totalOrders: orders.length, validOrders: valid.length }
   }, [orders_])
 
-  // Coupon stats
-  const couponStats = useMemo(() => {
-    return coupons
-      .filter(c => c.usedCount > 0)
-      .sort((a, b) => b.usedCount - a.usedCount)
-      .map(c => ({
-        code: c.code,
-        name: c.name,
-        type: c.type,
-        discount: c.discount,
-        usedCount: c.usedCount,
-        totalDiscount: c.type === 'percentage' ? 0 : c.usedCount * c.discount,
-      }))
-  }, [coupons])
+  // Uso de cupons por pedido (quais pedidos usaram cada cupom)
+  const couponUsage = useMemo(() => {
+    const nameByCode = new Map(coupons.map(c => [c.code.toUpperCase(), c.name]))
+    const map = new Map<string, { code: string; name?: string; orders: Order[]; discount: number }>()
+    for (const o of orders_) {
+      if (!o.couponCode) continue
+      const key = o.couponCode.toUpperCase()
+      const e = map.get(key) ?? { code: o.couponCode.toUpperCase(), name: nameByCode.get(key), orders: [], discount: 0 }
+      e.orders.push(o)
+      e.discount += o.discount || 0
+      map.set(key, e)
+    }
+    return [...map.values()].sort((a, b) => b.orders.length - a.orders.length)
+  }, [orders_, coupons])
 
   return (
     <div className="space-y-6">
@@ -286,44 +286,52 @@ export default function RelatoriosPage() {
         )}
       </div>
 
-      {/* Coupon report */}
+      {/* Coupon report — quais pedidos usaram cada cupom */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Relatório de Cupons</h2>
-        {couponStats.length === 0 ? (
-          <Card className="p-6 text-center text-gray-400 text-sm">Nenhum cupom utilizado ainda.</Card>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Cupons utilizados no período</h2>
+        {couponUsage.length === 0 ? (
+          <Card className="p-6 text-center text-gray-400 text-sm">Nenhum cupom utilizado neste período.</Card>
         ) : (
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                    <th className="px-5 py-3 font-medium">Código</th>
-                    <th className="px-5 py-3 font-medium">Nome</th>
-                    <th className="px-5 py-3 font-medium">Desconto</th>
-                    <th className="px-5 py-3 font-medium">Utilizações</th>
-                    <th className="px-5 py-3 font-medium">Desconto Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {couponStats.map(c => (
-                    <tr key={c.code} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                      <td className="px-5 py-3">
-                        <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-[12px] font-bold text-gray-800">{c.code}</code>
-                      </td>
-                      <td className="px-5 py-3 text-gray-700">{c.name}</td>
-                      <td className="px-5 py-3 text-gray-700">
-                        {c.type === 'percentage' ? `${c.discount}%` : c.type === 'fixed' ? formatCurrency(c.discount) : 'Frete grátis'}
-                      </td>
-                      <td className="px-5 py-3 font-semibold text-gray-900">{c.usedCount}×</td>
-                      <td className="px-5 py-3 font-semibold text-red-600">
-                        {c.type === 'fixed' ? `-${formatCurrency(c.totalDiscount)}` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          <div className="space-y-4">
+            {couponUsage.map((c) => (
+              <Card key={c.code} className="p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-[#EE5C13]/10 text-[#EE5C13] px-2 py-1 font-mono text-[13px] font-bold">{c.code}</code>
+                    {c.name && <span className="text-sm text-gray-500">{c.name}</span>}
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-gray-500"><strong className="text-gray-900">{c.orders.length}</strong> pedido(s)</span>
+                    <span className="text-gray-500">Desconto total: <strong className="text-red-600">-{formatCurrency(c.discount)}</strong></span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                        <th className="py-2 pr-3 font-medium">Pedido</th>
+                        <th className="py-2 px-3 font-medium">Cliente</th>
+                        <th className="py-2 px-3 font-medium">Data</th>
+                        <th className="py-2 px-3 font-medium text-right">Desconto</th>
+                        <th className="py-2 px-3 font-medium text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...c.orders].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).map((o) => (
+                        <tr key={o.id} className="border-b border-gray-50 last:border-0">
+                          <td className="py-2 pr-3 font-medium text-gray-900">{o.orderNumber}</td>
+                          <td className="py-2 px-3 text-gray-600">{o.customer.name}</td>
+                          <td className="py-2 px-3 text-gray-500 text-xs">{new Date(o.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="py-2 px-3 text-right text-red-600">-{formatCurrency(o.discount || 0)}</td>
+                          <td className="py-2 px-3 text-right font-semibold text-gray-900">{formatCurrency(o.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
     </div>

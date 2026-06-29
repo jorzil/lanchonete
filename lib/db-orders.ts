@@ -24,6 +24,7 @@ interface DbOrder {
   whatsapp_sent_at: Record<string, string>
   source?: string | null
   external_id?: string | null
+  coupon_code?: string | null
   created_at: string
   updated_at: string
 }
@@ -53,6 +54,7 @@ function rowToOrder(row: DbOrder): Order {
     deliveryCode: addr?.deliveryCode,
     source: (row.source as Order['source']) ?? 'site',
     externalId: row.external_id ?? undefined,
+    couponCode: row.coupon_code ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -77,6 +79,7 @@ export interface CreateOrderPayload {
   source?: 'site' | 'whatsapp' | 'pdv' | 'ifood'
   externalId?: string
   status?: string
+  couponCode?: string
 }
 
 // ─── Upsert customer, then insert order ───────────────────────────────────
@@ -132,18 +135,19 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
     status: data.status ?? 'novo',
     source: data.source ?? 'site',
     external_id: data.externalId ?? null,
+    coupon_code: data.couponCode ?? null,
   }
 
   let { data: row, error: orderErr } = await supabase
     .from('orders').insert(baseInsert).select().single()
 
-  // Fallback: se as colunas source/external_id ainda não existem no banco,
-  // reenvia sem elas (a migração está documentada em docs/IFOOD_INTEGRATION.md).
-  if (orderErr && /column .*(source|external_id)/i.test(orderErr.message)) {
-    const { source, external_id, ...withoutSource } = baseInsert
-    void source; void external_id
+  // Fallback: se as colunas novas ainda não existem no banco, reenvia sem elas
+  // (a migração está documentada em docs/IFOOD_INTEGRATION.md / schema.sql).
+  if (orderErr && /column .*(source|external_id|coupon_code)/i.test(orderErr.message)) {
+    const { source, external_id, coupon_code, ...withoutExtra } = baseInsert
+    void source; void external_id; void coupon_code
     ;({ data: row, error: orderErr } = await supabase
-      .from('orders').insert(withoutSource).select().single())
+      .from('orders').insert(withoutExtra).select().single())
   }
 
   if (orderErr) throw new Error(orderErr.message)

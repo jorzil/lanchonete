@@ -200,6 +200,7 @@ export default function CheckoutPage() {
             paymentMethod: form.paymentMethod,
             subtotal, deliveryFee, discount, total,
             notes: finalNotes || undefined,
+            couponCode: coupon?.code,
           }),
         })
         if (!res.ok) {

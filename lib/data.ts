@@ -73,6 +73,7 @@ export interface Order {
   deliveryCode?: string // código de 4 dígitos p/ o motoboy confirmar a entrega
   source?: OrderSource  // origem do pedido (site/whatsapp/pdv/ifood)
   externalId?: string   // id do pedido na plataforma externa (ex: iFood)
+  couponCode?: string   // código do cupom usado no pedido
 }
 
 // ─── MENU DATA ────────────────────────────────────────────────────────────────

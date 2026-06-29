@@ -695,7 +695,7 @@ export default function PedidosPage() {
               <div className="space-y-1 border-t pt-3">
                 <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{formatCurrency(selected.subtotal)}</span></div>
                 <div className="flex justify-between text-gray-500"><span>Entrega</span><span>{formatCurrency(selected.deliveryFee)}</span></div>
-                {selected.discount > 0 && <div className="flex justify-between text-gray-500"><span>Desconto</span><span>-{formatCurrency(selected.discount)}</span></div>}
+                {selected.discount > 0 && <div className="flex justify-between text-gray-500"><span>Desconto{selected.couponCode ? ` (${selected.couponCode})` : ''}</span><span>-{formatCurrency(selected.discount)}</span></div>}
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total</span><span>{formatCurrency(selected.total)}</span></div>
                 <p className="text-xs text-gray-400">Pagamento: {PAYMENT_LABELS[selected.paymentMethod as keyof typeof PAYMENT_LABELS] ?? selected.paymentMethod}</p>
               </div>
