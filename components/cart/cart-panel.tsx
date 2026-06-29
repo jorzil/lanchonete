@@ -39,6 +39,7 @@ export function CartPanel() {
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
   const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
   const [offers, setOffers] = useState<OrderBumpOffer[]>([])
+  const [picks, setPicks] = useState<Record<string, string>>({}) // offerId -> productId escolhido
 
   useEffect(() => {
     if (isOpen) {
@@ -47,16 +48,27 @@ export function CartPanel() {
     }
   }, [isOpen])
 
-  // Ofertas de order bump habilitadas, com produto válido, não desativado e não no carrinho
+  // Monta as ofertas: produto específico OU categoria (cliente escolhe o sabor)
   const suggestions = useMemo(() => {
     const inCart = new Set(items.map((i) => i.productId))
-    return offers
-      .filter((o) => o.enabled)
-      .map((o) => ({ offer: o, product: PRODUCT_BY_ID.get(o.productId) }))
-      .filter((x) => x.product && x.product.active && !disabledProducts.has(x.product.id) && !inCart.has(x.product.id))
+    const avail = (p: typeof PRODUCTS[number]) => p.active && !disabledProducts.has(p.id) && !inCart.has(p.id)
+    const out: { offer: OrderBumpOffer; products: typeof PRODUCTS }[] = []
+    for (const o of offers.filter((x) => x.enabled)) {
+      if (o.category) {
+        const list = PRODUCTS.filter((p) => p.category === o.category && avail(p))
+        if (list.length > 0) out.push({ offer: o, products: list })
+      } else if (o.productId) {
+        const p = PRODUCT_BY_ID.get(o.productId)
+        if (p && avail(p)) out.push({ offer: o, products: [p] })
+      }
+    }
+    return out
   }, [items, disabledProducts, offers])
 
-  function addBump(offer: OrderBumpOffer, product: NonNullable<ReturnType<typeof PRODUCT_BY_ID.get>>) {
+  function addBump(offer: OrderBumpOffer, products: typeof PRODUCTS) {
+    const chosenId = offer.category ? (picks[offer.id] ?? products[0]?.id) : products[0]?.id
+    const product = products.find((p) => p.id === chosenId) ?? products[0]
+    if (!product) return
     addItem({ productId: product.id, name: product.name, price: offer.bumpPrice, quantity: 1, image: product.image })
     logBumpAdd(product.id)
     toast.success(`${product.name} adicionado por ${formatCurrency(offer.bumpPrice)}!`)
@@ -126,21 +138,33 @@ export function CartPanel() {
                 <div className="rounded-xl border-2 border-dashed border-brand/30 bg-orange-50/40 p-3">
                   <p className="text-xs font-black text-brand uppercase tracking-widest mb-2">😋 Aproveite e adicione</p>
                   <div className="space-y-2">
-                    {suggestions.map(({ offer, product }) => {
-                      const p = product!
-                      const hasDiscount = offer.bumpPrice < p.price
+                    {suggestions.map(({ offer, products }) => {
+                      const isCategory = !!offer.category
+                      const selectedId = isCategory ? (picks[offer.id] ?? products[0].id) : products[0].id
+                      const selected = products.find((p) => p.id === selectedId) ?? products[0]
+                      const hasDiscount = offer.bumpPrice < selected.price
                       return (
                         <div key={offer.id} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{p.image}</div>
+                          <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{selected.image}</div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-bold text-gray-900 truncate">{p.name}</p>
-                            <p className="text-sm">
-                              {hasDiscount && <span className="text-gray-400 line-through mr-1.5 text-xs">{formatCurrency(p.price)}</span>}
+                            {isCategory ? (
+                              <select
+                                value={selectedId}
+                                onChange={(e) => setPicks((prev) => ({ ...prev, [offer.id]: e.target.value }))}
+                                className="w-full text-[13px] font-bold text-gray-900 bg-transparent border border-gray-200 rounded-md px-1.5 py-1 outline-none focus:border-brand"
+                              >
+                                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                              </select>
+                            ) : (
+                              <p className="text-[13px] font-bold text-gray-900 truncate">{selected.name}</p>
+                            )}
+                            <p className="text-sm mt-0.5">
+                              {hasDiscount && <span className="text-gray-400 line-through mr-1.5 text-xs">{formatCurrency(selected.price)}</span>}
                               <span className="text-brand font-black">{formatCurrency(offer.bumpPrice)}</span>
                             </p>
                           </div>
                           <button
-                            onClick={() => addBump(offer, p)}
+                            onClick={() => addBump(offer, products)}
                             className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shrink-0"
                           >
                             <Plus size={13} /> Adicionar

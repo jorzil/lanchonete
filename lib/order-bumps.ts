@@ -2,9 +2,10 @@
 
 export interface OrderBumpOffer {
   id: string
-  productId: string
   bumpPrice: number
   enabled: boolean
+  productId?: string                    // oferta de um produto específico
+  category?: 'cookies' | 'bebidas'      // oferta por categoria (cliente escolhe o sabor)
 }
 
 export interface OrderBumpConfig {

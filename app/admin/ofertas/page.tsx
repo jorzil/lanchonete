@@ -29,10 +29,15 @@ export default function OfertasPage() {
   }, [])
 
   function addOffer() {
-    const used = new Set(offers.map((o) => o.productId))
-    const candidate = POOL.find((p) => !used.has(p.id)) ?? POOL[0]
-    if (!candidate) return
-    setOffers((prev) => [...prev, { id: `b${Date.now()}`, productId: candidate.id, bumpPrice: candidate.price, enabled: true }])
+    setOffers((prev) => [...prev, { id: `b${Date.now()}`, category: "cookies", bumpPrice: 14.9, enabled: true }])
+  }
+  // Define o "tipo" da oferta: categoria (cliente escolhe) ou produto específico
+  function setOfferType(id: string, value: string) {
+    if (value === "cookies" || value === "bebidas") {
+      updateOffer(id, { category: value, productId: undefined })
+    } else {
+      updateOffer(id, { productId: value, category: undefined })
+    }
   }
   function updateOffer(id: string, patch: Partial<OrderBumpOffer>) {
     setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)))
@@ -86,15 +91,20 @@ export default function OfertasPage() {
         ) : (
           <div className="space-y-3">
             {offers.map((o) => {
-              const prod = PRODUCT_BY_ID.get(o.productId)
-              const adds = metrics[o.productId] ?? 0
+              const prod = o.productId ? PRODUCT_BY_ID.get(o.productId) : undefined
+              const adds = o.productId ? (metrics[o.productId] ?? 0) : Object.entries(metrics)
+                .filter(([pid]) => PRODUCT_BY_ID.get(pid)?.category === o.category)
+                .reduce((a, [, n]) => a + n, 0)
+              const typeValue = o.category ?? o.productId ?? ""
               return (
                 <div key={o.id} className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 p-3">
-                  <div className="flex-1 min-w-[160px] space-y-1.5">
-                    <Label className="text-xs">Produto</Label>
-                    <Select value={o.productId} onValueChange={(v) => updateOffer(o.id, { productId: v })}>
+                  <div className="flex-1 min-w-[180px] space-y-1.5">
+                    <Label className="text-xs">Oferta</Label>
+                    <Select value={typeValue} onValueChange={(v) => setOfferType(o.id, v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="cookies">🍪 Cookie (cliente escolhe)</SelectItem>
+                        <SelectItem value="bebidas">🥤 Bebida (cliente escolhe)</SelectItem>
                         {POOL.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} ({formatCurrency(p.price)})</SelectItem>)}
                       </SelectContent>
                     </Select>

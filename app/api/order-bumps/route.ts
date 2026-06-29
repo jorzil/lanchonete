@@ -8,8 +8,8 @@ const SYSTEM_PHONE = '__order_bumps__'
 // Ofertas padrão (caso ainda não tenha configuração salva)
 const DEFAULT = {
   offers: [
-    { id: 'b1', productId: 'cookie-nutella', bumpPrice: 14.9, enabled: true },
-    { id: 'b2', productId: 'coca-lata', bumpPrice: 6.9, enabled: true },
+    { id: 'b1', category: 'cookies', bumpPrice: 14.9, enabled: true },
+    { id: 'b2', category: 'bebidas', bumpPrice: 6.9, enabled: true },
   ],
   metrics: {} as Record<string, number>,
 }
