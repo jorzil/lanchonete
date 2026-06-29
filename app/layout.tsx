@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Bricolage_Grotesque } from 'next/font/google'
+import { Inter, Bricolage_Grotesque, Poppins, Manrope } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
@@ -17,6 +17,21 @@ const bricolage = Bricolage_Grotesque({
   variable: '--font-display',
   display: 'swap',
   weight: ['700', '800'],
+})
+
+// Fontes do hero (banner) — Poppins (títulos) e Manrope (texto)
+const poppins = Poppins({
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+  weight: ['600', '700', '800', '900'],
+})
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-manrope',
+  display: 'swap',
+  weight: ['500', '600', '700', '800'],
 })
 
 export const metadata: Metadata = {
@@ -41,7 +56,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${bricolage.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${bricolage.variable} ${poppins.variable} ${manrope.variable}`}>
       <head>
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />

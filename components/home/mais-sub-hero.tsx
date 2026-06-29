@@ -48,7 +48,7 @@ export function MaisSubHero() {
       className="ms-hero relative w-full overflow-hidden"
       style={{
         minHeight: '100svh',
-        fontFamily: "'Manrope', var(--font-sans, sans-serif)",
+        fontFamily: "var(--font-manrope), 'Manrope', sans-serif",
         background: 'radial-gradient(120% 120% at 78% 18%, #0359A8 0%, #023E74 52%, #012247 100%)',
       }}
     >
@@ -79,7 +79,7 @@ export function MaisSubHero() {
             <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#2ecc71', boxShadow: '0 0 0 5px rgba(46,204,113,0.25)' }} />
             Aberto agora · Gov. Valadares
           </div>
-          <h1 style={{ margin: '22px 0 0', fontFamily: "'Poppins', var(--font-sans, sans-serif)", fontWeight: 900, fontSize: 'clamp(40px,5.6vw,84px)', lineHeight: 0.96, letterSpacing: '-0.02em', color: '#fff' }}>
+          <h1 style={{ margin: '22px 0 0', fontFamily: "var(--font-poppins), 'Poppins', sans-serif", fontWeight: 900, fontSize: 'clamp(40px,5.6vw,84px)', lineHeight: 0.96, letterSpacing: '-0.02em', color: '#fff' }}>
             <span className="ms-reveal" style={{ display: 'block', animationDelay: '0.12s' }}>Mais recheio.</span>
             <span className="ms-reveal" style={{ display: 'block', animationDelay: '0.22s' }}>Mais sabor.</span>
             <span className="ms-reveal" style={{ display: 'block', color: '#EE5C13', animationDelay: '0.32s' }}>Mais Sub.</span>
@@ -90,12 +90,12 @@ export function MaisSubHero() {
           </p>
 
           <div className="ms-ctas ms-reveal flex flex-wrap gap-4" style={{ marginTop: 34, animationDelay: '0.52s' }}>
-            <Link href="/cardapio" className="ms-cta-primary relative inline-flex items-center gap-3 overflow-hidden text-white" style={{ background: '#EE5C13', fontFamily: "'Poppins', sans-serif", fontWeight: 800, fontSize: 18, padding: '19px 38px', borderRadius: 16, boxShadow: '0 14px 36px rgba(238,92,19,0.45)' }}>
+            <Link href="/cardapio" className="ms-cta-primary relative inline-flex items-center gap-3 overflow-hidden text-white" style={{ background: '#EE5C13', fontFamily: "var(--font-poppins), 'Poppins', sans-serif", fontWeight: 800, fontSize: 18, padding: '19px 38px', borderRadius: 16, boxShadow: '0 14px 36px rgba(238,92,19,0.45)' }}>
               Pedir Agora
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
               <span style={{ position: 'absolute', top: 0, left: 0, width: '40%', height: '100%', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.45) 50%, rgba(255,255,255,0) 100%)', animation: 'ms-shine 4.5s ease-in-out infinite', animationDelay: '1.6s' }} />
             </Link>
-            <Link href="/cardapio" className="ms-cta-secondary inline-flex items-center gap-2.5 text-white" style={{ background: 'rgba(255,255,255,0.06)', fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 18, padding: '18px 32px', borderRadius: 16, border: '1.5px solid rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)' }}>
+            <Link href="/cardapio" className="ms-cta-secondary inline-flex items-center gap-2.5 text-white" style={{ background: 'rgba(255,255,255,0.06)', fontFamily: "var(--font-poppins), 'Poppins', sans-serif", fontWeight: 700, fontSize: 18, padding: '18px 32px', borderRadius: 16, border: '1.5px solid rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)' }}>
               Ver Cardápio
             </Link>
           </div>
@@ -128,7 +128,7 @@ export function MaisSubHero() {
           <Chip depth={46} style={{ bottom: '4%', right: '14%' }} color="#f2b705" label="Queijo derretido" anim="ms-float-s 5.6s ease-in-out infinite" delay="0.5s" />
           {/* selo */}
           <div data-depth="30" className="ms-reveal-pop absolute z-[4]" style={{ top: '2%', left: '6%', animationDelay: '0.5s' }}>
-            <div style={{ width: 'clamp(78px,9vw,108px)', height: 'clamp(78px,9vw,108px)', borderRadius: '50%', background: '#EE5C13', color: '#fff', border: '4px solid #fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontFamily: "'Poppins', sans-serif", fontWeight: 800, lineHeight: 1.05, fontSize: 'clamp(11px,1.1vw,14px)', boxShadow: '0 14px 30px rgba(0,0,0,0.3)' }}>
+            <div style={{ width: 'clamp(78px,9vw,108px)', height: 'clamp(78px,9vw,108px)', borderRadius: '50%', background: '#EE5C13', color: '#fff', border: '4px solid #fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontFamily: "var(--font-poppins), 'Poppins', sans-serif", fontWeight: 800, lineHeight: 1.05, fontSize: 'clamp(11px,1.1vw,14px)', boxShadow: '0 14px 30px rgba(0,0,0,0.3)' }}>
               <span>Feito</span><span>na hora</span>
             </div>
           </div>
@@ -173,7 +173,7 @@ function Chip({ depth, style, color, label, anim, delay }: { depth: number; styl
     <div data-depth={depth} className={`ms-chip pointer-events-none absolute z-[3]`} style={style}>
       <div className="flex items-center gap-2.5" style={{ background: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: '9px 16px 9px 9px', boxShadow: '0 14px 30px rgba(0,0,0,0.28)', animation: anim, animationDelay: delay }}>
         <span style={{ width: 30, height: 30, borderRadius: '50%', background: color, display: 'inline-block' }} />
-        <span style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 14, color: '#111' }}>{label}</span>
+        <span style={{ fontFamily: "var(--font-poppins), 'Poppins', sans-serif", fontWeight: 700, fontSize: 14, color: '#111' }}>{label}</span>
       </div>
     </div>
   )
