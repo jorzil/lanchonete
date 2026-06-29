@@ -432,7 +432,7 @@ const HOW_STEPS = [
   {
     n: '01',
     title: 'Escolha o pão',
-    desc: 'Italiano, integral ou de forma — o pão certo para começar tudo com o pé direito.',
+    desc: 'Tradicional ou 4 Queijos — o pão certo para começar tudo com o pé direito.',
   },
   {
     n: '02',
