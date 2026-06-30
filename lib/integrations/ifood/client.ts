@@ -5,7 +5,7 @@
 //        Status (confirm/dispatch/...) → Acknowledge events.
 // ============================================================================
 
-import { getConfig, patchRuntime, isConfigured } from './config'
+import { getConfig, patchRuntime } from './config'
 import { logIFood } from './logs'
 import type { IFoodConfig, IFoodEvent, IFoodOrder } from './types'
 
@@ -18,7 +18,8 @@ function authHeader(token: string) {
 // ─── OAuth ───────────────────────────────────────────────────────────────────
 export async function getAccessToken(force = false): Promise<string> {
   const cfg = await getConfig()
-  if (!isConfigured(cfg)) throw new Error('Integração iFood não configurada (clientId/secret/merchantId).')
+  // Para o token basta clientId + clientSecret (merchantId só é exigido nas chamadas da loja)
+  if (!cfg.clientId || !cfg.clientSecret) throw new Error('Configure o Client ID e o Client Secret do iFood.')
 
   const now = Date.now()
   if (!force && cfg.accessToken && cfg.tokenExpiresAt && cfg.tokenExpiresAt - 60_000 > now) {
@@ -122,11 +123,23 @@ export async function getOrder(orderId: string): Promise<IFoodOrder | null> {
 // Mapeia o status interno → ação do iFood. Nem todo status tem equivalente.
 const STATUS_ACTION: Record<string, string | null> = {
   aceito: 'confirm',
-  em_preparo: null,            // iFood não tem "em preparo" explícito
+  em_preparo: 'startPreparation', // iFood: Start Preparation
   pronto: 'readyToPickup',
   saiu_entrega: 'dispatch',
   entregue: null,              // concluído pelo iFood/entregador
   cancelado: 'requestCancellation',
+}
+
+// Lista as lojas (merchants) que o app tem acesso — usado para descobrir o Merchant ID
+export async function listMerchants(): Promise<Array<{ id: string; name: string }>> {
+  const res = await api('/merchant/v1.0/merchants')
+  if (!res.ok) {
+    await logIFood('error', 'config', `List merchants falhou (${res.status})`, await res.text().catch(() => ''))
+    throw new Error(`Falha ao listar lojas (${res.status})`)
+  }
+  const data = await res.json()
+  const arr = Array.isArray(data) ? data : (data?.merchants ?? [])
+  return arr.map((m: { id: string; name?: string; corporateName?: string }) => ({ id: m.id, name: m.name ?? m.corporateName ?? m.id }))
 }
 
 export async function pushStatus(externalId: string, internalStatus: string): Promise<boolean> {

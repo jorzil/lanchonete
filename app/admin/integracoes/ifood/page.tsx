@@ -38,6 +38,9 @@ export default function IFoodIntegrationPage() {
   const [testing, setTesting] = useState(false)
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [merchants, setMerchants] = useState<{ id: string; name: string }[]>([])
+  const [findingMerchants, setFindingMerchants] = useState(false)
+  const [merchantsMsg, setMerchantsMsg] = useState("")
 
   async function loadConfig() {
     const res = await fetch("/api/integrations/ifood/config", { cache: "no-store" })
@@ -82,6 +85,29 @@ export default function IFoodIntegrationPage() {
     }
   }
 
+  async function findMerchants() {
+    setFindingMerchants(true); setMerchantsMsg("")
+    try {
+      // garante que clientId/secret estão salvos no servidor antes de listar
+      await fetch("/api/integrations/ifood/config", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl }),
+      })
+      const res = await fetch("/api/integrations/ifood/merchants", { cache: "no-store" })
+      const data = await res.json()
+      if (res.ok && data.ok && Array.isArray(data.merchants) && data.merchants.length) {
+        setMerchants(data.merchants)
+        if (!merchantId) setMerchantId(data.merchants[0].id)
+      } else {
+        setMerchantsMsg(data.error ?? "Nenhuma loja encontrada. Confira Client ID/Secret.")
+      }
+    } catch {
+      setMerchantsMsg("Erro ao buscar lojas.")
+    } finally {
+      setFindingMerchants(false); setClientSecret(""); loadConfig()
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-2">
@@ -112,8 +138,23 @@ export default function IFoodIntegrationPage() {
               placeholder={cfg?.hasSecret ? `salvo (${cfg.clientSecretMasked})` : "seu client secret"} />
           </div>
           <div className="space-y-1.5">
-            <Label>Merchant ID</Label>
-            <Input value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="id da loja no iFood" />
+            <div className="flex items-center justify-between">
+              <Label>Merchant ID</Label>
+              <button onClick={findMerchants} disabled={findingMerchants} className="text-[11px] font-semibold text-[#EE5C13] hover:underline disabled:opacity-50">
+                {findingMerchants ? "Buscando…" : "Buscar minhas lojas"}
+              </button>
+            </div>
+            {merchants.length > 0 ? (
+              <Select value={merchantId} onValueChange={setMerchantId}>
+                <SelectTrigger><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+                <SelectContent>
+                  {merchants.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="id da loja no iFood" />
+            )}
+            {merchantsMsg && <p className="text-[11px] text-red-500">{merchantsMsg}</p>}
           </div>
           <div className="space-y-1.5">
             <Label>Ambiente</Label>
