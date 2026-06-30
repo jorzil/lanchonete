@@ -95,6 +95,7 @@ export const MENU = {
     { key: 'mussarela',      name: 'Mussarela' },
     { key: 'cheddar-cremoso', name: 'Cheddar Cremoso' },
     { key: 'creme-ricota',   name: 'Creme de Ricota' },
+    { key: 'queijo-parmesao', name: 'Queijo Parmesão' },
   ] as CheeseOption[],
   salads: [
     { key: 'alface',          name: 'Alface' },
@@ -119,7 +120,6 @@ export const MENU = {
     { key: 'bacon',               name: 'Bacon',                price15cm: 5, price30cm: 8 },
     { key: 'peito-peru',          name: 'Peito de Peru',        price15cm: 5, price30cm: 8 },
     { key: 'salaminho-italiano',  name: 'Salaminho Italiano',   price15cm: 5, price30cm: 8 },
-    { key: 'queijo-parmesao',     name: 'Queijo Parmesão',      price15cm: 4, price30cm: 7 },
     { key: 'presunto',            name: 'Presunto',             price15cm: 3, price30cm: 6 },
     { key: 'cebola-caramelizada', name: 'Cebola Caramelizada',  price15cm: 3, price30cm: 6 },
   ] as ExtraOption[],
