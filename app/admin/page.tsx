@@ -178,7 +178,18 @@ export default function AdminDashboard() {
       const list = valid.filter((o) => (o.source ?? "site") === src)
       return { src, count: list.length, revenue: list.reduce((s, o) => s + o.total, 0) }
     })
-    return { revenue, count, ticket, cancelled, bySource }
+    // Produtos mais vendidos (quantidade + faturamento)
+    const prodMap = new Map<string, { name: string; qty: number; revenue: number }>()
+    for (const o of valid) {
+      for (const it of o.items) {
+        const e = prodMap.get(it.name) ?? { name: it.name, qty: 0, revenue: 0 }
+        e.qty += it.quantity
+        e.revenue += it.price * it.quantity
+        prodMap.set(it.name, e)
+      }
+    }
+    const topProducts = [...prodMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 10)
+    return { revenue, count, ticket, cancelled, bySource, topProducts }
   }, [periodOrders])
 
   const periodLabel = PERIOD_LABELS.find((p) => p.key === period)?.label ?? ""
@@ -346,6 +357,35 @@ export default function AdminDashboard() {
             )
           })}
         </div>
+      </Card>
+
+      {/* Produtos mais vendidos (período) */}
+      <Card className="p-5">
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Produtos mais vendidos · {periodLabel}</h3>
+        {periodStats.topProducts.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-400">Nenhuma venda no período.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {periodStats.topProducts.map((p, i) => {
+              const max = periodStats.topProducts[0].qty || 1
+              return (
+                <div key={p.name} className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EE5C13]/10 text-xs font-bold text-[#EE5C13]">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm text-gray-700">{p.name}</span>
+                      <span className="shrink-0 text-xs text-gray-400">{formatCurrency(p.revenue)}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                      <div className="h-1.5 rounded-full bg-[#EE5C13]" style={{ width: `${(p.qty / max) * 100}%` }} />
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-gray-900">{p.qty} un.</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Acesso rápido */}
