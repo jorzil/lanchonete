@@ -129,6 +129,12 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Evita overflow horizontal (que forçava o "diminuir o zoom" no mobile) */
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   html { scroll-behavior: smooth; }
 
   .tabular-nums { font-variant-numeric: tabular-nums; }
