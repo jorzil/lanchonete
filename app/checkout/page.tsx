@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
+import { fbTrack } from '@/components/analytics/meta-pixel'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, generateOrderNumber, MENU, type PaymentMethod, type Order } from '@/lib/store'
 import { generateOrderMessage, openWhatsApp } from '@/lib/whatsapp'
@@ -74,6 +75,9 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     fetchStoreStatus().then((s) => setStoreOpen(computeIsOpen(s)))
+    // Meta Pixel: início de checkout (otimização de anúncios)
+    fbTrack('InitiateCheckout', { value: total, currency: 'BRL', num_items: items.length })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
@@ -213,6 +217,9 @@ export default function CheckoutPage() {
         toast.warning('Pedido salvo localmente. Admin: verifique a conexão em /admin/setup')
       }
     }
+
+    // Meta Pixel: conversão (compra concluída)
+    fbTrack('Purchase', { value: total, currency: 'BRL', num_items: items.length, content_type: 'product' })
 
     const msg = generateOrderMessage(order)
     openWhatsApp(msg)

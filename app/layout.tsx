@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
 import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider'
+import { MetaPixel } from '@/components/analytics/meta-pixel'
 import './globals.css'
 
 const inter = Inter({
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
       </head>
       <body className="antialiased" suppressHydrationWarning>
+        <MetaPixel />
         <CartProvider>
           <SmoothScrollProvider>
             {children}

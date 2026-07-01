@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
 import { validateCoupon, incrementCouponUsage } from '@/lib/coupon-storage'
+import { fbTrack } from '@/components/analytics/meta-pixel'
 
 interface CartContextValue {
   items: CartItem[]
@@ -62,6 +63,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   const addItem = useCallback((newItem: Omit<CartItem, 'id'>) => {
+    fbTrack('AddToCart', { content_name: newItem.name, value: newItem.price * newItem.quantity, currency: 'BRL' })
     setItems((prev) => {
       if (newItem.customization) {
         return [...prev, { ...newItem, id: `${newItem.productId}-${Date.now()}` }]
