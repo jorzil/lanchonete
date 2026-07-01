@@ -129,11 +129,9 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Evita overflow horizontal (que forçava o "diminuir o zoom" no mobile) */
-  html, body {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
+  /* Evita overflow horizontal sem travar o zoom nem quebrar sticky.
+     'clip' não cria contêiner de rolagem (ao contrário de 'hidden'). */
+  body { overflow-x: clip; }
 
   html { scroll-behavior: smooth; }
 
