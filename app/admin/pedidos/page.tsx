@@ -11,7 +11,7 @@ import { formatCurrency, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type O
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
-import { setOrderStatus, deleteDbOrder } from "@/lib/db-orders"
+import { setOrderStatus, setOrderPayment, deleteDbOrder } from "@/lib/db-orders"
 import { toast } from "sonner"
 import { printOrder, getPrintSettings, getPrintQueue } from "@/lib/print-order"
 
@@ -345,6 +345,21 @@ export default function PedidosPage() {
       return next
     })
     setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
+  }
+
+  async function changePayment(order: Order, paymentMethod: string) {
+    // Atualiza localmente na hora
+    setOrders((prev) => {
+      const next = prev.map((o) => o.id === order.id ? { ...o, paymentMethod: paymentMethod as Order["paymentMethod"] } : o)
+      saveOrders(next)
+      return next
+    })
+    setSelected((prev) => prev?.id === order.id ? { ...prev, paymentMethod: paymentMethod as Order["paymentMethod"] } : prev)
+    if (supabaseConfigured) {
+      const result = await setOrderPayment(order, paymentMethod)
+      if (!result.ok) toast.error(`Não foi possível alterar o pagamento: ${result.error ?? 'erro'}`)
+      else toast.success('Forma de pagamento atualizada')
+    }
   }
 
   async function handleDelete() {
@@ -695,7 +710,18 @@ export default function PedidosPage() {
                 <div className="flex justify-between text-gray-500"><span>Entrega</span><span>{formatCurrency(selected.deliveryFee)}</span></div>
                 {selected.discount > 0 && <div className="flex justify-between text-gray-500"><span>Desconto{selected.couponCode ? ` (${selected.couponCode})` : ''}</span><span>-{formatCurrency(selected.discount)}</span></div>}
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total</span><span>{formatCurrency(selected.total)}</span></div>
-                <p className="text-xs text-gray-400">Pagamento: {PAYMENT_LABELS[selected.paymentMethod as keyof typeof PAYMENT_LABELS] ?? selected.paymentMethod}</p>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-gray-400">Pagamento</span>
+                  <select
+                    value={selected.paymentMethod}
+                    onChange={(e) => changePayment(selected, e.target.value)}
+                    className="text-xs font-medium text-gray-700 border border-gray-200 rounded-md px-2 py-1 outline-none focus:border-[#EE5C13]"
+                  >
+                    {Object.entries(PAYMENT_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Status actions */}
