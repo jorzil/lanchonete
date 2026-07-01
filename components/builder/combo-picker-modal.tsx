@@ -48,18 +48,24 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
 
   function handleAdd() {
     if (!bread) { toast.error('Escolha o pão.'); return }
-    if (!cookie) { toast.error('Escolha o cookie.'); return }
-    if (!refri) { toast.error('Escolha o refrigerante.'); return }
+    // Cookie/bebida só são obrigatórios se houver opção disponível (não esgotada)
+    if (COOKIES.length > 0 && !cookie) { toast.error('Escolha o cookie.'); return }
+    if (LATAS.length > 0 && !refri) { toast.error('Escolha a bebida.'); return }
     const breadObj = MENU.breads.find(b => b.key === bread)
     const cookieObj = COOKIES.find(c => c.id === cookie)
     const refriObj = LATAS.find(r => r.id === refri)
+    const parts = [
+      `Pão: ${breadObj?.name}`,
+      cookieObj ? `Cookie: ${cookieObj.name}` : null,
+      refriObj ? `Refri: ${refriObj.name}` : null,
+    ].filter(Boolean)
     addItem({
       productId: product!.id,
       name: product!.name,
       price: product!.price,
       quantity: 1,
       image: product!.image,
-      notes: `Pão: ${breadObj?.name} | Cookie: ${cookieObj?.name} | Refri: ${refriObj?.name}`,
+      notes: parts.join(' | '),
     })
     toast.success(`${product!.name} adicionado!`)
     handleClose()
@@ -100,7 +106,8 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
           </div>
         </div>
 
-        {/* Cookie */}
+        {/* Cookie (some quando não há cookie disponível) */}
+        {COOKIES.length > 0 && (
         <div className="mt-4">
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha o cookie</p>
           <div className="space-y-2">
@@ -123,8 +130,10 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
             ))}
           </div>
         </div>
+        )}
 
-        {/* Refrigerante */}
+        {/* Bebida (some quando não há bebida disponível) */}
+        {LATAS.length > 0 && (
         <div className="mt-4">
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha a bebida</p>
           <div className="space-y-2">
@@ -147,6 +156,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
             ))}
           </div>
         </div>
+        )}
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
           <div>
@@ -156,7 +166,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
           </div>
           <Button
             onClick={handleAdd}
-            disabled={!bread || !cookie || !refri}
+            disabled={!bread || (COOKIES.length > 0 && !cookie) || (LATAS.length > 0 && !refri)}
             className="bg-brand hover:bg-brand-hover text-white font-black px-6 disabled:opacity-40"
           >
             Adicionar ao carrinho
