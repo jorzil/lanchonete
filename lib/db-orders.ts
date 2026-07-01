@@ -182,6 +182,30 @@ export async function updateOrderStatus(id: string, status: string): Promise<voi
   if (error) throw new Error(error.message)
 }
 
+/**
+ * Atualiza o status de forma robusta: tenta por id e, se nenhuma linha for
+ * afetada (id não corresponde ao banco), tenta pelo número do pedido.
+ * Retorna { ok, error } para o chamador poder avisar o usuário.
+ */
+export async function setOrderStatus(
+  order: { id: string; orderNumber: string },
+  status: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
+
+  // 1) tenta por id
+  const byId = await supabase.from('orders').update({ status }).eq('id', order.id).select('id')
+  if (byId.error) return { ok: false, error: byId.error.message }
+  if (byId.data && byId.data.length > 0) return { ok: true }
+
+  // 2) fallback: por número do pedido
+  const byNumber = await supabase.from('orders').update({ status }).eq('order_number', order.orderNumber).select('id')
+  if (byNumber.error) return { ok: false, error: byNumber.error.message }
+  if (byNumber.data && byNumber.data.length > 0) return { ok: true }
+
+  return { ok: false, error: 'Pedido não encontrado no banco' }
+}
+
 // ─── Delete order ───────────────────────────────────────────────────────────
 export async function deleteDbOrder(id: string): Promise<void> {
   if (!supabaseConfigured) throw new Error('Supabase not configured')

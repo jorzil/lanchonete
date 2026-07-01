@@ -11,7 +11,8 @@ import { formatCurrency, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type O
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
-import { updateOrderStatus, deleteDbOrder } from "@/lib/db-orders"
+import { setOrderStatus, deleteDbOrder } from "@/lib/db-orders"
+import { toast } from "sonner"
 import { printOrder, getPrintSettings, getPrintQueue } from "@/lib/print-order"
 
 const PAGE_SIZE = 8
@@ -329,14 +330,11 @@ export default function PedidosPage() {
     }
     const id = order.id
     if (supabaseConfigured) {
-      try {
-        // Update status directly in the DB (no Evolution/API send — message
-        // goes out via WhatsApp Web above).
-        await updateOrderStatus(id, nextStatus)
-        await loadAll()
-      } catch {
-        await loadAll()
+      const result = await setOrderStatus(order, nextStatus)
+      if (!result.ok) {
+        toast.error(`Não foi possível ${nextStatus === 'cancelado' ? 'cancelar' : 'atualizar'} o pedido: ${result.error ?? 'erro'}`)
       }
+      await loadAll()
     }
     // localStorage fallback
     setOrders((prev) => {
