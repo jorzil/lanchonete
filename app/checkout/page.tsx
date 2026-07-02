@@ -47,6 +47,14 @@ function customizationLabel(c: NonNullable<import('@/lib/store').CartItem['custo
   return parts.join(' • ')
 }
 
+// Entregamos apenas em Governador Valadares
+function normalizeCity(s: string) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+function isAllowedCity(city: string) {
+  return normalizeCity(city) === 'governador valadares'
+}
+
 function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode; delay?: number }) {
   return (
     <div className="animate-slide-up bg-navy-surface rounded-2xl p-6 border border-white/6">
@@ -103,7 +111,11 @@ export default function CheckoutPage() {
         const city       = data.localidade || ''
         const state      = data.uf || ''
         setForm((prev) => ({ ...prev, street, neighborhood, city, state }))
-        toast.success('Endereço encontrado!')
+        if (!isAllowedCity(city)) {
+          toast.error('Entregamos apenas em Governador Valadares. Você pode escolher "Retirada".')
+        } else {
+          toast.success('Endereço encontrado!')
+        }
 
         // Geocode and calculate delivery fee
         const addressStr = `${street}, ${neighborhood}, ${city}, ${state}, Brasil`
@@ -138,6 +150,10 @@ export default function CheckoutPage() {
       if (!form.number.trim()) return 'Informe o número.'
       if (!form.neighborhood.trim()) return 'Informe o bairro.'
       if (!form.city.trim()) return 'Informe a cidade.'
+      // Entrega apenas para Governador Valadares
+      if (!isAllowedCity(form.city)) {
+        return 'No momento entregamos apenas em Governador Valadares. Escolha "Retirada" ou informe um endereço da cidade.'
+      }
     }
     if (items.length === 0) return 'Carrinho vazio.'
     return null
