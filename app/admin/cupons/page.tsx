@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Plus, Trash2, Edit2, Check, X, Tag, TrendingDown, Hash, Calendar } from "lucide-react"
+import React, { useEffect, useMemo, useState } from "react"
+import { Plus, Trash2, Edit2, Check, X, Tag, TrendingDown, Hash, Calendar, ChevronDown } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency } from "@/lib/store"
+import { formatCurrency, type Order } from "@/lib/store"
+import { loadOrders } from "@/lib/orders-storage"
+import { supabaseConfigured } from "@/lib/supabase"
 import {
   getCoupons, addCoupon, updateCoupon, deleteCoupon, pullCoupons, pushCoupons,
   type CouponDef, type CouponType,
@@ -37,8 +39,37 @@ export default function CuponsPage() {
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
   const [toDelete, setToDelete] = useState<CouponDef | null>(null)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => { pullCoupons().then(() => setCoupons(getCoupons())) }, [])
+
+  // Carrega os pedidos para vincular por cupom
+  useEffect(() => {
+    async function load() {
+      if (supabaseConfigured) {
+        try {
+          const res = await fetch('/api/orders')
+          if (res.ok) { const { orders } = await res.json(); setOrders(orders ?? []); return }
+        } catch {}
+      }
+      setOrders(loadOrders())
+    }
+    load()
+  }, [])
+
+  // Pedidos agrupados por código de cupom
+  const ordersByCoupon = useMemo(() => {
+    const map = new Map<string, Order[]>()
+    for (const o of orders) {
+      if (!o.couponCode) continue
+      const key = o.couponCode.toUpperCase()
+      const arr = map.get(key) ?? []
+      arr.push(o)
+      map.set(key, arr)
+    }
+    return map
+  }, [orders])
 
   function refresh() { setCoupons(getCoupons()); pushCoupons() }
 
@@ -273,7 +304,8 @@ export default function CuponsPage() {
                 const expired = c.validUntil && new Date(c.validUntil) < new Date()
                 const limitReached = c.maxUses !== null && c.usedCount >= c.maxUses
                 return (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                  <React.Fragment key={c.id}>
+                  <tr className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                     <td className="px-5 py-3">
                       <code className="rounded bg-gray-100 px-2 py-0.5 text-[13px] font-mono font-bold text-gray-800">
                         {c.code}
@@ -293,7 +325,19 @@ export default function CuponsPage() {
                       {c.minOrder > 0 ? formatCurrency(c.minOrder) : '—'}
                     </td>
                     <td className="px-5 py-3 text-gray-700">
-                      {c.usedCount}{c.maxUses !== null ? `/${c.maxUses}` : ''}
+                      {(() => {
+                        const linked = ordersByCoupon.get(c.code.toUpperCase()) ?? []
+                        return (
+                          <button
+                            onClick={() => setExpanded(expanded === c.code ? null : c.code)}
+                            className="inline-flex items-center gap-1 hover:text-[#EE5C13] transition-colors"
+                            title="Ver pedidos que usaram este cupom"
+                          >
+                            <span>{linked.length || c.usedCount}{c.maxUses !== null ? `/${c.maxUses}` : ''}</span>
+                            {linked.length > 0 && <ChevronDown size={13} className={`transition-transform ${expanded === c.code ? 'rotate-180' : ''}`} />}
+                          </button>
+                        )
+                      })()}
                       {limitReached && <span className="ml-1 text-[10px] text-red-500">esgotado</span>}
                     </td>
                     <td className="px-5 py-3 text-gray-500 text-xs">
@@ -331,6 +375,33 @@ export default function CuponsPage() {
                       </div>
                     </td>
                   </tr>
+                  {expanded === c.code && (() => {
+                    const linked = [...(ordersByCoupon.get(c.code.toUpperCase()) ?? [])]
+                      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+                    return (
+                      <tr key={`${c.id}-orders`} className="bg-gray-50/60">
+                        <td colSpan={9} className="px-5 py-3">
+                          {linked.length === 0 ? (
+                            <p className="text-xs text-gray-400">Nenhum pedido usou este cupom ainda.</p>
+                          ) : (
+                            <div className="space-y-1">
+                              <p className="text-[11px] font-semibold text-gray-500 mb-1">Pedidos que usaram {c.code} ({linked.length}):</p>
+                              {linked.map((o) => (
+                                <div key={o.id} className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 border-b border-gray-100 last:border-0 py-1">
+                                  <span className="font-medium text-gray-900">{o.orderNumber}</span>
+                                  <span>{o.customer.name}</span>
+                                  <span className="text-gray-400">{new Date(o.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                                  <span className="text-red-600">-{formatCurrency(o.discount || 0)}</span>
+                                  <span className="font-semibold text-gray-900">{formatCurrency(o.total)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })()}
+                  </React.Fragment>
                 )
               })}
             </tbody>
