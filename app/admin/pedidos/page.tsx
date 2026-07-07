@@ -27,25 +27,30 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string; next?: string 
   cancelado:     { label: "Cancelado",         cls: "bg-red-100 text-red-700 border-red-200" },
 }
 
-function buildWaMessage(status: string, orderNumber: string): string {
+function buildWaMessage(status: string, orderNumber: string, orderType: string = 'entrega'): string {
   const trackUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://www.maissub.com.br'}/acompanhar/${orderNumber}`
   const track = `\n\n🔍 *Acompanhe seu pedido em tempo real:*\n${trackUrl}`
+  const isRetirada = orderType === 'retirada'
   const msgs: Record<string, string> = {
     aceito:       `✅ *Seu pedido #${orderNumber} foi aceito!* Entrou na fila de preparo. Em breve começamos a preparar. 🥪${track}`,
     em_preparo:   `👨‍🍳 *Seu pedido #${orderNumber} está sendo preparado!* Caprichamos em cada detalhe. Em breve fica pronto!${track}`,
-    pronto:       `✨ *Seu pedido #${orderNumber} ficou pronto!* Será enviado em instantes. 🚀${track}`,
+    pronto:       isRetirada
+      ? `🙌 *Seu pedido #${orderNumber} está pronto para retirada!* Pode vir buscar na loja: R. 7 de Setembro, 2480 - Centro, Gov. Valadares.${track}`
+      : `✨ *Seu pedido #${orderNumber} ficou pronto!* Será enviado em instantes. 🚀${track}`,
     saiu_entrega: `🛵 *Seu pedido #${orderNumber} saiu para entrega!* Estamos a caminho. Fique de olho!${track}`,
-    entregue:     `🎉 *Pedido #${orderNumber} entregue!* Obrigado por escolher a Mais Sub. Bom apetite! 🥖`,
+    entregue:     isRetirada
+      ? `🎉 *Pedido #${orderNumber} retirado!* Obrigado por escolher a Mais Sub. Bom apetite! 🥖`
+      : `🎉 *Pedido #${orderNumber} entregue!* Obrigado por escolher a Mais Sub. Bom apetite! 🥖`,
     cancelado:    `❌ *Seu pedido #${orderNumber} foi cancelado.* Lamentamos o inconveniente. Entre em contato: (33) 98461-9205`,
   }
   return msgs[status] ?? ''
 }
 
-// Mensagem completa (inclui o código de entrega quando "saiu para entrega")
-function buildStatusMessage(status: string, orderNumber: string, deliveryCode?: string): string {
-  let msg = buildWaMessage(status, orderNumber)
+// Mensagem completa (inclui o código de entrega quando "saiu para entrega", só para entrega)
+function buildStatusMessage(status: string, orderNumber: string, deliveryCode?: string, orderType: string = 'entrega'): string {
+  let msg = buildWaMessage(status, orderNumber, orderType)
   if (!msg) return ''
-  if (status === 'saiu_entrega' && deliveryCode) {
+  if (status === 'saiu_entrega' && deliveryCode && orderType !== 'retirada') {
     msg += `\n\n🔐 *Código de entrega:* ${deliveryCode}\nInforme este código ao entregador para confirmar o recebimento.`
   }
   return msg
@@ -208,7 +213,7 @@ export default function PedidosPage() {
   }
 
   function copyStatusMessage(order: Order) {
-    const msg = buildStatusMessage(order.status, order.orderNumber, order.deliveryCode)
+    const msg = buildStatusMessage(order.status, order.orderNumber, order.deliveryCode, order.orderType)
     if (!msg) return
     try {
       navigator.clipboard?.writeText(msg)
@@ -305,8 +310,8 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string) {
-    const msg = buildStatusMessage(status, orderNumber, deliveryCode)
+  function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string, orderType?: string) {
+    const msg = buildStatusMessage(status, orderNumber, deliveryCode, orderType)
     if (!msg) return
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
@@ -326,7 +331,7 @@ export default function PedidosPage() {
     } else {
       // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
       // gesture so the browser does not block the popup).
-      openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode)
+      openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
     }
     const id = order.id
     if (supabaseConfigured) {
@@ -765,7 +770,7 @@ export default function PedidosPage() {
                       {copiedId === selected.id ? "Copiado!" : "Copiar"}
                     </button>
                     <button
-                      onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode)}
+                      onClick={() => openWhatsAppWeb(selected.customer.phone, selected.status, selected.orderNumber, selected.deliveryCode, selected.orderType)}
                       className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1fbd5b] text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
                     >
                       💬 WhatsApp
