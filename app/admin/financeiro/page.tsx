@@ -9,14 +9,16 @@ import {
 import { formatCurrency } from "@/lib/store"
 import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
+  replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   EXPENSE_CATEGORY_LABELS,
   type Transaction, type TxKind, type ExpenseCategory,
 } from "@/lib/finance-storage"
 import {
-  loadBills, addBill, updateBill, deleteBill, markPaid,
-  getBillsSummary,
+  loadBills, addBill, updateBill, deleteBill, deleteSeries, markPaid,
+  getBillsSummary, replaceBills, fetchBillsRemote,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
-  type Bill, type BillType, type BillCategory,
+  RECURRENCE_LABELS,
+  type Bill, type BillType, type BillCategory, type Recurrence,
 } from "@/lib/bills-storage"
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -55,6 +57,7 @@ function BillModal({
     paidDate: bill?.paidDate ?? "",
     category: bill?.category ?? categories[0],
     notes: bill?.notes ?? "",
+    recurrence: (bill?.recurrence ?? "none") as Recurrence,
   })
 
   function set(k: string, v: string) {
@@ -75,9 +78,11 @@ function BillModal({
       paidDate: form.paidDate || null,
       category: form.category as BillCategory,
       notes: form.notes.trim() || undefined,
+      recurrence: form.recurrence,
     }
 
     if (bill) {
+      // ao editar não regeramos a série; mantemos a periodicidade original
       updateBill(bill.id, data)
     } else {
       addBill(data)
@@ -164,6 +169,26 @@ function BillModal({
             </select>
           </div>
 
+          {!bill && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Repetir</label>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                value={form.recurrence}
+                onChange={(e) => set("recurrence", e.target.value)}
+              >
+                {(Object.keys(RECURRENCE_LABELS) as Recurrence[]).map((r) => (
+                  <option key={r} value={r}>{RECURRENCE_LABELS[r]}</option>
+                ))}
+              </select>
+              {form.recurrence !== "none" && (
+                <p className="mt-1 text-[11px] text-gray-400">
+                  Serão criadas parcelas {RECURRENCE_LABELS[form.recurrence].toLowerCase()}s a partir do vencimento.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Observações</label>
             <textarea
@@ -203,7 +228,7 @@ function BillsTable({
 }: {
   bills: Bill[]
   onEdit: (b: Bill) => void
-  onDelete: (id: string) => void
+  onDelete: (b: Bill) => void
   onPay: (id: string) => void
 }) {
   const [filter, setFilter] = useState<"todos" | Bill["status"]>("todos")
@@ -262,7 +287,14 @@ function BillsTable({
                   return (
                     <tr key={b.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900">{b.description}</p>
+                        <p className="font-medium text-gray-900 flex items-center gap-1.5">
+                          {b.description}
+                          {b.recurrence && b.recurrence !== "none" && (
+                            <span className="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-600">
+                              ↻ {RECURRENCE_LABELS[b.recurrence]}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-400">{BILL_CATEGORY_LABELS[b.category]}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
@@ -297,7 +329,7 @@ function BillsTable({
                             Editar
                           </button>
                           <button
-                            onClick={() => onDelete(b.id)}
+                            onClick={() => onDelete(b)}
                             className="rounded-lg p-1 text-red-400 hover:bg-red-50"
                           >
                             <Trash2 size={13} />
@@ -328,16 +360,33 @@ export default function FinanceiroPage() {
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: now.toISOString().slice(0, 10) })
-  const [toDeleteBill, setToDeleteBill] = useState<string | null>(null)
+  const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
 
   function refreshBills() {
     setBills(loadBills())
     setSummary(getBillsSummary())
   }
 
+  // Envia contas + lançamentos ao Supabase (persistência em todos os aparelhos)
+  function persist() {
+    void pushFinanceRemote(loadBills(), loadTransactions())
+  }
+
   useEffect(() => {
-    setTransactions(loadTransactions())
-    refreshBills()
+    let alive = true
+    ;(async () => {
+      // Hidrata a partir do Supabase (se disponível) antes de exibir
+      const [remoteBills, remoteTx] = await Promise.all([
+        fetchBillsRemote(),
+        fetchTransactionsRemote(),
+      ])
+      if (!alive) return
+      if (remoteBills) replaceBills(remoteBills)
+      if (remoteTx) replaceTransactions(remoteTx)
+      setTransactions(loadTransactions())
+      refreshBills()
+    })()
+    return () => { alive = false }
   }, [])
 
   const dre = useMemo(() => calcDRE(month, year), [transactions, month, year])
@@ -350,6 +399,7 @@ export default function FinanceiroPage() {
     if (!amount || !txForm.description.trim()) return
     addTransaction({ ...txForm, amount })
     setTransactions(loadTransactions())
+    persist()
     setShowTxModal(false)
     setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: now.toISOString().slice(0, 10) })
   }
@@ -357,17 +407,27 @@ export default function FinanceiroPage() {
   function handleDeleteTx(id: string) {
     deleteTransaction(id)
     setTransactions(loadTransactions())
+    persist()
   }
 
-  function handleDeleteBill(id: string) {
-    deleteBill(id)
+  function handleDeleteBill(bill: Bill, whole = false) {
+    if (whole && bill.recurringId) deleteSeries(bill.recurringId)
+    else deleteBill(bill.id)
     setToDeleteBill(null)
     refreshBills()
+    persist()
   }
 
   function handlePayBill(id: string) {
     markPaid(id)
     refreshBills()
+    persist()
+  }
+
+  // chamado pelo BillModal após adicionar/editar
+  function handleBillSaved() {
+    refreshBills()
+    persist()
   }
 
   // Summary cards
@@ -561,7 +621,7 @@ export default function FinanceiroPage() {
           <BillsTable
             bills={receberBills}
             onEdit={(b) => setBillModal({ type: "receber", bill: b })}
-            onDelete={(id) => setToDeleteBill(id)}
+            onDelete={(b) => setToDeleteBill(b)}
             onPay={handlePayBill}
           />
         </div>
@@ -584,7 +644,7 @@ export default function FinanceiroPage() {
           <BillsTable
             bills={pagarBills}
             onEdit={(b) => setBillModal({ type: "pagar", bill: b })}
-            onDelete={(id) => setToDeleteBill(id)}
+            onDelete={(b) => setToDeleteBill(b)}
             onPay={handlePayBill}
           />
         </div>
@@ -679,7 +739,7 @@ export default function FinanceiroPage() {
           type={billModal.type}
           bill={billModal.bill}
           onClose={() => setBillModal(null)}
-          onSave={refreshBills}
+          onSave={handleBillSaved}
         />
       )}
 
@@ -689,20 +749,44 @@ export default function FinanceiroPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-base font-semibold text-gray-900">Excluir conta?</h3>
             <p className="mt-1 text-sm text-gray-500">Esta ação não pode ser desfeita.</p>
-            <div className="mt-5 flex gap-3">
-              <button
-                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                onClick={() => setToDeleteBill(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
-                onClick={() => handleDeleteBill(toDeleteBill)}
-              >
-                Excluir
-              </button>
-            </div>
+            {toDeleteBill.recurringId && (
+              <div className="mt-4 space-y-2">
+                <button
+                  className="w-full rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
+                  onClick={() => handleDeleteBill(toDeleteBill)}
+                >
+                  Excluir apenas esta parcela
+                </button>
+                <button
+                  className="w-full rounded-lg border border-red-200 bg-red-50 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                  onClick={() => handleDeleteBill(toDeleteBill, true)}
+                >
+                  Excluir toda a recorrência
+                </button>
+                <button
+                  className="w-full rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => setToDeleteBill(null)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+            {!toDeleteBill.recurringId && (
+              <div className="mt-5 flex gap-3">
+                <button
+                  className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => setToDeleteBill(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
+                  onClick={() => handleDeleteBill(toDeleteBill)}
+                >
+                  Excluir
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

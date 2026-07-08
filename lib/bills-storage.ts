@@ -29,6 +29,22 @@ export const RECEBER_CATEGORIES: BillCategory[] = [
   "venda","servico","adiantamento","outros",
 ]
 
+export type Recurrence = "none" | "semanal" | "mensal" | "anual"
+
+export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  none:    "Não repetir",
+  semanal: "Semanal",
+  mensal:  "Mensal",
+  anual:   "Anual",
+}
+
+// Quantas parcelas geramos ao criar uma conta recorrente
+const RECURRENCE_COUNT: Record<Exclude<Recurrence, "none">, number> = {
+  semanal: 12,
+  mensal:  12,
+  anual:   3,
+}
+
 export interface Bill {
   id: string
   type: BillType
@@ -45,6 +61,10 @@ export interface Bill {
   status: BillStatus
   notes?: string
   createdAt: string
+  /** Periodicidade da conta recorrente (padrão: none) */
+  recurrence?: Recurrence
+  /** Id que agrupa as parcelas de uma mesma conta recorrente */
+  recurringId?: string
 }
 
 const KEY = "mais_sub_bills"
@@ -88,14 +108,64 @@ export function loadBills(): Bill[] {
   return list
 }
 
+/** Avança uma data YYYY-MM-DD conforme a periodicidade, n vezes. */
+function advanceDate(iso: string, rec: Exclude<Recurrence, "none">, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number)
+  const base = new Date(y, m - 1, d)
+  if (rec === "semanal") base.setDate(base.getDate() + 7 * n)
+  else if (rec === "mensal") base.setMonth(base.getMonth() + n)
+  else base.setFullYear(base.getFullYear() + n)
+  const yy = base.getFullYear()
+  const mm = String(base.getMonth() + 1).padStart(2, "0")
+  const dd = String(base.getDate()).padStart(2, "0")
+  return `${yy}-${mm}-${dd}`
+}
+
 export function addBill(data: Omit<Bill, "id" | "createdAt" | "status">): Bill {
+  const createdAt = new Date().toISOString()
+  const rec = data.recurrence ?? "none"
+  const list = load()
+
+  if (rec !== "none") {
+    // Gera uma série de parcelas recorrentes a partir do vencimento informado
+    const recurringId = uid()
+    const count = RECURRENCE_COUNT[rec]
+    const first: Bill = {
+      ...data,
+      recurrence: rec,
+      recurringId,
+      id: uid(),
+      status: deriveStatus({ ...data, status: "pendente" }),
+      createdAt,
+    }
+    const series: Bill[] = [first]
+    for (let i = 1; i < count; i++) {
+      const dueDate = advanceDate(data.dueDate, rec, i)
+      series.push({
+        ...data,
+        recurrence: rec,
+        recurringId,
+        dueDate,
+        // parcelas futuras começam sem pagamento
+        amountPaid: 0,
+        paidDate: null,
+        id: uid(),
+        status: deriveStatus({ ...data, dueDate, amountPaid: 0, status: "pendente" }),
+        createdAt,
+      })
+    }
+    // mais antigas por último para aparecerem no topo (unshift preserva ordem)
+    for (let i = series.length - 1; i >= 0; i--) list.unshift(series[i])
+    save(list)
+    return first
+  }
+
   const bill: Bill = {
     ...data,
     id: uid(),
     status: deriveStatus({ ...data, status: "pendente" }),
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
-  const list = load()
   list.unshift(bill)
   save(list)
   return bill
@@ -113,6 +183,28 @@ export function updateBill(id: string, patch: Partial<Omit<Bill, "id" | "created
 
 export function deleteBill(id: string): void {
   save(load().filter((b) => b.id !== id))
+}
+
+/** Remove todas as parcelas de uma conta recorrente. */
+export function deleteSeries(recurringId: string): void {
+  save(load().filter((b) => b.recurringId !== recurringId))
+}
+
+/** Substitui a lista local (usado na hidratação a partir do Supabase). */
+export function replaceBills(list: Bill[]): void {
+  save(Array.isArray(list) ? list : [])
+}
+
+// ---------- Sincronização com Supabase ----------
+export async function fetchBillsRemote(): Promise<Bill[] | null> {
+  try {
+    const res = await fetch("/api/finance", { cache: "no-store" })
+    if (!res.ok) return null
+    const data = await res.json()
+    return Array.isArray(data.bills) ? (data.bills as Bill[]) : []
+  } catch {
+    return null
+  }
 }
 
 /** Mark a bill as fully paid right now */

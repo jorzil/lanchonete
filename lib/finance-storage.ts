@@ -73,6 +73,38 @@ export function deleteTransaction(id: string): void {
   saveTransactions(loadTransactions().filter((t) => t.id !== id))
 }
 
+/** Substitui a lista local (usado na hidratação a partir do Supabase). */
+export function replaceTransactions(list: Transaction[]): void {
+  saveTransactions(Array.isArray(list) ? list : [])
+}
+
+// ---------- Sincronização com Supabase ----------
+export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
+  try {
+    const res = await fetch("/api/finance", { cache: "no-store" })
+    if (!res.ok) return null
+    const data = await res.json()
+    return Array.isArray(data.transactions) ? (data.transactions as Transaction[]) : []
+  } catch {
+    return null
+  }
+}
+
+/** Envia contas + lançamentos ao Supabase (chamado após cada mutação). */
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[]): Promise<boolean> {
+  try {
+    const res = await fetch("/api/finance", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bills, transactions }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return !!(res.ok && data.ok)
+  } catch {
+    return false
+  }
+}
+
 // ---------- DRE ----------
 function inMonth(iso: string, month: number, year: number): boolean {
   const d = new Date(iso)
