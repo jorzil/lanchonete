@@ -16,9 +16,10 @@ import {
 import {
   loadBills, addBill, updateBill, deleteBill, deleteSeries, markPaid,
   getBillsSummary, replaceBills, fetchBillsRemote,
+  loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
-  type Bill, type BillType, type BillCategory, type Recurrence,
+  type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
 } from "@/lib/bills-storage"
 
 const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -40,14 +41,19 @@ function BillModal({
   bill,
   onClose,
   onSave,
+  onCategoriesChanged,
 }: {
   type: BillType
   bill: Bill | null
   onClose: () => void
   onSave: () => void
+  onCategoriesChanged: () => void
 }) {
   const categories = type === "pagar" ? PAGAR_CATEGORIES : RECEBER_CATEGORIES
   const today = new Date().toISOString().slice(0, 10)
+  const [customCats, setCustomCats] = useState<CustomCategory[]>(() => loadCustomCategories().filter((c) => c.type === type))
+  const [addingCat, setAddingCat] = useState(false)
+  const [newCatLabel, setNewCatLabel] = useState("")
 
   const [form, setForm] = useState({
     description: bill?.description ?? "",
@@ -157,16 +163,61 @@ function BillModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Categoria</label>
-            <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
-              value={form.category}
-              onChange={(e) => set("category", e.target.value)}
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>{BILL_CATEGORY_LABELS[c]}</option>
-              ))}
-            </select>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium text-gray-600">Categoria</label>
+              <button
+                type="button"
+                onClick={() => setAddingCat((v) => !v)}
+                className="text-[11px] font-medium text-orange-600 hover:text-orange-700"
+              >
+                {addingCat ? "cancelar" : "+ nova categoria"}
+              </button>
+            </div>
+            {addingCat ? (
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                  value={newCatLabel}
+                  onChange={(e) => setNewCatLabel(e.target.value)}
+                  placeholder={type === "pagar" ? "Ex: Fornecedor de bebidas" : "Ex: Aluguel de espaço"}
+                  onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault() }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const label = newCatLabel.trim()
+                    if (!label) return
+                    const cat = addCustomCategory(label, type)
+                    setCustomCats(loadCustomCategories().filter((c) => c.type === type))
+                    set("category", cat.key)
+                    setNewCatLabel("")
+                    setAddingCat(false)
+                    onCategoriesChanged()
+                  }}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-medium text-white hover:bg-orange-600"
+                >
+                  Criar
+                </button>
+              </div>
+            ) : (
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                value={form.category}
+                onChange={(e) => set("category", e.target.value)}
+              >
+                {categories.map((c) => (
+                  <option key={c} value={c}>{BILL_CATEGORY_LABELS[c]}</option>
+                ))}
+                {customCats.length > 0 && (
+                  <optgroup label="Personalizadas">
+                    {customCats.map((c) => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
           </div>
 
           {!bill && (
@@ -232,8 +283,19 @@ function BillsTable({
   onPay: (id: string) => void
 }) {
   const [filter, setFilter] = useState<"todos" | Bill["status"]>("todos")
+  // Filtro por mês de vencimento: "todos" ou "YYYY-MM"
+  const [monthFilter, setMonthFilter] = useState<string>("todos")
 
-  const filtered = bills.filter((b) => filter === "todos" || b.status === filter)
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const b of bills) set.add(b.dueDate.slice(0, 7))
+    return Array.from(set).sort().reverse()
+  }, [bills])
+
+  const filtered = bills.filter((b) =>
+    (filter === "todos" || b.status === filter) &&
+    (monthFilter === "todos" || b.dueDate.slice(0, 7) === monthFilter)
+  )
 
   const filters: Array<{ key: "todos" | Bill["status"]; label: string }> = [
     { key: "todos", label: "Todos" },
@@ -246,7 +308,7 @@ function BillsTable({
   return (
     <div className="space-y-4">
       {/* Filter bar */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap">
         {filters.map((f) => (
           <button
             key={f.key}
@@ -260,6 +322,17 @@ function BillsTable({
             {f.label}
           </button>
         ))}
+        <select
+          className="ml-auto rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-orange-400"
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+        >
+          <option value="todos">Todos os meses</option>
+          {monthOptions.map((m) => {
+            const [y, mo] = m.split("-")
+            return <option key={m} value={m}>{MONTHS[+mo - 1]}/{y}</option>
+          })}
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -295,7 +368,7 @@ function BillsTable({
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400">{BILL_CATEGORY_LABELS[b.category]}</p>
+                        <p className="text-xs text-gray-400">{billCategoryLabel(b.category)}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {new Date(b.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
@@ -367,21 +440,28 @@ export default function FinanceiroPage() {
     setSummary(getBillsSummary())
   }
 
-  // Envia contas + lançamentos ao Supabase (persistência em todos os aparelhos)
+  // Envia contas + lançamentos + categorias ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories())
   }
 
   useEffect(() => {
     let alive = true
     ;(async () => {
       // Hidrata a partir do Supabase (se disponível) antes de exibir
-      const [remoteBills, remoteTx] = await Promise.all([
+      const [remoteFinance, remoteTx] = await Promise.all([
         fetchBillsRemote(),
         fetchTransactionsRemote(),
       ])
       if (!alive) return
-      if (remoteBills) replaceBills(remoteBills)
+      if (remoteFinance) {
+        replaceBills(remoteFinance.bills)
+        // mescla categorias personalizadas remotas com as locais
+        const local = loadCustomCategories()
+        const merged = [...remoteFinance.customCategories]
+        for (const c of local) if (!merged.some((m) => m.key === c.key)) merged.push(c)
+        saveCustomCategories(merged)
+      }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       refreshBills()
@@ -740,6 +820,7 @@ export default function FinanceiroPage() {
           bill={billModal.bill}
           onClose={() => setBillModal(null)}
           onSave={handleBillSaved}
+          onCategoriesChanged={persist}
         />
       )}
 

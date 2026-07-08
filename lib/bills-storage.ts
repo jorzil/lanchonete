@@ -29,6 +29,56 @@ export const RECEBER_CATEGORIES: BillCategory[] = [
   "venda","servico","adiantamento","outros",
 ]
 
+// ---------- Categorias personalizadas (ex.: outros tipos de fornecedor) ----------
+export interface CustomCategory {
+  /** chave única, ex.: custom_fornecedor_bebidas */
+  key: string
+  label: string
+  /** a qual aba a categoria pertence */
+  type: BillType
+}
+
+const CUSTOM_CAT_KEY = "mais_sub_custom_bill_categories"
+
+export function loadCustomCategories(): CustomCategory[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(CUSTOM_CAT_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CustomCategory[]) : []
+  } catch { return [] }
+}
+
+export function saveCustomCategories(list: CustomCategory[]): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(CUSTOM_CAT_KEY, JSON.stringify(list)) } catch { /* */ }
+}
+
+export function addCustomCategory(label: string, type: BillType): CustomCategory {
+  const slug = label.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+  const cat: CustomCategory = { key: `custom_${slug || Date.now()}`, label: label.trim(), type }
+  const list = loadCustomCategories()
+  if (!list.some((c) => c.key === cat.key)) {
+    list.push(cat)
+    saveCustomCategories(list)
+  }
+  return cat
+}
+
+export function deleteCustomCategory(key: string): void {
+  saveCustomCategories(loadCustomCategories().filter((c) => c.key !== key))
+}
+
+/** Label de qualquer categoria (padrão ou personalizada). */
+export function billCategoryLabel(cat: string): string {
+  const std = (BILL_CATEGORY_LABELS as Record<string, string>)[cat]
+  if (std) return std
+  const custom = loadCustomCategories().find((c) => c.key === cat)
+  return custom?.label ?? cat
+}
+
 export type Recurrence = "none" | "semanal" | "mensal" | "anual"
 
 export const RECURRENCE_LABELS: Record<Recurrence, string> = {
@@ -48,7 +98,8 @@ const RECURRENCE_COUNT: Record<Exclude<Recurrence, "none">, number> = {
 export interface Bill {
   id: string
   type: BillType
-  category: BillCategory
+  /** categoria padrão (BillCategory) ou chave de categoria personalizada */
+  category: BillCategory | (string & {})
   description: string
   /** Valor total da conta (R$) */
   amount: number
@@ -196,12 +247,15 @@ export function replaceBills(list: Bill[]): void {
 }
 
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<Bill[] | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[] } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
     const data = await res.json()
-    return Array.isArray(data.bills) ? (data.bills as Bill[]) : []
+    return {
+      bills: Array.isArray(data.bills) ? (data.bills as Bill[]) : [],
+      customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
+    }
   } catch {
     return null
   }
