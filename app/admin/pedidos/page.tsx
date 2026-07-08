@@ -86,11 +86,8 @@ function unlockAudio() {
   } catch {}
 }
 
-function startSiren() {
+function buildSiren(ctx: AudioContext) {
   try {
-    stopSiren()
-    const ctx = ensureAudio()
-    if (!ctx) return
     sirenOsc = ctx.createOscillator()
     sirenGain = ctx.createGain()
     sirenOsc.connect(sirenGain)
@@ -111,6 +108,20 @@ function startSiren() {
       sirenOsc.frequency.linearRampToValueAtTime(up ? 900 : 600, now + 0.4)
       up = !up
     }, 400)
+  } catch {}
+}
+
+function startSiren() {
+  try {
+    stopSiren()
+    const ctx = ensureAudio()
+    if (!ctx) return
+    // Se o contexto está suspenso (browser hiberna o áudio), retoma ANTES de tocar
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => buildSiren(ctx)).catch(() => {})
+    } else {
+      buildSiren(ctx)
+    }
   } catch {}
 }
 
@@ -228,28 +239,38 @@ export default function PedidosPage() {
   const [newCount, setNewCount] = useState(0)
   const [isRealtime, setIsRealtime] = useState(false)
   const prevOrderIds = useRef<Set<string>>(new Set())
+  const firstLoadRef = useRef(true)
+
+  // Processa a lista carregada: detecta pedidos NOVOS não vistos e dispara a sirene
+  function applyOrders(list: Order[]) {
+    const newOnes = list.filter((o) => o.status === "novo" && !prevOrderIds.current.has(o.id))
+    setOrders(list)
+    setNewCount(list.filter((o) => o.status === "novo").length)
+    list.forEach((o) => prevOrderIds.current.add(o.id))
+
+    // Não dispara no primeiro carregamento (pedidos já existentes)
+    if (!firstLoadRef.current && newOnes.length > 0) {
+      startSiren()
+      const settings = getPrintSettings()
+      if (settings.autoPrintOnNew) newOnes.forEach((o) => printOrder(o))
+    }
+    firstLoadRef.current = false
+    setLoaded(true)
+  }
 
   // Load orders — Supabase if configured, else localStorage
   async function loadAll() {
     if (supabaseConfigured) {
       try {
-        const res = await fetch("/api/orders")
+        const res = await fetch("/api/orders", { cache: "no-store" })
         if (res.ok) {
           const { orders: rows } = await res.json()
-          setOrders(rows)
-          setNewCount(rows.filter((o: Order) => o.status === "novo").length)
-          rows.forEach((o: Order) => prevOrderIds.current.add(o.id))
-          setLoaded(true)
+          applyOrders(rows as Order[])
           return
         }
       } catch {}
     }
-    // Fallback to localStorage
-    const local = loadOrders()
-    setOrders(local)
-    setNewCount(local.filter((o) => o.status === "novo").length)
-    local.forEach((o) => prevOrderIds.current.add(o.id))
-    setLoaded(true)
+    applyOrders(loadOrders())
   }
 
   // Desbloqueia o áudio na primeira interação (exigência dos navegadores)
@@ -268,33 +289,37 @@ export default function PedidosPage() {
   useEffect(() => {
     loadAll()
 
-    if (!supabaseConfigured) return
+    // Retoma o áudio quando o operador volta para a aba (o browser hiberna o som)
+    const onVisible = () => { if (document.visibilityState === "visible") ensureAudio() }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
 
-    // Realtime subscription
+    if (!supabaseConfigured) {
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+      return
+    }
+
+    // Realtime subscription (a detecção do pedido novo/sirene é feita no loadAll)
     const channel = supabase
       .channel("orders-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
         loadAll()
-        if (payload.eventType === "INSERT" && !prevOrderIds.current.has(payload.new.id)) {
-          startSiren()
-          const settings = getPrintSettings()
-          if (settings.autoPrintOnNew) {
-            // order will be loaded in next render; trigger after state update
-            setTimeout(() => {
-              setOrders((prev) => {
-                const newOrder = prev.find((o) => o.id === payload.new.id)
-                if (newOrder) printOrder(newOrder)
-                return prev
-              })
-            }, 1000)
-          }
-        }
       })
       .subscribe((status) => {
         setIsRealtime(status === "SUBSCRIBED")
       })
 
-    return () => { supabase.removeChannel(channel) }
+    // Polling de reserva: caso o tempo real caia, ainda detectamos pedidos novos
+    const poll = setInterval(loadAll, 20000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filtered = useMemo(() => {
