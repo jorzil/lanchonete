@@ -179,6 +179,27 @@ function ProductModal({
               </Field>
             </div>
 
+            <Field label="Preço promocional (R$)" hint="opcional — deixe 0 para desativar">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editing.promoPrice ?? ""}
+                onChange={(e) => setEditing({ ...editing, promoPrice: parseFloat(e.target.value) || 0 })}
+                placeholder="0,00"
+                className={inputCls}
+              />
+              {editing.promoPrice != null && editing.promoPrice > 0 && editing.promoPrice < editing.price && (
+                <p className="mt-1 text-[11px] text-emerald-600">
+                  De {formatCurrency(editing.price)} por {formatCurrency(editing.promoPrice)}
+                  {' '}({Math.round((1 - editing.promoPrice / editing.price) * 100)}% off)
+                </p>
+              )}
+              {editing.promoPrice != null && editing.promoPrice > 0 && editing.promoPrice >= editing.price && (
+                <p className="mt-1 text-[11px] text-red-500">O preço promocional deve ser menor que o preço de venda.</p>
+              )}
+            </Field>
+
             {/* Margin preview */}
             {margin !== null ? (
               <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
@@ -350,8 +371,8 @@ export default function ProdutosPage() {
 
   function save() {
     if (!editing || !editing.name.trim()) return
-    const { id, active, costPrice, price, badge, name, description, image } = editing
-    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, badge, name, description, image } }
+    const { id, active, costPrice, price, promoPrice, badge, name, description, image } = editing
+    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, promoPrice, badge, name, description, image } }
     setOverrides(nextOverrides)
     const merged = mergeOverrides(PRODUCTS, nextOverrides)
     syncProductsToInventory(merged)

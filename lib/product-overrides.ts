@@ -8,6 +8,7 @@ export type ProductOverride = {
   active?: boolean
   costPrice?: number
   price?: number
+  promoPrice?: number
   name?: string
   description?: string
   image?: string

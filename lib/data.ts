@@ -25,11 +25,17 @@ export interface Product {
   name: string
   description: string
   price: number
+  promoPrice?: number   // preço promocional (quando definido e menor que price)
   image: string
   imageUrl?: string
   category: 'subs-15cm' | 'subs-30cm' | 'combos' | 'bebidas' | 'cookies'
   active: boolean
   badge?: { label: string; color: string }
+}
+
+/** Preço efetivo: usa o promocional quando válido (menor que o normal). */
+export function effectivePrice(p: { price: number; promoPrice?: number }): number {
+  return p.promoPrice != null && p.promoPrice > 0 && p.promoPrice < p.price ? p.promoPrice : p.price
 }
 
 export interface CartItem {

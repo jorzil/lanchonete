@@ -7,7 +7,7 @@ import { Search, X, SlidersHorizontal } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
-import { PRODUCTS, formatCurrency, type Product } from '@/lib/data'
+import { PRODUCTS, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { fetchDisabledProducts } from '@/lib/products-availability'
 import { fetchProductOverrides, type OverridesMap } from '@/lib/product-overrides'
 import { toast } from 'sonner'
@@ -110,7 +110,14 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
         <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-white/6">
           <div>
             <p className="text-[9px] text-white/25 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
-            <p className="text-[16px] font-black text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
+            {product.promoPrice != null && product.promoPrice > 0 && product.promoPrice < product.price ? (
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-[11px] text-white/30 line-through leading-none tabular-nums">{formatCurrency(product.price)}</p>
+                <p className="text-[16px] font-black text-emerald-400 leading-none tabular-nums">{formatCurrency(product.promoPrice)}</p>
+              </div>
+            ) : (
+              <p className="text-[16px] font-black text-white leading-none tabular-nums">{formatCurrency(product.price)}</p>
+            )}
           </div>
           <button
             onClick={() => isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product)}
@@ -176,7 +183,7 @@ export default function CardapioPage() {
   }, [active, search, disabledProducts, effectiveProducts])
 
   const handleAdd = (p: Product) => {
-    addItem({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image })
+    addItem({ productId: p.id, name: p.name, price: effectivePrice(p), quantity: 1, image: p.image })
     toast.success(`${p.name} adicionado!`)
   }
 
