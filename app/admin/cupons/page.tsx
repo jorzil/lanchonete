@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import { Plus, Trash2, Edit2, Check, X, Tag, TrendingDown, Hash, Calendar, ChevronDown } from "lucide-react"
+import { Plus, Trash2, Edit2, Check, X, Tag, TrendingDown, Hash, Calendar, ChevronDown, Copy } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -121,6 +121,23 @@ export default function CuponsPage() {
       validUntil: c.validUntil ?? '', active: c.active,
     })
     setEditing(c.id)
+    setShowForm(true)
+    setError('')
+  }
+
+  // Duplicar: abre o formulário como NOVO cupom, pré-preenchido, com um código sugerido único
+  function duplicate(c: CouponDef) {
+    const existing = new Set(getCoupons().map((x) => x.code.toUpperCase()))
+    let code = `${c.code}-2`
+    let n = 2
+    while (existing.has(code.toUpperCase())) { n++; code = `${c.code}-${n}` }
+    setForm({
+      code, name: c.name, description: c.description,
+      type: c.type, discount: c.discount, minOrder: c.minOrder,
+      maxUses: c.maxUses ?? '', validFrom: new Date().toISOString().slice(0, 10),
+      validUntil: c.validUntil ?? '', active: c.active,
+    })
+    setEditing(null)       // null = criar novo (não editar o original)
     setShowForm(true)
     setError('')
   }
@@ -362,13 +379,17 @@ export default function CuponsPage() {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(c)}>
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(c)} title="Editar">
                           <Edit2 className="h-4 w-4 text-gray-400" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => duplicate(c)} title="Duplicar cupom">
+                          <Copy className="h-4 w-4 text-gray-400" />
                         </Button>
                         <Button
                           variant="ghost" size="sm"
                           className="text-red-400 hover:text-red-600 hover:bg-red-50"
                           onClick={() => setToDelete(c)}
+                          title="Excluir"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
