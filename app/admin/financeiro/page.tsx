@@ -17,7 +17,8 @@ import {
   loadBills, addBill, updateBill, deleteBill, deleteSeries, markPaid,
   getBillsSummary, replaceBills, fetchBillsRemote,
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
-  loadCashBase, saveCashBase,
+  loadCashBase, saveCashBase, loadBankBase, saveBankBase,
+  MONEY_ACCOUNT_LABELS, type MoneyAccount,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
   type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
@@ -65,6 +66,7 @@ function BillModal({
     category: bill?.category ?? categories[0],
     notes: bill?.notes ?? "",
     recurrence: (bill?.recurrence ?? "none") as Recurrence,
+    account: (bill?.account ?? "dinheiro") as MoneyAccount,
   })
 
   function set(k: string, v: string) {
@@ -86,6 +88,7 @@ function BillModal({
       category: form.category as BillCategory,
       notes: form.notes.trim() || undefined,
       recurrence: form.recurrence,
+      account: form.account,
     }
 
     if (bill) {
@@ -221,6 +224,28 @@ function BillModal({
             )}
           </div>
 
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              {type === "pagar" ? "Sai de onde?" : "Entra onde?"}
+            </label>
+            <div className="flex gap-2">
+              {(Object.keys(MONEY_ACCOUNT_LABELS) as MoneyAccount[]).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => set("account", a)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    form.account === a
+                      ? "border-orange-400 bg-orange-50 text-orange-700"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  {a === "dinheiro" ? "💵 " : "🏦 "}{MONEY_ACCOUNT_LABELS[a]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {!bill && (
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Repetir</label>
@@ -298,6 +323,14 @@ function BillsTable({
     (monthFilter === "todos" || b.dueDate.slice(0, 7) === monthFilter)
   )
 
+  // Auto-soma do que está filtrado + total geral de todas as contas
+  const notCancelled = (list: Bill[]) => list.filter((b) => b.status !== "cancelado")
+  const sumAmount = (list: Bill[]) => notCancelled(list).reduce((a, b) => a + b.amount, 0)
+  const sumPaid = (list: Bill[]) => notCancelled(list).reduce((a, b) => a + b.amountPaid, 0)
+  const filteredTotal = sumAmount(filtered)
+  const filteredPaid = sumPaid(filtered)
+  const grandTotal = sumAmount(bills)
+
   const filters: Array<{ key: "todos" | Bill["status"]; label: string }> = [
     { key: "todos", label: "Todos" },
     { key: "pendente", label: "Pendente" },
@@ -336,6 +369,20 @@ function BillsTable({
         </select>
       </div>
 
+      {/* Auto-soma do filtro + total geral */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-gray-100 bg-white px-4 py-2.5 text-xs">
+        <span className="text-gray-500">
+          {monthFilter === "todos" ? "Todas as contas" : `Mês ${(() => { const [y, mo] = monthFilter.split("-"); return `${MONTHS[+mo - 1]}/${y}` })()}`}
+          {filter !== "todos" && ` · ${filters.find((f) => f.key === filter)?.label}`}
+          : <span className="font-bold text-gray-900">{fmt(filteredTotal)}</span>
+        </span>
+        <span className="text-gray-500">Pago: <span className="font-bold text-emerald-600">{fmt(filteredPaid)}</span></span>
+        <span className="text-gray-500">Falta: <span className="font-bold text-amber-600">{fmt(filteredTotal - filteredPaid)}</span></span>
+        {(monthFilter !== "todos" || filter !== "todos") && (
+          <span className="ml-auto text-gray-400">Geral: <span className="font-bold text-gray-700">{fmt(grandTotal)}</span></span>
+        )}
+      </div>
+
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white py-12 text-center">
           <p className="text-sm text-gray-400">Nenhuma conta encontrada.</p>
@@ -369,7 +416,7 @@ function BillsTable({
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400">{billCategoryLabel(b.category)}</p>
+                        <p className="text-xs text-gray-400">{b.account === "banco" ? "🏦" : "💵"} {billCategoryLabel(b.category)}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {new Date(b.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
@@ -433,21 +480,27 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: now.toISOString().slice(0, 10) })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: now.toISOString().slice(0, 10), account: "dinheiro" as MoneyAccount })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
   const [cashBase, setCashBase] = useState(0)
-  const [cashModal, setCashModal] = useState(false)
+  const [bankBase, setBankBase] = useState(0)
+  // qual saldo está sendo ajustado no modal
+  const [cashModal, setCashModal] = useState<MoneyAccount | null>(null)
   const [cashInput, setCashInput] = useState("")
 
-  // Quanto entrou/saiu de fato: contas recebidas − contas pagas + receitas − despesas
-  const cashDelta = useMemo(() => {
-    const received = bills.filter((b) => b.type === "receber").reduce((a, b) => a + b.amountPaid, 0)
-    const paidOut = bills.filter((b) => b.type === "pagar").reduce((a, b) => a + b.amountPaid, 0)
-    const txNet = transactions.reduce((a, t) => a + (t.kind === "receita" ? t.amount : -t.amount), 0)
+  // Quanto entrou/saiu de fato por conta: contas recebidas − pagas + receitas − despesas
+  const deltaFor = (acc: MoneyAccount) => {
+    const accOf = (a?: MoneyAccount) => a ?? "dinheiro"
+    const received = bills.filter((b) => b.type === "receber" && accOf(b.account) === acc).reduce((a, b) => a + b.amountPaid, 0)
+    const paidOut = bills.filter((b) => b.type === "pagar" && accOf(b.account) === acc).reduce((a, b) => a + b.amountPaid, 0)
+    const txNet = transactions.filter((t) => accOf(t.account) === acc).reduce((a, t) => a + (t.kind === "receita" ? t.amount : -t.amount), 0)
     return received - paidOut + txNet
-  }, [bills, transactions])
+  }
+  const cashDelta = useMemo(() => deltaFor("dinheiro"), [bills, transactions]) // eslint-disable-line react-hooks/exhaustive-deps
+  const bankDelta = useMemo(() => deltaFor("banco"), [bills, transactions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cashTotal = cashBase + cashDelta
+  const bankTotal = bankBase + bankDelta
 
   function refreshBills() {
     setBills(loadBills())
@@ -456,7 +509,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase())
   }
 
   useEffect(() => {
@@ -476,10 +529,12 @@ export default function FinanceiroPage() {
         for (const c of local) if (!merged.some((m) => m.key === c.key)) merged.push(c)
         saveCustomCategories(merged)
         saveCashBase(remoteFinance.cashBase)
+        saveBankBase(remoteFinance.bankBase)
       }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setCashBase(loadCashBase())
+      setBankBase(loadBankBase())
       refreshBills()
     })()
     return () => { alive = false }
@@ -497,7 +552,7 @@ export default function FinanceiroPage() {
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: now.toISOString().slice(0, 10) })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: now.toISOString().slice(0, 10), account: "dinheiro" })
   }
 
   function handleDeleteTx(id: string) {
@@ -537,21 +592,38 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Wallet size={16} className="text-white/80" />
-              <span className="text-xs font-medium text-white/80">Em Caixa</span>
+              <span className="text-xs font-medium text-white/80">Dinheiro</span>
             </div>
             <button
-              onClick={() => { setCashInput(cashTotal.toFixed(2)); setCashModal(true) }}
+              onClick={() => { setCashInput(cashTotal.toFixed(2)); setCashModal("dinheiro") }}
               className="text-[10px] font-bold bg-white/20 hover:bg-white/30 rounded-full px-2 py-0.5 transition-colors"
             >
               Ajustar
             </button>
           </div>
           <p className="text-xl font-bold">{fmt(cashTotal)}</p>
+          <p className="text-[10px] text-white/70 mt-0.5">em espécie</p>
+        </div>
+        <div className="rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Wallet size={16} className="text-white/80" />
+              <span className="text-xs font-medium text-white/80">Na Conta</span>
+            </div>
+            <button
+              onClick={() => { setCashInput(bankTotal.toFixed(2)); setCashModal("banco") }}
+              className="text-[10px] font-bold bg-white/20 hover:bg-white/30 rounded-full px-2 py-0.5 transition-colors"
+            >
+              Ajustar
+            </button>
+          </div>
+          <p className="text-xl font-bold">{fmt(bankTotal)}</p>
+          <p className="text-[10px] text-white/70 mt-0.5">banco / Pix · total geral {fmt(cashTotal + bankTotal)}</p>
         </div>
         <div className="rounded-xl bg-white border border-gray-100 p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -811,6 +883,27 @@ export default function FinanceiroPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {txForm.kind === "despesa" ? "Sai de onde?" : "Entra onde?"}
+                </label>
+                <div className="flex gap-2">
+                  {(Object.keys(MONEY_ACCOUNT_LABELS) as MoneyAccount[]).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => setTxForm((p) => ({ ...p, account: a }))}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                        txForm.account === a
+                          ? "border-orange-400 bg-orange-50 text-orange-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      {a === "dinheiro" ? "💵 " : "🏦 "}{MONEY_ACCOUNT_LABELS[a]}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {txForm.kind === "despesa" && (
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Categoria</label>
@@ -859,12 +952,14 @@ export default function FinanceiroPage() {
       {cashModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-base font-semibold text-gray-900">Ajustar saldo em caixa</h3>
+            <h3 className="text-base font-semibold text-gray-900">
+              Ajustar saldo — {cashModal === "dinheiro" ? "Dinheiro (espécie)" : "Na conta (banco/Pix)"}
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Informe quanto você tem em caixa agora. As próximas contas pagas/recebidas e lançamentos atualizam esse valor automaticamente.
+              Informe o valor real agora. As próximas contas pagas/recebidas e lançamentos atualizam esse saldo automaticamente.
             </p>
             <div className="mt-4">
-              <label className="mb-1 block text-xs font-medium text-gray-600">Valor em caixa (R$)</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Valor (R$)</label>
               <input
                 type="number" step="0.01" autoFocus
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
@@ -875,7 +970,7 @@ export default function FinanceiroPage() {
             <div className="mt-5 flex gap-3">
               <button
                 className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                onClick={() => setCashModal(false)}
+                onClick={() => setCashModal(null)}
               >
                 Cancelar
               </button>
@@ -885,10 +980,16 @@ export default function FinanceiroPage() {
                   const desired = parseFloat(cashInput)
                   if (!isFinite(desired)) return
                   // Guarda a base de forma que base + movimentações = valor informado
-                  const base = desired - cashDelta
-                  saveCashBase(base)
-                  setCashBase(base)
-                  setCashModal(false)
+                  if (cashModal === "dinheiro") {
+                    const base = desired - cashDelta
+                    saveCashBase(base)
+                    setCashBase(base)
+                  } else {
+                    const base = desired - bankDelta
+                    saveBankBase(base)
+                    setBankBase(base)
+                  }
+                  setCashModal(null)
                   persist()
                 }}
               >

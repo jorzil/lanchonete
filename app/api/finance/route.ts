@@ -38,6 +38,7 @@ export async function GET() {
     transactions: Array.isArray(stored?.transactions) ? stored.transactions : [],
     customCategories: Array.isArray(stored?.customCategories) ? stored.customCategories : [],
     cashBase: typeof stored?.cashBase === 'number' ? stored.cashBase : 0,
+    bankBase: typeof stored?.bankBase === 'number' ? stored.bankBase : 0,
   })
 }
 
@@ -50,10 +51,11 @@ export async function PATCH(req: NextRequest) {
   const transactions = Array.isArray(body.transactions) ? body.transactions : []
   const customCategories = Array.isArray(body.customCategories) ? body.customCategories : []
   const cashBase = typeof body.cashBase === 'number' && isFinite(body.cashBase) ? body.cashBase : 0
-  const next = { bills, transactions, customCategories, cashBase, updatedAt: new Date().toISOString() }
+  const bankBase = typeof body.bankBase === 'number' && isFinite(body.bankBase) ? body.bankBase : 0
+  const next = { bills, transactions, customCategories, cashBase, bankBase, updatedAt: new Date().toISOString() }
   const writeErr = await writeToDb(next)
   if (writeErr) {
     return NextResponse.json({ ok: false, error: writeErr.message }, { status: 500 })
   }
-  return NextResponse.json({ ok: true, bills, transactions, customCategories, cashBase })
+  return NextResponse.json({ ok: true, bills, transactions, customCategories, cashBase, bankBase })
 }

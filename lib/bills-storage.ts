@@ -79,6 +79,14 @@ export function billCategoryLabel(cat: string): string {
   return custom?.label ?? cat
 }
 
+// ---------- Onde o dinheiro fica ----------
+export type MoneyAccount = "dinheiro" | "banco"
+
+export const MONEY_ACCOUNT_LABELS: Record<MoneyAccount, string> = {
+  dinheiro: "Dinheiro (espécie)",
+  banco: "Na conta (banco/Pix)",
+}
+
 export type Recurrence = "none" | "semanal" | "mensal" | "anual"
 
 export const RECURRENCE_LABELS: Record<Recurrence, string> = {
@@ -112,6 +120,8 @@ export interface Bill {
   status: BillStatus
   notes?: string
   createdAt: string
+  /** Onde o dinheiro entra/sai: espécie ou conta bancária (padrão: dinheiro) */
+  account?: MoneyAccount
   /** Periodicidade da conta recorrente (padrão: none) */
   recurrence?: Recurrence
   /** Id que agrupa as parcelas de uma mesma conta recorrente */
@@ -246,22 +256,31 @@ export function replaceBills(list: Bill[]): void {
   save(Array.isArray(list) ? list : [])
 }
 
-// ---------- Saldo base do caixa (ajuste manual) ----------
+// ---------- Saldos base (ajuste manual) por conta ----------
 const CASH_BASE_KEY = "mais_sub_cash_base"
+const BANK_BASE_KEY = "mais_sub_bank_base"
 
-export function loadCashBase(): number {
+function loadNumber(key: string): number {
   if (typeof window === "undefined") return 0
-  const n = parseFloat(localStorage.getItem(CASH_BASE_KEY) ?? "0")
+  const n = parseFloat(localStorage.getItem(key) ?? "0")
   return isFinite(n) ? n : 0
 }
+
+export function loadCashBase(): number { return loadNumber(CASH_BASE_KEY) }
+export function loadBankBase(): number { return loadNumber(BANK_BASE_KEY) }
 
 export function saveCashBase(v: number): void {
   if (typeof window === "undefined") return
   try { localStorage.setItem(CASH_BASE_KEY, String(v)) } catch { /* */ }
 }
 
+export function saveBankBase(v: number): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(BANK_BASE_KEY, String(v)) } catch { /* */ }
+}
+
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; cashBase: number } | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; cashBase: number; bankBase: number } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
@@ -270,6 +289,7 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
       bills: Array.isArray(data.bills) ? (data.bills as Bill[]) : [],
       customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
       cashBase: typeof data.cashBase === "number" ? data.cashBase : 0,
+      bankBase: typeof data.bankBase === "number" ? data.bankBase : 0,
     }
   } catch {
     return null
