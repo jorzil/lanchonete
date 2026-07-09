@@ -31,6 +31,8 @@ export interface Product {
   category: 'subs-15cm' | 'subs-30cm' | 'combos' | 'bebidas' | 'cookies'
   active: boolean
   badge?: { label: string; color: string }
+  /** Itens que compõem o combo (padrão: cookie + refri quando category === 'combos') */
+  comboItems?: ('cookie' | 'refri')[]
 }
 
 /** Preço efetivo: usa o promocional quando válido (menor que o normal). */
@@ -292,6 +294,51 @@ export const PRODUCTS: Product[] = [
     description: 'Sub Ipanema 15cm + Cookie artesanal + Refrigerante lata 350ml — 5% de desconto',
     price: 49.3, image: '🥪', imageUrl: '/ipanema.jpg', category: 'combos', active: true,
     badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+
+  // ── Combos Lanche + Refri ────────────────────────────────────────────────────
+  // Lanche 15cm (R$27,90) + Refri lata (R$8,00) = R$35,90 → 5% OFF = R$34,10
+  {
+    id: 'combo-refri-bacon-bbq', name: 'Combo Bacon BBQ + Refri',
+    description: 'Sub Bacon com Barbecue 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/bacon-barbecue.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-lombo-especial', name: 'Combo Lombo Especial + Refri',
+    description: 'Sub Lombo Especial 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/lombo-especial.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-frango-ranch', name: 'Combo Frango Ranch + Refri',
+    description: 'Sub Frango Ranch 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/frango-ranch.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-italiano', name: 'Combo Italiano Premium + Refri',
+    description: 'Sub Italiano Premium 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/italiano-premium.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-lombo-defumado', name: 'Combo Lombo Defumado + Refri',
+    description: 'Sub Lombo Defumado 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/lombo-defumado.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-frango-mais', name: 'Combo Frango Coma+ + Refri',
+    description: 'Sub Frango Coma+ 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/frango-coma.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
+  },
+  {
+    id: 'combo-refri-ipanema', name: 'Combo Ipanema + Refri',
+    description: 'Sub Ipanema 15cm + Refrigerante lata 350ml — 5% de desconto',
+    price: 34.1, image: '🥪', imageUrl: '/ipanema.jpg', category: 'combos', active: true,
+    comboItems: ['refri'], badge: { label: '💰 5% OFF', color: 'bg-green-500' },
   },
 ]
 

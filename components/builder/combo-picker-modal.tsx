@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { PRODUCTS, MENU, formatCurrency, type Product } from '@/lib/data'
+import { PRODUCTS, MENU, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { useCart } from '@/contexts/cart-context'
 import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
 import { fetchDisabledProducts } from '@/lib/products-availability'
@@ -33,9 +33,19 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
     }
   }, [product])
 
+  // Itens do combo: padrão cookie + refri; combos "lanche + refri" trazem só refri
+  const wantsCookie = !product?.comboItems || product.comboItems.includes('cookie')
+  const wantsRefri = !product?.comboItems || product.comboItems.includes('refri')
+
   const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
-  const COOKIES = useMemo(() => ALL_COOKIES.filter((c) => !disabledProducts.has(c.id)), [disabledProducts])
-  const LATAS = useMemo(() => ALL_LATAS.filter((r) => !disabledProducts.has(r.id)), [disabledProducts])
+  const COOKIES = useMemo(
+    () => (wantsCookie ? ALL_COOKIES.filter((c) => !disabledProducts.has(c.id)) : []),
+    [disabledProducts, wantsCookie]
+  )
+  const LATAS = useMemo(
+    () => (wantsRefri ? ALL_LATAS.filter((r) => !disabledProducts.has(r.id)) : []),
+    [disabledProducts, wantsRefri]
+  )
 
   if (!product) return null
 
@@ -62,7 +72,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
     addItem({
       productId: product!.id,
       name: product!.name,
-      price: product!.price,
+      price: effectivePrice(product!),
       quantity: 1,
       image: product!.image,
       notes: parts.join(' | '),
@@ -161,7 +171,14 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
           <div>
             <p className="text-[10px] text-white/30 font-bold uppercase">Total</p>
-            <p className="text-xl font-black text-white">{formatCurrency(product.price)}</p>
+            {effectivePrice(product) < product.price ? (
+              <div className="flex items-baseline gap-2">
+                <p className="text-sm text-white/35 line-through">{formatCurrency(product.price)}</p>
+                <p className="text-xl font-black text-emerald-400">{formatCurrency(effectivePrice(product))}</p>
+              </div>
+            ) : (
+              <p className="text-xl font-black text-white">{formatCurrency(product.price)}</p>
+            )}
             <p className="text-[10px] text-green-400">5% de desconto incluído</p>
           </div>
           <Button

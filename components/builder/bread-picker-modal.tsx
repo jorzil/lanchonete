@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { MENU, formatCurrency, type Product } from '@/lib/data'
+import { MENU, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { useCart } from '@/contexts/cart-context'
 import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
 import { toast } from 'sonner'
@@ -51,7 +51,8 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
   if (!product) return null
 
   const selectedSize = SIZES.find(s => s.key === size)
-  const basePrice = selectedSize?.price ?? product.price
+  // Honra o preço promocional do produto (tamanho já vem travado pela categoria)
+  const basePrice = effectivePrice({ price: selectedSize?.price ?? product.price, promoPrice: product.promoPrice })
   const extrasTotal = Object.entries(extras).reduce((sum, [key, qty]) => {
     const extra = MENU.extras.find(e => e.key === key)
     if (!extra || qty === 0) return sum

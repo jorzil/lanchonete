@@ -102,7 +102,10 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
         )}
       </div>
 
-      <div className="p-4 flex flex-col flex-1">
+      <div
+        className="p-4 flex flex-col flex-1"
+        onClick={() => isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product)}
+      >
         <div className="flex-1">
           <h3 className="font-bold text-white text-[14px] leading-snug mb-1">{product.name}</h3>
           <p className="text-white/35 text-[12px] leading-relaxed">{product.description}</p>
@@ -120,7 +123,7 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
             )}
           </div>
           <button
-            onClick={() => isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product)}
+            onClick={(e) => { e.stopPropagation(); isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product) }}
             className="flex items-center gap-1.5 bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
             {isSub ? 'Personalizar' : isCombo ? 'Montar combo' : 'Adicionar'}
@@ -181,6 +184,15 @@ export default function CardapioPage() {
     }
     return list
   }, [active, search, disabledProducts, effectiveProducts])
+
+  // Produtos com preço promocional viram destaque "Lanche do Dia"
+  const promoProducts = useMemo(
+    () => effectiveProducts.filter(p =>
+      p.active && !disabledProducts.has(p.id) &&
+      p.promoPrice != null && p.promoPrice > 0 && p.promoPrice < p.price
+    ),
+    [effectiveProducts, disabledProducts]
+  )
 
   const handleAdd = (p: Product) => {
     addItem({ productId: p.id, name: p.name, price: effectivePrice(p), quantity: 1, image: p.image })
@@ -265,6 +277,25 @@ export default function CardapioPage() {
 
           {(showMonte || filtered.length > 0) ? (
             <div className="space-y-8">
+              {/* Lanche do Dia — produtos com preço promocional */}
+              {active === 'all' && !search && promoProducts.length > 0 && (
+                <div>
+                  <h2 className="text-[11px] font-bold text-amber-400 uppercase tracking-[0.2em] mb-4">🔥 Lanche do Dia</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+                    {promoProducts.map((product, i) => (
+                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                        <ProductCard
+                          product={{ ...product, badge: { label: '🔥 Lanche do Dia', color: 'bg-amber-500' } }}
+                          onBread={p => setBreadProduct(p)}
+                          onAdd={handleAdd}
+                          onCombo={p => setComboProduct(p)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Monte Seu Sub cards */}
               {showMonte && (
                 <div>
