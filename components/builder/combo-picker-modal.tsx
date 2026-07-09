@@ -130,7 +130,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
                 }`}
               >
                 <span className="text-2xl">🍪</span>
-                <p className="text-[13px] font-bold text-white flex-1">{c.name}</p>
+                <p className="text-[13px] font-bold text-white flex-1 min-w-0">{c.name}</p>
                 {cookie === c.id && (
                   <span className="ml-auto h-4 w-4 rounded-full bg-brand flex items-center justify-center">
                     <span className="text-white text-[9px] font-black">✓</span>
@@ -156,7 +156,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
                 }`}
               >
                 <span className="text-2xl">{r.image}</span>
-                <p className="text-[13px] font-bold text-white flex-1">{r.name}</p>
+                <p className="text-[13px] font-bold text-white flex-1 min-w-0">{r.name}</p>
                 {refri === r.id && (
                   <span className="ml-auto h-4 w-4 rounded-full bg-brand flex items-center justify-center">
                     <span className="text-white text-[9px] font-black">✓</span>
@@ -168,7 +168,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
         </div>
         )}
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mt-4 pt-4 border-t border-white/10">
           <div>
             <p className="text-[10px] text-white/30 font-bold uppercase">Total</p>
             {effectivePrice(product) < product.price ? (
@@ -184,7 +184,7 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
           <Button
             onClick={handleAdd}
             disabled={!bread || (COOKIES.length > 0 && !cookie) || (LATAS.length > 0 && !refri)}
-            className="bg-brand hover:bg-brand-hover text-white font-black px-6 disabled:opacity-40"
+            className="bg-brand hover:bg-brand-hover text-white font-black px-6 disabled:opacity-40 w-full sm:w-auto"
           >
             Adicionar ao carrinho
           </Button>

@@ -203,7 +203,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           />
         </div>
 
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between mt-4 pt-4 border-t border-white/10">
           <div>
             <p className="text-[10px] text-white/30 font-bold uppercase">Total</p>
             <p className="text-xl font-black text-white">{formatCurrency(total)}</p>
@@ -212,7 +212,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           <Button
             onClick={handleAdd}
             disabled={!size || !bread}
-            className="bg-brand hover:bg-brand-hover text-white font-black px-6 disabled:opacity-40"
+            className="bg-brand hover:bg-brand-hover text-white font-black px-6 disabled:opacity-40 w-full sm:w-auto"
           >
             Adicionar ao carrinho
           </Button>
