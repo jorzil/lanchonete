@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // System row stored in customers table — no extra table needed
 const SYSTEM_PHONE = '__finance__'
 
-const DEFAULT_CONFIG = { bills: [] as unknown[], transactions: [] as unknown[], customCategories: [] as unknown[] }
+const DEFAULT_CONFIG = { bills: [] as unknown[], transactions: [] as unknown[], customCategories: [] as unknown[], cashBase: 0 }
 
 async function readFromDb() {
   const { data } = await supabase
@@ -37,6 +37,7 @@ export async function GET() {
     bills: Array.isArray(stored?.bills) ? stored.bills : [],
     transactions: Array.isArray(stored?.transactions) ? stored.transactions : [],
     customCategories: Array.isArray(stored?.customCategories) ? stored.customCategories : [],
+    cashBase: typeof stored?.cashBase === 'number' ? stored.cashBase : 0,
   })
 }
 
@@ -48,10 +49,11 @@ export async function PATCH(req: NextRequest) {
   const bills = Array.isArray(body.bills) ? body.bills : []
   const transactions = Array.isArray(body.transactions) ? body.transactions : []
   const customCategories = Array.isArray(body.customCategories) ? body.customCategories : []
-  const next = { bills, transactions, customCategories, updatedAt: new Date().toISOString() }
+  const cashBase = typeof body.cashBase === 'number' && isFinite(body.cashBase) ? body.cashBase : 0
+  const next = { bills, transactions, customCategories, cashBase, updatedAt: new Date().toISOString() }
   const writeErr = await writeToDb(next)
   if (writeErr) {
     return NextResponse.json({ ok: false, error: writeErr.message }, { status: 500 })
   }
-  return NextResponse.json({ ok: true, bills, transactions, customCategories })
+  return NextResponse.json({ ok: true, bills, transactions, customCategories, cashBase })
 }

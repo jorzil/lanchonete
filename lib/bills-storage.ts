@@ -246,8 +246,22 @@ export function replaceBills(list: Bill[]): void {
   save(Array.isArray(list) ? list : [])
 }
 
+// ---------- Saldo base do caixa (ajuste manual) ----------
+const CASH_BASE_KEY = "mais_sub_cash_base"
+
+export function loadCashBase(): number {
+  if (typeof window === "undefined") return 0
+  const n = parseFloat(localStorage.getItem(CASH_BASE_KEY) ?? "0")
+  return isFinite(n) ? n : 0
+}
+
+export function saveCashBase(v: number): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(CASH_BASE_KEY, String(v)) } catch { /* */ }
+}
+
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[] } | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; cashBase: number } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
@@ -255,6 +269,7 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
     return {
       bills: Array.isArray(data.bills) ? (data.bills as Bill[]) : [],
       customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
+      cashBase: typeof data.cashBase === "number" ? data.cashBase : 0,
     }
   } catch {
     return null

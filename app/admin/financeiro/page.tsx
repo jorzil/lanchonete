@@ -17,6 +17,7 @@ import {
   loadBills, addBill, updateBill, deleteBill, deleteSeries, markPaid,
   getBillsSummary, replaceBills, fetchBillsRemote,
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
+  loadCashBase, saveCashBase,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
   type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
@@ -434,15 +435,28 @@ export default function FinanceiroPage() {
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: now.toISOString().slice(0, 10) })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
+  const [cashBase, setCashBase] = useState(0)
+  const [cashModal, setCashModal] = useState(false)
+  const [cashInput, setCashInput] = useState("")
+
+  // Quanto entrou/saiu de fato: contas recebidas − contas pagas + receitas − despesas
+  const cashDelta = useMemo(() => {
+    const received = bills.filter((b) => b.type === "receber").reduce((a, b) => a + b.amountPaid, 0)
+    const paidOut = bills.filter((b) => b.type === "pagar").reduce((a, b) => a + b.amountPaid, 0)
+    const txNet = transactions.reduce((a, t) => a + (t.kind === "receita" ? t.amount : -t.amount), 0)
+    return received - paidOut + txNet
+  }, [bills, transactions])
+
+  const cashTotal = cashBase + cashDelta
 
   function refreshBills() {
     setBills(loadBills())
     setSummary(getBillsSummary())
   }
 
-  // Envia contas + lançamentos + categorias ao Supabase (persistência em todos os aparelhos)
+  // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase())
   }
 
   useEffect(() => {
@@ -461,9 +475,11 @@ export default function FinanceiroPage() {
         const merged = [...remoteFinance.customCategories]
         for (const c of local) if (!merged.some((m) => m.key === c.key)) merged.push(c)
         saveCustomCategories(merged)
+        saveCashBase(remoteFinance.cashBase)
       }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
+      setCashBase(loadCashBase())
       refreshBills()
     })()
     return () => { alive = false }
@@ -521,7 +537,22 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-4 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Wallet size={16} className="text-white/80" />
+              <span className="text-xs font-medium text-white/80">Em Caixa</span>
+            </div>
+            <button
+              onClick={() => { setCashInput(cashTotal.toFixed(2)); setCashModal(true) }}
+              className="text-[10px] font-bold bg-white/20 hover:bg-white/30 rounded-full px-2 py-0.5 transition-colors"
+            >
+              Ajustar
+            </button>
+          </div>
+          <p className="text-xl font-bold">{fmt(cashTotal)}</p>
+        </div>
         <div className="rounded-xl bg-white border border-gray-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <ArrowDownCircle size={16} className="text-emerald-500" />
@@ -822,6 +853,50 @@ export default function FinanceiroPage() {
           onSave={handleBillSaved}
           onCategoriesChanged={persist}
         />
+      )}
+
+      {/* Ajustar saldo em caixa */}
+      {cashModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Ajustar saldo em caixa</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Informe quanto você tem em caixa agora. As próximas contas pagas/recebidas e lançamentos atualizam esse valor automaticamente.
+            </p>
+            <div className="mt-4">
+              <label className="mb-1 block text-xs font-medium text-gray-600">Valor em caixa (R$)</label>
+              <input
+                type="number" step="0.01" autoFocus
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                value={cashInput}
+                onChange={(e) => setCashInput(e.target.value)}
+              />
+            </div>
+            <div className="mt-5 flex gap-3">
+              <button
+                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setCashModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-emerald-500 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+                onClick={() => {
+                  const desired = parseFloat(cashInput)
+                  if (!isFinite(desired)) return
+                  // Guarda a base de forma que base + movimentações = valor informado
+                  const base = desired - cashDelta
+                  saveCashBase(base)
+                  setCashBase(base)
+                  setCashModal(false)
+                  persist()
+                }}
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete confirmation */}

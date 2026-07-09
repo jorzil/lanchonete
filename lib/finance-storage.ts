@@ -91,12 +91,12 @@ export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
 }
 
 /** Envia contas + lançamentos + categorias ao Supabase (chamado após cada mutação). */
-export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = []): Promise<boolean> {
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0): Promise<boolean> {
   try {
     const res = await fetch("/api/finance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bills, transactions, customCategories }),
+      body: JSON.stringify({ bills, transactions, customCategories, cashBase }),
     })
     const data = await res.json().catch(() => ({}))
     return !!(res.ok && data.ok)
