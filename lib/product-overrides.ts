@@ -14,6 +14,10 @@ export type ProductOverride = {
   image?: string
   badge?: Product['badge']
   category?: Product['category']
+  /** Foto do produto (URL, ex: /bacon-barbecue.jpg) */
+  imageUrl?: string
+  /** Composição do combo: refri, cookie ou os dois */
+  comboItems?: Product['comboItems']
   /** true quando o produto foi criado/duplicado no admin (não existe na lista base) */
   isCustom?: boolean
 }
@@ -33,9 +37,11 @@ export function materializeCustomProducts(overrides: OverridesMap, baseIds: Set<
       price: ov.price!,
       promoPrice: ov.promoPrice,
       image: ov.image ?? '🥖',
+      imageUrl: ov.imageUrl,
       category: ov.category ?? 'subs-15cm',
       active: ov.active ?? true,
       badge: ov.badge,
+      comboItems: ov.comboItems,
     }))
 }
 

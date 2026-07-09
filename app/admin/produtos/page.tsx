@@ -157,6 +157,58 @@ function ProductModal({
             </Field>
           </div>
 
+          {/* Foto */}
+          <Field label="Foto do produto" hint="URL, ex: /bacon-barbecue.jpg">
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={editing.imageUrl ?? ""}
+                onChange={(e) => setEditing({ ...editing, imageUrl: e.target.value.trim() || undefined })}
+                placeholder="/bacon-barbecue.jpg"
+                className={inputCls}
+              />
+              {editing.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={editing.imageUrl}
+                  alt="Prévia"
+                  className="w-12 h-12 rounded-xl object-cover border border-gray-200 shrink-0"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
+            </div>
+          </Field>
+
+          {/* Composição do combo */}
+          {editing.category === "combos" && (
+            <Field label="Itens do combo" hint="o que acompanha o sub">
+              <div className="flex gap-2">
+                {([
+                  { key: ["refri"] as const, label: "🥤 Só refri" },
+                  { key: ["cookie"] as const, label: "🍪 Só cookie" },
+                  { key: ["cookie", "refri"] as const, label: "🍪🥤 Os dois" },
+                ]).map((opt) => {
+                  const current = editing.comboItems ?? ["cookie", "refri"]
+                  const selected = [...current].sort().join(",") === [...opt.key].sort().join(",")
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() => setEditing({ ...editing, comboItems: [...opt.key] })}
+                      className={`flex-1 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                        selected
+                          ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-orange-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+          )}
+
           {/* Preços */}
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
             <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Preços</p>
@@ -389,10 +441,10 @@ export default function ProdutosPage() {
 
   function save() {
     if (!editing || !editing.name.trim()) return
-    const { active, costPrice, price, promoPrice, badge, name, description, image, category } = editing
+    const { active, costPrice, price, promoPrice, badge, name, description, image, imageUrl, category, comboItems } = editing
     const id = editing.id || `prod-${Date.now().toString(36)}`
     const isCustom = !BASE_IDS.has(id)
-    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, promoPrice, badge, name, description, image, category, ...(isCustom ? { isCustom: true } : {}) } }
+    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, promoPrice, badge, name, description, image, imageUrl, category, comboItems, ...(isCustom ? { isCustom: true } : {}) } }
     setOverrides(nextOverrides)
     const merged = mergeOverrides(PRODUCTS, nextOverrides)
     syncProductsToInventory(merged)
