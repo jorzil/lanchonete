@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Pencil, Search, Package, X, Copy, RefreshCw } from "lucide-react"
+import { Plus, Pencil, Search, Package, X, Copy, RefreshCw, Trash2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { formatCurrency, PRODUCTS, type Product } from "@/lib/data"
 import { syncProductsToInventory } from "@/lib/inventory-storage"
 import { patchDisabledProducts } from "@/lib/products-availability"
-import { fetchProductOverrides, patchProductOverrides, type OverridesMap as ProductOverridesMap } from "@/lib/product-overrides"
+import { fetchProductOverrides, patchProductOverrides, materializeCustomProducts, type OverridesMap as ProductOverridesMap } from "@/lib/product-overrides"
 
 // Extend Product locally to support cost price
 type ProductWithCost = Product & { costPrice?: number }
@@ -15,8 +15,16 @@ type ProductWithCost = Product & { costPrice?: number }
 // Overrides persisted per product ID (never the full list)
 type OverridesMap = ProductOverridesMap
 
+const BASE_IDS = new Set(PRODUCTS.map(p => p.id))
+
 function mergeOverrides(base: Product[], overrides: OverridesMap): ProductWithCost[] {
-  return base.map(p => ({ ...p, ...(overrides[p.id] ?? {}) }))
+  return [
+    ...base.map(p => ({ ...p, ...(overrides[p.id] ?? {}) })),
+    ...materializeCustomProducts(overrides, BASE_IDS).map(p => ({
+      ...p,
+      costPrice: overrides[p.id]?.costPrice,
+    })),
+  ]
 }
 
 const CATEGORIES: Product["category"][] = ["subs-15cm", "subs-30cm", "combos", "cookies", "bebidas"]
@@ -364,15 +372,27 @@ export default function ProdutosPage() {
     setOpen(true)
   }
 
+  // Abre o modal com uma cópia do produto — só é criado de fato ao salvar
   function duplicate(p: ProductWithCost) {
-    const newId = `prod-${Date.now().toString(36)}`
-    setOverrides(prev => ({ ...prev, [newId]: { active: p.active, costPrice: p.costPrice, price: p.price, badge: p.badge } }))
+    setEditing({ ...p, id: `prod-${Date.now().toString(36)}`, name: `${p.name} (cópia)` })
+    setIsNew(true)
+    setOpen(true)
+  }
+
+  function removeCustom(id: string) {
+    const nextOverrides = { ...overrides }
+    delete nextOverrides[id]
+    setOverrides(nextOverrides)
+    syncDisabledToDb(mergeOverrides(PRODUCTS, nextOverrides))
+    patchProductOverrides(nextOverrides)
   }
 
   function save() {
     if (!editing || !editing.name.trim()) return
-    const { id, active, costPrice, price, promoPrice, badge, name, description, image } = editing
-    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, promoPrice, badge, name, description, image } }
+    const { active, costPrice, price, promoPrice, badge, name, description, image, category } = editing
+    const id = editing.id || `prod-${Date.now().toString(36)}`
+    const isCustom = !BASE_IDS.has(id)
+    const nextOverrides = { ...overrides, [id]: { active, costPrice, price, promoPrice, badge, name, description, image, category, ...(isCustom ? { isCustom: true } : {}) } }
     setOverrides(nextOverrides)
     const merged = mergeOverrides(PRODUCTS, nextOverrides)
     syncProductsToInventory(merged)
@@ -568,6 +588,15 @@ export default function ProdutosPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
+                  {!BASE_IDS.has(p.id) && (
+                    <button
+                      onClick={() => { if (confirm(`Excluir "${p.name}"?`)) removeCustom(p.id) }}
+                      title="Excluir produto duplicado"
+                      className="flex items-center gap-1 text-xs font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-lg transition-all border border-transparent hover:border-red-100"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
                   <button
                     onClick={() => duplicate(p)}
                     title="Duplicar produto"

@@ -9,7 +9,7 @@ import { Footer } from '@/components/layout/footer'
 import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { fetchDisabledProducts } from '@/lib/products-availability'
-import { fetchProductOverrides, type OverridesMap } from '@/lib/product-overrides'
+import { fetchProductOverrides, materializeCustomProducts, type OverridesMap } from '@/lib/product-overrides'
 import { toast } from 'sonner'
 import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
@@ -163,7 +163,11 @@ export default function CardapioPage() {
 
   // Aplica as edições do admin sobre os produtos base
   const effectiveProducts = useMemo(
-    () => PRODUCTS.map(p => ({ ...p, ...(overrides[p.id] ?? {}) })),
+    () => [
+      ...PRODUCTS.map(p => ({ ...p, ...(overrides[p.id] ?? {}) })),
+      // produtos criados/duplicados no admin
+      ...materializeCustomProducts(overrides, new Set(PRODUCTS.map(p => p.id))),
+    ],
     [overrides]
   )
 

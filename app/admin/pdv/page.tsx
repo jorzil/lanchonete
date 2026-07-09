@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import {
   PRODUCTS,
   formatCurrency,
+  effectivePrice,
   generateOrderNumber,
   type Product,
   type CartItem,
@@ -42,6 +43,7 @@ import { supabaseConfigured } from "@/lib/supabase"
 import { consumeStockForProduct } from "@/lib/recipes-storage"
 import { pullFichas, pushFichas } from "@/lib/fichas-sync"
 import { getCurrentUser } from "@/lib/admin-auth"
+import { fetchProductOverrides, materializeCustomProducts, type OverridesMap } from "@/lib/product-overrides"
 import {
   getOpenSession, openCash, closeCash, addCashMovement, registerCashSale, getSummary,
   type CashSession,
@@ -138,9 +140,20 @@ export default function PdvPage() {
     return () => clearInterval(id)
   }, [])
 
+  // Edições e produtos criados/duplicados no admin
+  const [overrides, setOverrides] = useState<OverridesMap>({})
+  useEffect(() => {
+    fetchProductOverrides().then(setOverrides)
+  }, [])
+
+  const allProducts = useMemo(() => [
+    ...PRODUCTS.map((p) => ({ ...p, ...(overrides[p.id] ?? {}) })),
+    ...materializeCustomProducts(overrides, new Set(PRODUCTS.map((p) => p.id))),
+  ], [overrides])
+
   const products = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return PRODUCTS.filter((p) => p.active).filter((p) => {
+    return allProducts.filter((p) => p.active).filter((p) => {
       if (q) {
         return (
           p.name.toLowerCase().includes(q) ||
@@ -149,7 +162,7 @@ export default function PdvPage() {
       }
       return p.category === category
     })
-  }, [query, category])
+  }, [query, category, allProducts])
 
   function addProduct(p: Product) {
     setItems((prev) => {
@@ -165,7 +178,7 @@ export default function PdvPage() {
           id: `pdv-${p.id}-${Date.now()}`,
           productId: p.id,
           name: p.name,
-          price: p.price,
+          price: effectivePrice(p),
           quantity: 1,
           image: p.image,
         },

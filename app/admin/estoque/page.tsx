@@ -22,7 +22,7 @@ import {
   type Ingredient, type StockUnit, type Supplier, type StockMovement, type MovementType,
 } from "@/lib/inventory-storage"
 import { pullFichas, pushFichas } from "@/lib/fichas-sync"
-import { fetchProductOverrides } from "@/lib/product-overrides"
+import { fetchProductOverrides, materializeCustomProducts } from "@/lib/product-overrides"
 
 const UNITS: { value: StockUnit; label: string }[] = [
   { value: "un", label: "Unidade" },
@@ -82,7 +82,10 @@ export default function EstoquePage() {
     (async () => {
       await pullFichas()
       const ov = await fetchProductOverrides()
-      const merged = PRODUCTS.map((p) => ({ ...p, ...(ov[p.id] ?? {}) }))
+      const merged = [
+        ...PRODUCTS.map((p) => ({ ...p, ...(ov[p.id] ?? {}) })),
+        ...materializeCustomProducts(ov, new Set(PRODUCTS.map((p) => p.id))),
+      ]
       setProducts(merged)
       syncProductsToInventory(merged)
       // Garante que ingredientes ligados a produtos com custo > 0 recebam o custo
