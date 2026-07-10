@@ -41,8 +41,8 @@ export function CartPanel() {
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
 
-  const handleApplyCoupon = () => {
-    const ok = applyCoupon(couponInput)
+  const handleApplyCoupon = async () => {
+    const ok = await applyCoupon(couponInput)
     if (ok) { toast.success('Cupom aplicado com sucesso!'); setCouponInput('') }
     else toast.error('Cupom inválido ou expirado.')
   }

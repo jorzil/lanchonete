@@ -145,6 +145,16 @@ export function validateCoupon(code: string, orderTotal: number): CouponValidati
   return { valid: true, coupon, discountAmount }
 }
 
+/**
+ * Valida o cupom com os dados mais recentes do servidor (Supabase).
+ * Evita que um cupom inativado/expirado no admin continue valendo em
+ * aparelhos com a lista antiga no localStorage.
+ */
+export async function validateCouponFresh(code: string, orderTotal: number): Promise<CouponValidationResult> {
+  await pullCoupons() // atualiza o localStorage; se falhar, valida com o que há local
+  return validateCoupon(code, orderTotal)
+}
+
 export function calcCouponDiscount(coupon: CouponDef, subtotal: number): number {
   if (coupon.type === 'percentage') return subtotal * (coupon.discount / 100)
   if (coupon.type === 'fixed') return Math.min(coupon.discount, subtotal)

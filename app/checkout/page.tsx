@@ -167,6 +167,20 @@ export default function CheckoutPage() {
 
     setSubmitting(true)
 
+    // Revalida o cupom no servidor — ele pode ter sido inativado/expirado após aplicado
+    if (coupon) {
+      try {
+        const { validateCouponFresh } = await import('@/lib/coupon-storage')
+        const revalidation = await validateCouponFresh(coupon.code, subtotal)
+        if (!revalidation.valid) {
+          removeCoupon()
+          setSubmitting(false)
+          toast.error(`O cupom ${coupon.code} não está mais disponível e foi removido. Confira o total e finalize novamente.`)
+          return
+        }
+      } catch {}
+    }
+
     const orderNumber = generateOrderNumber()
     const address = form.orderType === 'entrega'
       ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state }
@@ -437,9 +451,9 @@ export default function CheckoutPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!couponInput.trim()) return
-                        const ok = applyCoupon(couponInput)
+                        const ok = await applyCoupon(couponInput)
                         if (!ok) setCouponError('Cupom inválido, expirado ou não disponível.')
                         else { setCouponInput(''); setCouponError('') }
                       }}

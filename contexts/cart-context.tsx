@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
-import { validateCoupon, incrementCouponUsage } from '@/lib/coupon-storage'
+import { validateCouponFresh } from '@/lib/coupon-storage'
 import { fbTrack } from '@/components/analytics/meta-pixel'
 
 interface CartContextValue {
@@ -20,7 +20,7 @@ interface CartContextValue {
   toggleCart: () => void
   openCart: () => void
   closeCart: () => void
-  applyCoupon: (code: string) => boolean
+  applyCoupon: (code: string) => Promise<boolean>
   removeCoupon: () => void
   setDeliveryFee: (fee: number) => void
 }
@@ -84,8 +84,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), [])
   const closeCart = useCallback(() => setIsOpen(false), [])
 
-  const applyCoupon = useCallback((code: string): boolean => {
-    const result = validateCoupon(code, subtotal)
+  const applyCoupon = useCallback(async (code: string): Promise<boolean> => {
+    // Sempre valida com os dados atuais do servidor (cupom pode ter sido inativado)
+    const result = await validateCouponFresh(code, subtotal)
     if (result.valid && result.coupon) {
       const c = result.coupon
       setCoupon({ code: c.code, discount: c.discount, type: c.type === 'free_shipping' ? 'fixed' : c.type })
