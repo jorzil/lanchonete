@@ -63,8 +63,8 @@ export interface FeeResult {
   outsideArea: boolean
 }
 
-export function calcDeliveryFee(customerLat: number, customerLng: number): FeeResult {
-  const config = getDeliveryConfig()
+export function calcDeliveryFee(customerLat: number, customerLng: number, cfg?: DeliveryConfig): FeeResult {
+  const config = cfg ?? getDeliveryConfig()
   const distanceKm = haversineKm(config.storeLat, config.storeLng, customerLat, customerLng)
   const sorted = [...config.zones].sort((a, b) => a.maxKm - b.maxKm)
   const zone = sorted.find(z => distanceKm <= z.maxKm) ?? null
@@ -76,16 +76,63 @@ export function calcDeliveryFee(customerLat: number, customerLng: number): FeeRe
   }
 }
 
-// Geocode an address string using OpenStreetMap Nominatim (free, no key)
+// Geocodifica via nossa API (server-side, com cache) — mais confiável que
+// chamar o Nominatim direto do navegador do cliente.
 export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const q = encodeURIComponent(address)
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=br`,
-      { headers: { 'Accept-Language': 'pt-BR', 'User-Agent': 'MaisSubApp/1.0' } }
-    )
+    const res = await fetch(`/api/geocode?street=${q}`)
+    if (!res.ok) return null
     const data = await res.json()
-    if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+    if (typeof data.lat === 'number' && typeof data.lng === 'number') return data
   } catch {}
   return null
+}
+
+// Geocodificação estruturada (rua/cidade/UF/CEP) — usa as 3 estratégias do servidor.
+export async function geocodeStructured(parts: { street?: string; city?: string; state?: string; cep?: string }): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const p = new URLSearchParams()
+    if (parts.street) p.set('street', parts.street)
+    if (parts.city) p.set('city', parts.city)
+    if (parts.state) p.set('state', parts.state)
+    if (parts.cep) p.set('cep', parts.cep)
+    const res = await fetch(`/api/geocode?${p.toString()}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (typeof data.lat === 'number' && typeof data.lng === 'number') return data
+  } catch {}
+  return null
+}
+
+// ─── Sincronização com o Supabase (config vale em todos os aparelhos) ─────────
+export async function pullDeliveryConfig(): Promise<DeliveryConfig> {
+  try {
+    const res = await fetch('/api/delivery-config', { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.config && Array.isArray(data.config.zones) && data.config.zones.length > 0) {
+        const merged = { ...DEFAULT_CONFIG, ...data.config }
+        if (typeof window !== 'undefined') {
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)) } catch {}
+        }
+        return merged
+      }
+    }
+  } catch {}
+  return getDeliveryConfig()
+}
+
+export async function pushDeliveryConfig(config: DeliveryConfig): Promise<boolean> {
+  try {
+    const res = await fetch('/api/delivery-config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ config }),
+    })
+    const data = await res.json().catch(() => ({}))
+    return !!(res.ok && data.ok)
+  } catch {
+    return false
+  }
 }

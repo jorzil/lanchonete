@@ -19,8 +19,7 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
-// Taxa de entrega fixa em toda a cidade
-const FIXED_DELIVERY_FEE = 5
+import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, type FeeResult } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -77,6 +76,7 @@ export default function CheckoutPage() {
   })
   const [loadingCep, setLoadingCep] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
@@ -93,8 +93,9 @@ export default function CheckoutPage() {
 
   const handleOrderType = (type: OrderType) => {
     setForm((prev) => ({ ...prev, orderType: type }))
-    // Taxa fixa: R$ 5 para entrega, grátis na retirada
-    setDeliveryFee(type === 'retirada' ? 0 : FIXED_DELIVERY_FEE)
+    if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
+    else if (feeResult && !feeResult.outsideArea) setDeliveryFee(feeResult.fee)
+    else setDeliveryFee(getDeliveryConfig().zones[0]?.fee ?? 5)
   }
 
   const fetchCep = async (cep: string) => {
@@ -115,7 +116,25 @@ export default function CheckoutPage() {
         } else {
           toast.success('Endereço encontrado!')
         }
-        setDeliveryFee(FIXED_DELIVERY_FEE)
+
+        // Calcula a taxa pela distância até a loja (config vem do Supabase)
+        const config = await pullDeliveryConfig()
+        const coords = await geocodeStructured({ street: `${street}, ${neighborhood}`, city, state, cep: clean })
+        if (coords) {
+          const result = calcDeliveryFee(coords.lat, coords.lng, config)
+          setFeeResult(result)
+          if (result.outsideArea) {
+            toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
+            setDeliveryFee(0)
+          } else {
+            setDeliveryFee(result.fee)
+            toast.info(`Taxa de entrega: ${result.fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${result.distanceKm}km)`)
+          }
+        } else {
+          // Sem geocodificação: cobra a taxa da primeira zona
+          setFeeResult(null)
+          setDeliveryFee(config.zones[0]?.fee ?? 5)
+        }
       } else toast.error('CEP não encontrado.')
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
@@ -133,6 +152,9 @@ export default function CheckoutPage() {
       // Entrega apenas para Governador Valadares
       if (!isAllowedCity(form.city)) {
         return 'No momento entregamos apenas em Governador Valadares. Escolha "Retirada" ou informe um endereço da cidade.'
+      }
+      if (feeResult?.outsideArea) {
+        return 'Endereço fora da nossa área de entrega. Escolha "Retirada" ou outro endereço.'
       }
     }
     if (items.length === 0) return 'Carrinho vazio.'
@@ -449,9 +471,9 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
                   <div className="flex justify-between text-white/50">
-                    <span>Entrega</span>
-                    <span>
-                      {form.orderType === 'retirada' ? 'Grátis' : formatCurrency(deliveryFee)}
+                    <span>Entrega{feeResult && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
+                    <span className={feeResult?.outsideArea ? 'text-red-400 text-xs' : ''}>
+                      {feeResult?.outsideArea ? 'Fora da área' : form.orderType === 'retirada' ? 'Grátis' : formatCurrency(deliveryFee)}
                     </span>
                   </div>
                   <div className="h-px bg-white/8 my-1" />

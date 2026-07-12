@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, MapPin, Save, RotateCcw } from 'lucide-react'
-import { getDeliveryConfig, saveDeliveryConfig, haversineKm, type DeliveryConfig, type DeliveryZone } from '@/lib/delivery-zones'
+import { saveDeliveryConfig, pullDeliveryConfig, pushDeliveryConfig, type DeliveryConfig, type DeliveryZone } from '@/lib/delivery-zones'
 import { formatCurrency } from '@/lib/data'
 import { toast } from 'sonner'
 
@@ -18,7 +18,7 @@ const inputCls = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 te
 export default function EntregaPage() {
   const [config, setConfig] = useState<DeliveryConfig | null>(null)
 
-  useEffect(() => { setConfig(getDeliveryConfig()) }, [])
+  useEffect(() => { pullDeliveryConfig().then(setConfig) }, [])
 
   if (!config) return null
 
@@ -37,17 +37,21 @@ export default function EntregaPage() {
     setZones(config!.zones.map((z, idx) => idx === i ? { ...z, [field]: value } : z))
   }
 
-  function handleSave() {
+  async function handleSave() {
     const sorted = [...config!.zones].sort((a, b) => a.maxKm - b.maxKm)
-    saveDeliveryConfig({ ...config, zones: sorted })
-    toast.success('Configurações de entrega salvas!')
+    const next: DeliveryConfig = { ...config!, zones: sorted }
+    saveDeliveryConfig(next)
+    const ok = await pushDeliveryConfig(next)
+    if (ok) toast.success('Configurações salvas — já valem no site!')
+    else toast.error('Salvo localmente, mas falhou ao enviar ao servidor. Tente de novo.')
   }
 
-  function handleReset() {
-    const reset = { ...config, zones: DEFAULT_ZONES }
+  async function handleReset() {
+    const reset: DeliveryConfig = { ...config!, zones: DEFAULT_ZONES }
     setConfig(reset)
     saveDeliveryConfig(reset)
-    toast.success('Zonas restauradas para o padrão.')
+    const ok = await pushDeliveryConfig(reset)
+    toast.success(ok ? 'Zonas restauradas para o padrão.' : 'Restaurado localmente; falhou ao enviar ao servidor.')
   }
 
   const maxKm = Math.max(...config.zones.map(z => z.maxKm), 0)
