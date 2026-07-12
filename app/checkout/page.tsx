@@ -19,7 +19,8 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
-import { geocodeAddress, calcDeliveryFee, getDeliveryConfig, type FeeResult } from '@/lib/delivery-zones'
+// Taxa de entrega fixa em toda a cidade
+const FIXED_DELIVERY_FEE = 5
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -75,7 +76,6 @@ export default function CheckoutPage() {
     complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: '', changeFor: ''
   })
   const [loadingCep, setLoadingCep] = useState(false)
-  const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
@@ -93,9 +93,8 @@ export default function CheckoutPage() {
 
   const handleOrderType = (type: OrderType) => {
     setForm((prev) => ({ ...prev, orderType: type }))
-    if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
-    else if (feeResult && !feeResult.outsideArea) setDeliveryFee(feeResult.fee)
-    else setDeliveryFee(0)
+    // Taxa fixa: R$ 5 para entrega, grátis na retirada
+    setDeliveryFee(type === 'retirada' ? 0 : FIXED_DELIVERY_FEE)
   }
 
   const fetchCep = async (cep: string) => {
@@ -116,26 +115,7 @@ export default function CheckoutPage() {
         } else {
           toast.success('Endereço encontrado!')
         }
-
-        // Geocode and calculate delivery fee
-        const addressStr = `${street}, ${neighborhood}, ${city}, ${state}, Brasil`
-        const coords = await geocodeAddress(addressStr)
-        if (coords) {
-          const result = calcDeliveryFee(coords.lat, coords.lng)
-          setFeeResult(result)
-          if (result.outsideArea) {
-            const config = getDeliveryConfig()
-            toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
-            setDeliveryFee(0)
-          } else {
-            setDeliveryFee(result.fee)
-            toast.info(`Taxa de entrega: R$${result.fee.toFixed(2)} (${result.distanceKm}km — ${result.zone?.label})`)
-          }
-        } else {
-          // fallback: use first zone fee
-          const config = getDeliveryConfig()
-          setDeliveryFee(config.zones[0]?.fee ?? 5)
-        }
+        setDeliveryFee(FIXED_DELIVERY_FEE)
       } else toast.error('CEP não encontrado.')
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
@@ -469,9 +449,9 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
                   <div className="flex justify-between text-white/50">
-                    <span>Entrega{feeResult && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
-                    <span className={feeResult?.outsideArea ? 'text-red-400 text-xs' : ''}>
-                      {feeResult?.outsideArea ? 'Fora da área' : deliveryFee === 0 ? (form.orderType === 'retirada' ? 'Grátis' : '—') : formatCurrency(deliveryFee)}
+                    <span>Entrega</span>
+                    <span>
+                      {form.orderType === 'retirada' ? 'Grátis' : formatCurrency(deliveryFee)}
                     </span>
                   </div>
                   <div className="h-px bg-white/8 my-1" />
