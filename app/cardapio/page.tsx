@@ -110,7 +110,7 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
           <h3 className="font-bold text-white text-[14px] leading-snug mb-1">{product.name}</h3>
           <p className="text-white/35 text-[12px] leading-relaxed">{product.description}</p>
         </div>
-        <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-white/6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:justify-between mt-4 pt-3.5 border-t border-white/6">
           <div>
             <p className="text-[9px] text-white/25 font-medium uppercase tracking-wider mb-0.5">a partir de</p>
             {product.promoPrice != null && product.promoPrice > 0 && product.promoPrice < product.price ? (
@@ -124,7 +124,7 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); isSub ? onBread(product) : isCombo ? onCombo(product) : onAdd(product) }}
-            className="flex items-center gap-1.5 bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
+            className="flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 w-full sm:w-auto bg-white/6 hover:bg-brand border border-white/10 hover:border-brand text-white text-[12px] font-bold px-3.5 py-2 rounded-full transition-all duration-200"
           >
             {isSub ? 'Personalizar' : isCombo ? 'Montar combo' : 'Adicionar'}
           </button>
