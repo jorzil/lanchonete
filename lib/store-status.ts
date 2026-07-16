@@ -19,6 +19,7 @@ export interface StoreSchedule {
 export interface StoreStatus {
   isOpen: boolean
   manualOverride: boolean | null // null = follow schedule, true/false = forced
+  pickupOnly?: boolean // quando true, o site aceita apenas retirada na loja
   schedule: StoreSchedule
   updatedAt: string
 }
@@ -55,6 +56,7 @@ function buildDefault(): StoreStatus {
   return {
     isOpen: true,
     manualOverride: true, // open by default until admin explicitly closes
+    pickupOnly: false,
     schedule,
     updatedAt: new Date().toISOString(),
   }

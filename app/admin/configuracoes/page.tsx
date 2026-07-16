@@ -91,6 +91,11 @@ export default function ConfiguracoesPage() {
     setStoreStatus(next)
   }
 
+  async function handlePickupOnly(value: boolean) {
+    const next = await patchStoreStatus({ pickupOnly: value })
+    setStoreStatus(next)
+  }
+
   // Print helpers
   function updatePrint<K extends keyof PrintSettings>(key: K, value: PrintSettings[K]) {
     if (!printSettings) return
@@ -228,6 +233,40 @@ export default function ConfiguracoesPage() {
                 })}
               </div>
               <p className="mt-3 text-xs text-gray-400">As alterações nos horários são salvas automaticamente.</p>
+            </Card>
+
+            {/* Somente retirada */}
+            <Card className="p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Store className="h-4 w-4 text-gray-500" />
+                <h3 className="font-semibold text-gray-800">Modo de Atendimento</h3>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Apenas retirada na loja</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Quando ativado, o site aceita somente pedidos para retirada — a opção de entrega fica indisponível para os clientes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handlePickupOnly(!storeStatus?.pickupOnly)}
+                  role="switch"
+                  aria-checked={!!storeStatus?.pickupOnly}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                    storeStatus?.pickupOnly ? 'bg-[#EE5C13]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    storeStatus?.pickupOnly ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
+                </button>
+              </div>
+              {storeStatus?.pickupOnly && (
+                <div className="mt-3 rounded-lg bg-orange-50 border border-orange-100 px-3 py-2 text-xs text-orange-700 font-medium">
+                  🏪 O site está aceitando apenas retirada na loja.
+                </div>
+              )}
             </Card>
           </div>
         </TabsContent>

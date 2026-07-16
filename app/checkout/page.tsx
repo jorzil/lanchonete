@@ -80,9 +80,19 @@ export default function CheckoutPage() {
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
+  const [pickupOnly, setPickupOnly] = useState(false)
 
   useEffect(() => {
-    fetchStoreStatus().then((s) => setStoreOpen(computeIsOpen(s)))
+    fetchStoreStatus().then((s) => {
+      setStoreOpen(computeIsOpen(s))
+      if (s.pickupOnly) {
+        setPickupOnly(true)
+        // Site configurado só para retirada — força o tipo do pedido
+        setForm((prev) => (prev.orderType === 'retirada' ? prev : { ...prev, orderType: 'retirada' }))
+        setDeliveryFee(0)
+        setFeeResult(null)
+      }
+    })
     // Meta Pixel: início de checkout (otimização de anúncios)
     fbTrack('InitiateCheckout', { value: total, currency: 'BRL', num_items: items.length })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -315,17 +325,23 @@ export default function CheckoutPage() {
               </Section>
 
               <Section title="Tipo de Pedido" delay={0.08}>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {(['entrega', 'retirada'] as OrderType[]).map((type) => (
-                    <button key={type} type="button" onClick={() => handleOrderType(type)}
-                      className={`p-4 rounded-xl border font-semibold capitalize transition-all flex items-center justify-center gap-2 ${
-                        form.orderType === type ? 'border-brand bg-brand/10 text-brand' : 'border-white/10 text-white/50 hover:border-white/20'
-                      }`}>
-                      {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
-                      {type === 'entrega' ? 'Entrega' : 'Retirada'}
-                    </button>
-                  ))}
-                </div>
+                {pickupOnly ? (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-brand font-semibold">
+                    <Store size={16} /> Apenas retirada na loja no momento
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {(['entrega', 'retirada'] as OrderType[]).map((type) => (
+                      <button key={type} type="button" onClick={() => handleOrderType(type)}
+                        className={`p-4 rounded-xl border font-semibold capitalize transition-all flex items-center justify-center gap-2 ${
+                          form.orderType === type ? 'border-brand bg-brand/10 text-brand' : 'border-white/10 text-white/50 hover:border-white/20'
+                        }`}>
+                        {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
+                        {type === 'entrega' ? 'Entrega' : 'Retirada'}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {form.orderType === 'entrega' && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-brand" />Endereço de entrega</div>

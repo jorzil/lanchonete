@@ -16,6 +16,7 @@ const DEFAULT_SCHEDULE = {
 
 const DEFAULT_STATUS = {
   manualOverride: true as boolean | null, // open by default until admin changes it
+  pickupOnly: false,
   schedule: DEFAULT_SCHEDULE,
 }
 

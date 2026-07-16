@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
 import { pullCoupons } from '@/lib/coupon-storage'
+import { fetchStoreStatus } from '@/lib/store-status'
 import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
 import { toast } from 'sonner'
 
@@ -35,9 +36,25 @@ export function CartPanel() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, coupon, applyCoupon, removeCoupon, deliveryFee, setDeliveryFee, subtotal, total, itemCount } = useCart()
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
+  const [pickupOnly, setPickupOnly] = useState(false)
 
   // Puxa os cupons do banco ao abrir o carrinho (para validar cupons criados no admin)
   useEffect(() => { if (isOpen) pullCoupons() }, [isOpen])
+
+  // Verifica se o site está configurado só para retirada
+  useEffect(() => {
+    if (!isOpen) return
+    fetchStoreStatus().then((s) => {
+      if (s.pickupOnly) {
+        setPickupOnly(true)
+        setOrderType('retirada')
+        setDeliveryFee(0)
+      } else {
+        setPickupOnly(false)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
 
@@ -105,17 +122,23 @@ export function CartPanel() {
             <div className="px-4 pb-6 pt-4 border-t-2 border-gray-200 space-y-4 bg-gradient-to-b from-gray-50 to-white">
               <div>
                 <p className="text-xs font-black text-gray-600 uppercase tracking-widest mb-3">Tipo de Pedido</p>
-                <div className="flex gap-2">
-                  {(['entrega', 'retirada'] as const).map((type) => (
-                    <button key={type} onClick={() => handleOrderType(type)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-105 ${
-                        orderType === type ? 'border-brand bg-orange-50 text-brand shadow-md' : 'border-gray-300 text-gray-700 hover:border-brand/50'
-                      }`}>
-                      {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
-                      {type === 'entrega' ? 'Entrega' : 'Retirada'}
-                    </button>
-                  ))}
-                </div>
+                {pickupOnly ? (
+                  <div className="flex items-center gap-2 py-3 px-4 rounded-lg border-2 border-brand bg-orange-50 text-brand text-sm font-bold">
+                    <Store size={16} /> Apenas retirada na loja
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    {(['entrega', 'retirada'] as const).map((type) => (
+                      <button key={type} onClick={() => handleOrderType(type)}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-bold transition-all hover:scale-105 ${
+                          orderType === type ? 'border-brand bg-orange-50 text-brand shadow-md' : 'border-gray-300 text-gray-700 hover:border-brand/50'
+                        }`}>
+                        {type === 'entrega' ? <Truck size={16} /> : <Store size={16} />}
+                        {type === 'entrega' ? 'Entrega' : 'Retirada'}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
