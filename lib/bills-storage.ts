@@ -153,7 +153,8 @@ function uid(): string {
 export function deriveStatus(b: Pick<Bill, "dueDate" | "amountPaid" | "amount" | "status">): BillStatus {
   if (b.status === "cancelado") return "cancelado"
   if (b.amountPaid >= b.amount) return "pago"
-  if (new Date(b.dueDate) < new Date(new Date().toDateString())) return "vencido"
+  // Compara no fuso local: "YYYY-MM-DD" puro seria lido como UTC e venceria um dia antes
+  if (new Date(`${b.dueDate}T23:59:59`) < new Date()) return "vencido"
   return "pendente"
 }
 
@@ -296,11 +297,17 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
   }
 }
 
+/** Data de hoje "YYYY-MM-DD" no fuso local (toISOString usaria UTC e erraria o dia à noite). */
+function todayLocal(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 /** Mark a bill as fully paid right now */
 export function markPaid(id: string, paidDate?: string): void {
   updateBill(id, {
     amountPaid: loadBills().find((b) => b.id === id)?.amount ?? 0,
-    paidDate: paidDate ?? new Date().toISOString().slice(0, 10),
+    paidDate: paidDate ?? todayLocal(),
     status: "pago",
   })
 }

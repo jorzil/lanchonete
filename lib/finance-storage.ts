@@ -107,9 +107,24 @@ export async function pushFinanceRemote(bills: unknown[], transactions: unknown[
   }
 }
 
+// ---------- Datas no fuso local ----------
+// "YYYY-MM-DD" interpretado pelo JS como meia-noite UTC vira o dia ANTERIOR
+// no Brasil (UTC-3). Estes helpers evitam esse desvio.
+
+/** Data de hoje como "YYYY-MM-DD" no fuso local (não UTC). */
+export function todayLocalISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+/** Interpreta "YYYY-MM-DD" no fuso local (meio-dia, imune à virada de dia). */
+export function parseLocalDay(s: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00`) : new Date(s)
+}
+
 // ---------- DRE ----------
 function inMonth(iso: string, month: number, year: number): boolean {
-  const d = new Date(iso)
+  const d = parseLocalDay(iso)
   return d.getMonth() === month && d.getFullYear() === year
 }
 
@@ -140,7 +155,7 @@ export function calcDRE(month: number, year: number): DRE {
   const cmv = purchases.reduce((acc, p) => acc + p.total, 0)
 
   const txs = loadTransactions().filter((t) => {
-    const d = new Date(t.date)
+    const d = parseLocalDay(t.date)
     return d.getMonth() === month && d.getFullYear() === year
   })
 

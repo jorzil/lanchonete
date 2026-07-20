@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/store"
 import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
+  todayLocalISO, parseLocalDay,
   EXPENSE_CATEGORY_LABELS,
   type Transaction, type TxKind, type ExpenseCategory,
 } from "@/lib/finance-storage"
@@ -52,7 +53,7 @@ function BillModal({
   onCategoriesChanged: () => void
 }) {
   const categories = type === "pagar" ? PAGAR_CATEGORIES : RECEBER_CATEGORIES
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayLocalISO()
   const [customCats, setCustomCats] = useState<CustomCategory[]>(() => loadCustomCategories().filter((c) => c.type === type))
   const [addingCat, setAddingCat] = useState(false)
   const [newCatLabel, setNewCatLabel] = useState("")
@@ -480,7 +481,7 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: now.toISOString().slice(0, 10), account: "dinheiro" as MoneyAccount })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
   const [cashBase, setCashBase] = useState(0)
   const [bankBase, setBankBase] = useState(0)
@@ -552,7 +553,7 @@ export default function FinanceiroPage() {
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: now.toISOString().slice(0, 10), account: "dinheiro" })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro" })
   }
 
   function handleDeleteTx(id: string) {
@@ -743,7 +744,7 @@ export default function FinanceiroPage() {
             <div className="border-b border-gray-100 px-5 py-3">
               <p className="text-sm font-semibold text-gray-900">Lançamentos — {MONTHS[month]}/{year}</p>
             </div>
-            {transactions.filter((t) => { const d = new Date(t.date); return d.getMonth() === month && d.getFullYear() === year }).length === 0 ? (
+            {transactions.filter((t) => { const d = parseLocalDay(t.date); return d.getMonth() === month && d.getFullYear() === year }).length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-400">Nenhum lançamento neste período.</div>
             ) : (
               <div className="overflow-x-auto">
@@ -759,11 +760,11 @@ export default function FinanceiroPage() {
                   </thead>
                   <tbody>
                     {transactions
-                      .filter((t) => { const d = new Date(t.date); return d.getMonth() === month && d.getFullYear() === year })
+                      .filter((t) => { const d = parseLocalDay(t.date); return d.getMonth() === month && d.getFullYear() === year })
                       .map((t) => (
                       <tr key={t.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                         <td className="px-5 py-3 text-gray-500">
-                          {new Date(t.date).toLocaleDateString("pt-BR")}
+                          {parseLocalDay(t.date).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">
