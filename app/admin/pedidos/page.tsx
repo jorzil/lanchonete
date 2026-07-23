@@ -286,6 +286,32 @@ export default function PedidosPage() {
     }
   }, [])
 
+  // Puxa pedidos novos do iFood enquanto esta tela estiver aberta (45s).
+  // Só ativa se a integração estiver configurada em /admin/integracoes/ifood.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null
+    let stopped = false
+    ;(async () => {
+      try {
+        const res = await fetch("/api/integrations/ifood/config", { cache: "no-store" })
+        if (!res.ok) return
+        const cfg = await res.json()
+        if (!cfg?.hasSecret || !cfg?.clientId || stopped) return
+        const poll = async () => {
+          try {
+            const r = await fetch("/api/integrations/ifood/poll", { method: "POST" })
+            const data = await r.json().catch(() => ({}))
+            if (data?.imported > 0) loadAll()
+          } catch {}
+        }
+        poll()
+        timer = setInterval(poll, 45_000)
+      } catch {}
+    })()
+    return () => { stopped = true; if (timer) clearInterval(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     loadAll()
 
