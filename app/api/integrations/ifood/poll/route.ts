@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { pollEvents, acknowledgeEvents } from '@/lib/integrations/ifood/client'
 import { ingestOrder } from '@/lib/integrations/ifood/mapper'
 import { logIFood } from '@/lib/integrations/ifood/logs'
+import { isPlacedEvent } from '@/lib/integrations/ifood/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export async function POST() {
     const events = await pollEvents()
     let imported = 0
     for (const ev of events) {
-      if ((ev.code ?? '').toUpperCase() === 'PLACED' && ev.orderId) {
+      if (isPlacedEvent(ev) && ev.orderId) {
         if (await ingestOrder(ev.orderId)) imported++
       }
     }

@@ -3,7 +3,7 @@ import { ingestOrder } from '@/lib/integrations/ifood/mapper'
 import { acknowledgeEvents } from '@/lib/integrations/ifood/client'
 import { getConfig } from '@/lib/integrations/ifood/config'
 import { logIFood } from '@/lib/integrations/ifood/logs'
-import type { IFoodEvent } from '@/lib/integrations/ifood/types'
+import { isPlacedEvent, type IFoodEvent } from '@/lib/integrations/ifood/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,8 +34,10 @@ export async function POST(req: NextRequest) {
   const handled: IFoodEvent[] = []
   for (const ev of events) {
     if (!ev?.orderId) continue
-    if ((ev.code ?? '').toUpperCase() === 'PLACED') {
+    if (isPlacedEvent(ev)) {
       await ingestOrder(ev.orderId)
+    } else {
+      await logIFood('info', 'webhook', `Evento ${ev.fullCode ?? ev.code} ignorado (pedido ${ev.orderId})`)
     }
     handled.push(ev)
   }

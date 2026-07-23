@@ -84,7 +84,10 @@ export async function ingestOrder(orderId: string): Promise<boolean> {
     return false
   }
   const detail = await getOrder(orderId)
-  if (!detail) return false
+  if (!detail) {
+    await logIFood('error', 'order', `Não foi possível obter os detalhes do pedido ${orderId} no iFood`)
+    return false
+  }
   try {
     const order = await createOrder(mapOrder(detail))
     await logIFood('success', 'order', `Pedido iFood importado: ${order.orderNumber}`, { externalId: orderId })

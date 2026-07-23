@@ -35,10 +35,18 @@ export interface IFoodConfigPublic {
 // ─── Eventos do iFood (polling/webhook) ──────────────────────────────────────
 export interface IFoodEvent {
   id: string
-  code: string          // PLACED, CONFIRMED, CANCELLED, DISPATCHED, ...
+  code: string          // código curto: PLC, CFM, CAN, DSP, ...
+  fullCode?: string     // código completo: PLACED, CONFIRMED, CANCELLED, ...
   orderId: string
   createdAt?: string
   merchantId?: string
+}
+
+/** True quando o evento representa um pedido novo (o iFood usa PLC/PLACED). */
+export function isPlacedEvent(ev: IFoodEvent): boolean {
+  const full = (ev.fullCode ?? '').toUpperCase()
+  const short = (ev.code ?? '').toUpperCase()
+  return full === 'PLACED' || short === 'PLC' || short === 'PLACED'
 }
 
 // ─── Pedido do iFood (resumo dos campos usados) ──────────────────────────────
