@@ -142,6 +142,38 @@ export async function listMerchants(): Promise<Array<{ id: string; name: string 
   return arr.map((m: { id: string; name?: string; corporateName?: string }) => ({ id: m.id, name: m.name ?? m.corporateName ?? m.id }))
 }
 
+// ─── Financeiro (módulo financial — precisa estar habilitado no app) ─────────
+// Vendas do período com valores bruto/líquido oficiais do iFood.
+export interface IFoodSale {
+  orderId?: string
+  shortOrderId?: string
+  salesDate?: string
+  grossValue?: number
+  netValue?: number
+  totalBag?: number
+  deliveryFee?: number
+  commission?: number
+  [key: string]: unknown
+}
+
+export async function financialSales(beginDate: string, endDate: string): Promise<IFoodSale[]> {
+  const { getConfig } = await import('./config')
+  const cfg = await getConfig()
+  const qs = `beginSalesDate=${beginDate}&endSalesDate=${endDate}`
+  const res = await api(`/financial/v2.1/merchants/${cfg.merchantId}/sales?${qs}`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    if (res.status === 403 || res.status === 401) {
+      throw new Error('Sem acesso ao módulo Financial — adicione o módulo "financial" ao app no Portal do Desenvolvedor iFood.')
+    }
+    await logIFood('error', 'financial', `Consulta de vendas falhou (${res.status})`, body)
+    throw new Error(`Consulta financeira falhou (${res.status})`)
+  }
+  const data = await res.json().catch(() => null)
+  const arr = Array.isArray(data) ? data : (data?.sales ?? data?.content ?? [])
+  return Array.isArray(arr) ? (arr as IFoodSale[]) : []
+}
+
 export async function pushStatus(externalId: string, internalStatus: string): Promise<boolean> {
   const action = STATUS_ACTION[internalStatus]
   if (!action) return false

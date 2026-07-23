@@ -41,6 +41,17 @@ export default function IFoodIntegrationPage() {
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [merchants, setMerchants] = useState<{ id: string; name: string }[]>([])
+  const [finSales, setFinSales] = useState<Array<{ salesDate?: string; orderId?: string; shortOrderId?: string; grossValue?: number; netValue?: number }>>([])
+  const [finBegin, setFinBegin] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
+  const [finEnd, setFinEnd] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  })
+  const [finLoading, setFinLoading] = useState(false)
+  const [finError, setFinError] = useState("")
   const [findingMerchants, setFindingMerchants] = useState(false)
   const [merchantsMsg, setMerchantsMsg] = useState("")
 
@@ -62,6 +73,22 @@ export default function IFoodIntegrationPage() {
   }
 
   useEffect(() => { loadConfig(); loadLogs() }, [])
+
+  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+
+  async function loadFinancial() {
+    setFinLoading(true); setFinError(""); setFinSales([])
+    try {
+      const res = await fetch(`/api/integrations/ifood/financial?begin=${finBegin}&end=${finEnd}`, { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.ok) setFinSales(Array.isArray(data.sales) ? data.sales : [])
+      else setFinError(data.error || "Falha na consulta financeira.")
+    } catch {
+      setFinError("Falha na consulta financeira.")
+    } finally {
+      setFinLoading(false)
+    }
+  }
 
   async function save() {
     setSaving(true)
@@ -209,6 +236,72 @@ export default function IFoodIntegrationPage() {
             <Copy size={14} />
           </Button>
         </div>
+      </Card>
+
+      {/* Financeiro (bruto/líquido oficiais) */}
+      <Card className="p-5 space-y-3">
+        <div>
+          <h2 className="font-bold text-gray-900">Financeiro iFood</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Valores bruto e líquido oficiais por venda (requer o módulo <strong>financial</strong> habilitado no app do portal iFood).
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={finBegin} onChange={(e) => setFinBegin(e.target.value)} className="h-9 w-40" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={finEnd} onChange={(e) => setFinEnd(e.target.value)} className="h-9 w-40" />
+          </div>
+          <Button variant="outline" size="sm" onClick={loadFinancial} disabled={finLoading}>
+            {finLoading ? <Loader2 size={13} className="mr-1 animate-spin" /> : <RefreshCw size={13} className="mr-1" />} Consultar
+          </Button>
+        </div>
+        {finError && (
+          <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">{finError}</p>
+        )}
+        {finSales.length > 0 && (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                <p className="text-[10px] text-gray-400 uppercase font-bold">Vendas</p>
+                <p className="text-lg font-black text-gray-900">{finSales.length}</p>
+              </div>
+              <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                <p className="text-[10px] text-gray-400 uppercase font-bold">Bruto</p>
+                <p className="text-lg font-black text-gray-900">{fmtBRL(finSales.reduce((a, s) => a + (s.grossValue ?? 0), 0))}</p>
+              </div>
+              <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                <p className="text-[10px] text-emerald-500 uppercase font-bold">Líquido</p>
+                <p className="text-lg font-black text-emerald-700">{fmtBRL(finSales.reduce((a, s) => a + (s.netValue ?? 0), 0))}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-gray-400">
+                    <th className="py-2 pr-3 font-medium">Data</th>
+                    <th className="py-2 pr-3 font-medium">Pedido</th>
+                    <th className="py-2 pr-3 font-medium text-right">Bruto</th>
+                    <th className="py-2 pr-3 font-medium text-right">Líquido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {finSales.map((s, i) => (
+                    <tr key={i} className="border-b border-gray-50 last:border-0">
+                      <td className="py-1.5 pr-3 text-gray-500">{s.salesDate ?? '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono text-gray-700">{s.shortOrderId ?? s.orderId ?? '—'}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-gray-900">{fmtBRL(s.grossValue ?? 0)}</td>
+                      <td className="py-1.5 pr-3 text-right font-semibold text-emerald-600">{fmtBRL(s.netValue ?? 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Logs */}

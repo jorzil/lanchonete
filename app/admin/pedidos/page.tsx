@@ -200,7 +200,8 @@ function formatDate(iso: string) {
 export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos">("todos")
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "todos" | "excluidos">("todos")
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [soundReady, setSoundReady] = useState(false)
@@ -211,6 +212,14 @@ export default function PedidosPage() {
     setPrintedIds(new Set(getPrintQueue().filter((j) => j.status === "printed").map((j) => j.orderId)))
   }
   useEffect(() => { refreshPrinted() }, [])
+
+  // Carrega a lixeira (IDs de pedidos excluídos)
+  useEffect(() => {
+    fetch('/api/deleted-orders', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : { ids: [] })
+      .then((d) => setDeletedIds(new Set(Array.isArray(d.ids) ? d.ids : [])))
+      .catch(() => {})
+  }, [])
 
   function handlePrint(order: Order) {
     printOrder(order)
@@ -353,11 +362,13 @@ export default function PedidosPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return orders
-      .filter((o) => statusFilter === "todos" || o.status === statusFilter)
+      // Lixeira: a aba "Excluídos" mostra só os excluídos; as demais os escondem
+      .filter((o) => statusFilter === "excluidos" ? deletedIds.has(o.id) : !deletedIds.has(o.id))
+      .filter((o) => statusFilter === "todos" || statusFilter === "excluidos" || o.status === statusFilter)
       .filter((o) => sourceFilter === "todos" || (o.source ?? "site") === sourceFilter)
       .filter((o) => !q || o.customer.name.toLowerCase().includes(q) || o.orderNumber.toLowerCase().includes(q))
       .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-  }, [orders, statusFilter, sourceFilter, query])
+  }, [orders, statusFilter, sourceFilter, query, deletedIds])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -425,29 +436,64 @@ export default function PedidosPage() {
     }
   }
 
+  // Excluir = mover para a lixeira (aba "Excluídos"); o pedido continua no banco.
   async function handleDelete() {
     if (!toDelete) return
-    if (supabaseConfigured) {
-      try { await deleteDbOrder(toDelete.id) } catch {}
-    }
-    setOrders((prev) => {
-      const next = prev.filter((o) => o.id !== toDelete.id)
-      saveOrders(next)
-      return next
-    })
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ add: toDelete.id }),
+      })
+    } catch {}
+    setDeletedIds((prev) => new Set(prev).add(toDelete.id))
     if (selected?.id === toDelete.id) setSelected(null)
     setToDelete(null)
   }
 
-  const STATUS_TABS: Array<{ key: OrderStatus | "todos"; label: string; count?: number }> = [
+  // Restaura um pedido da lixeira
+  async function restoreOrder(id: string) {
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove: id }),
+      })
+    } catch {}
+    setDeletedIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+  }
+
+  // Apaga definitivamente (some da lixeira e do banco)
+  async function purgeOrder(id: string) {
+    if (supabaseConfigured) {
+      try { await deleteDbOrder(id) } catch {}
+    }
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove: id }),
+      })
+    } catch {}
+    setDeletedIds((prev) => { const next = new Set(prev); next.delete(id); return next })
+    setOrders((prev) => {
+      const next = prev.filter((o) => o.id !== id)
+      saveOrders(next)
+      return next
+    })
+    if (selected?.id === id) setSelected(null)
+  }
+
+  const STATUS_TABS: Array<{ key: OrderStatus | "todos" | "excluidos"; label: string; count?: number }> = [
     { key: "todos", label: "Todos" },
-    { key: "novo" as OrderStatus, label: "Novos", count: orders.filter((o) => o.status === "novo").length || undefined },
+    { key: "novo" as OrderStatus, label: "Novos", count: orders.filter((o) => o.status === "novo" && !deletedIds.has(o.id)).length || undefined },
     { key: "aceito" as OrderStatus, label: "Aceitos" },
     { key: "em_preparo" as OrderStatus, label: "Em Preparo" },
     { key: "pronto" as OrderStatus, label: "Prontos" },
     { key: "saiu_entrega" as OrderStatus, label: "Entrega" },
     { key: "entregue" as OrderStatus, label: "Entregues" },
     { key: "cancelado" as OrderStatus, label: "Cancelados" },
+    { key: "excluidos", label: "🗑 Excluídos", count: orders.filter((o) => deletedIds.has(o.id)).length || undefined },
   ]
 
   const isEmpty = loaded && orders.length === 0
@@ -664,13 +710,35 @@ export default function PedidosPage() {
                             >
                               <Printer className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost" size="sm"
-                              className="text-red-400 hover:text-red-600 hover:bg-red-50"
-                              onClick={() => setToDelete(o)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {deletedIds.has(o.id) ? (
+                              <>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 text-xs font-bold"
+                                  onClick={() => restoreOrder(o.id)}
+                                  title="Restaurar pedido"
+                                >
+                                  Restaurar
+                                </Button>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => { if (confirm(`Apagar o pedido ${o.orderNumber} DEFINITIVAMENTE? Não dá para desfazer.`)) purgeOrder(o.id) }}
+                                  title="Apagar definitivamente"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost" size="sm"
+                                className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                                onClick={() => setToDelete(o)}
+                                title="Mover para excluídos"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -856,7 +924,7 @@ export default function PedidosPage() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Excluir pedido?</h3>
             <p className="mt-1 text-sm text-gray-500">
-              O pedido <strong>{toDelete.orderNumber}</strong> será removido permanentemente.
+              O pedido <strong>{toDelete.orderNumber}</strong> vai para a aba <strong>🗑 Excluídos</strong> — dá para restaurar ou apagar de vez por lá.
             </p>
             <div className="mt-5 flex gap-3">
               <button className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" onClick={() => setToDelete(null)}>
