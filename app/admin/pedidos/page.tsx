@@ -206,6 +206,15 @@ export default function PedidosPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [soundReady, setSoundReady] = useState(false)
   const [ifoodFeePercent, setIfoodFeePercent] = useState(0)
+  // Envio automático de WhatsApp (Evolution API) disponível?
+  const [waAuto, setWaAuto] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/whatsapp', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : { configured: false })
+      .then((d) => setWaAuto(!!d.configured))
+      .catch(() => {})
+  }, [])
   const [printedIds, setPrintedIds] = useState<Set<string>>(new Set())
 
   function refreshPrinted() {
@@ -397,6 +406,22 @@ export default function PedidosPage() {
           body: JSON.stringify({ externalId: order.externalId, status: nextStatus }),
         }).catch(() => {})
       }
+    } else if (waAuto) {
+      // Evolution API configurada: envia a mensagem automaticamente.
+      const msg = buildStatusMessage(nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
+      fetch('/api/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: order.customer.phone, text: msg }),
+      }).then(async (r) => {
+        if (r.ok) toast.success('WhatsApp enviado ao cliente automaticamente')
+        else {
+          toast.error('Falha no envio automático — abrindo WhatsApp Web')
+          openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
+        }
+      }).catch(() => {
+        openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
+      })
     } else {
       // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
       // gesture so the browser does not block the popup).

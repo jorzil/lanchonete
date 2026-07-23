@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sendEvolutionMessage } from '@/lib/evolution'
+import { sendEvolutionMessage, isEvolutionConfigured } from '@/lib/evolution'
+
+export const dynamic = 'force-dynamic'
+
+// GET: informa ao front se o envio automático está configurado
+export async function GET() {
+  return NextResponse.json({ configured: isEvolutionConfigured() })
+}
 
 export async function POST(req: NextRequest) {
   try {
