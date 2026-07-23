@@ -17,6 +17,7 @@ interface PublicConfig {
   merchantId: string
   environment: "sandbox" | "production"
   webhookUrl: string
+  commissionPercent?: number
   connected: boolean
   lastSyncAt: string | null
 }
@@ -34,6 +35,7 @@ export default function IFoodIntegrationPage() {
   const [merchantId, setMerchantId] = useState("")
   const [environment, setEnvironment] = useState<"sandbox" | "production">("sandbox")
   const [webhookUrl, setWebhookUrl] = useState("")
+  const [commissionPercent, setCommissionPercent] = useState("")
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -51,6 +53,7 @@ export default function IFoodIntegrationPage() {
       setMerchantId(data.merchantId)
       setEnvironment(data.environment)
       setWebhookUrl(data.webhookUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/integrations/ifood/webhook` : ""))
+      setCommissionPercent(data.commissionPercent ? String(data.commissionPercent) : "")
     }
   }
   async function loadLogs() {
@@ -65,7 +68,7 @@ export default function IFoodIntegrationPage() {
     await fetch("/api/integrations/ifood/config", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl }),
+      body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0 }),
     })
     setClientSecret("")
     await loadConfig()
@@ -91,7 +94,7 @@ export default function IFoodIntegrationPage() {
       // garante que clientId/secret estão salvos no servidor antes de listar
       await fetch("/api/integrations/ifood/config", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl }),
+        body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0 }),
       })
       const res = await fetch("/api/integrations/ifood/merchants", { cache: "no-store" })
       const data = await res.json()
@@ -165,6 +168,19 @@ export default function IFoodIntegrationPage() {
                 <SelectItem value="production">Produção</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Taxas do iFood (%)</Label>
+            <Input
+              type="number" min="0" max="100" step="0.1"
+              value={commissionPercent}
+              onChange={(e) => setCommissionPercent(e.target.value)}
+              placeholder="ex: 26.2"
+            />
+            <p className="text-[11px] text-gray-400">
+              Comissão + taxa de pagamento online (Plano Básico ≈ 12% + 3,2% · Plano Entrega ≈ 23% + 3,2%).
+              Usado para estimar o valor líquido dos pedidos iFood.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 pt-1">

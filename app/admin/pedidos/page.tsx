@@ -204,6 +204,7 @@ export default function PedidosPage() {
   const [sourceFilter, setSourceFilter] = useState<OrderSource | "todos">("todos")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [soundReady, setSoundReady] = useState(false)
+  const [ifoodFeePercent, setIfoodFeePercent] = useState(0)
   const [printedIds, setPrintedIds] = useState<Set<string>>(new Set())
 
   function refreshPrinted() {
@@ -296,6 +297,7 @@ export default function PedidosPage() {
         const res = await fetch("/api/integrations/ifood/config", { cache: "no-store" })
         if (!res.ok) return
         const cfg = await res.json()
+        if (typeof cfg?.commissionPercent === "number") setIfoodFeePercent(cfg.commissionPercent)
         if (!cfg?.hasSecret || !cfg?.clientId || stopped) return
         const poll = async () => {
           try {
@@ -770,7 +772,13 @@ export default function PedidosPage() {
                 <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{formatCurrency(selected.subtotal)}</span></div>
                 <div className="flex justify-between text-gray-500"><span>Entrega</span><span>{formatCurrency(selected.deliveryFee)}</span></div>
                 {selected.discount > 0 && <div className="flex justify-between text-gray-500"><span>Desconto{selected.couponCode ? ` (${selected.couponCode})` : ''}</span><span>-{formatCurrency(selected.discount)}</span></div>}
-                <div className="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total</span><span>{formatCurrency(selected.total)}</span></div>
+                <div className="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total{selected.source === 'ifood' && ifoodFeePercent > 0 ? ' (bruto)' : ''}</span><span>{formatCurrency(selected.total)}</span></div>
+                {selected.source === 'ifood' && ifoodFeePercent > 0 && (
+                  <>
+                    <div className="flex justify-between text-red-500 text-xs"><span>Taxas iFood ({ifoodFeePercent}%)</span><span>-{formatCurrency(selected.total * ifoodFeePercent / 100)}</span></div>
+                    <div className="flex justify-between font-bold text-emerald-600"><span>Líquido estimado</span><span>{formatCurrency(selected.total * (1 - ifoodFeePercent / 100))}</span></div>
+                  </>
+                )}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-gray-400">Pagamento</span>
                   <select

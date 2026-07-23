@@ -12,6 +12,8 @@ export interface IFoodConfig {
   merchantId: string
   environment: IFoodEnvironment
   webhookUrl: string
+  /** % total de taxas do iFood (comissão + pagamento online) para estimar o líquido */
+  commissionPercent?: number
   // estado de conexão (preenchido pelo sistema)
   connected: boolean
   lastSyncAt: string | null
@@ -28,6 +30,7 @@ export interface IFoodConfigPublic {
   merchantId: string
   environment: IFoodEnvironment
   webhookUrl: string
+  commissionPercent?: number
   connected: boolean
   lastSyncAt: string | null
 }

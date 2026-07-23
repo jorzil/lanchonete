@@ -18,6 +18,9 @@ export async function PATCH(req: NextRequest) {
     merchantId: body.merchantId,
     environment: body.environment === 'production' ? 'production' : 'sandbox',
     webhookUrl: body.webhookUrl,
+    ...(typeof body.commissionPercent === 'number' && isFinite(body.commissionPercent)
+      ? { commissionPercent: Math.min(100, Math.max(0, body.commissionPercent)) }
+      : {}),
   })
   await logIFood('info', 'config', 'Configuração atualizada')
   return NextResponse.json(toPublic(cfg))

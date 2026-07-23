@@ -89,6 +89,7 @@ export function toPublic(cfg: IFoodConfig): IFoodConfigPublic {
     merchantId: cfg.merchantId,
     environment: cfg.environment,
     webhookUrl: cfg.webhookUrl,
+    commissionPercent: cfg.commissionPercent ?? 0,
     connected: cfg.connected,
     lastSyncAt: cfg.lastSyncAt,
   }
