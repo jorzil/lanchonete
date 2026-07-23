@@ -374,11 +374,16 @@ export default function PedidosPage() {
     if (nextStatus === 'aceito') stopSiren()
     // Pedidos do iFood: para o WhatsApp manual é dispensável; sincroniza com a API.
     if (order.source === 'ifood' && order.externalId) {
-      fetch('/api/integrations/ifood/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ externalId: order.externalId, status: nextStatus }),
-      }).catch(() => {})
+      // 'readyToPickup' só vale para retirada no iFood; em entrega o próximo
+      // passo aceito pela API é o 'dispatch' (saiu para entrega).
+      const skipSync = nextStatus === 'pronto' && order.orderType === 'entrega'
+      if (!skipSync) {
+        fetch('/api/integrations/ifood/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ externalId: order.externalId, status: nextStatus }),
+        }).catch(() => {})
+      }
     } else {
       // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
       // gesture so the browser does not block the popup).
