@@ -142,6 +142,81 @@ export async function listMerchants(): Promise<Array<{ id: string; name: string 
   return arr.map((m: { id: string; name?: string; corporateName?: string }) => ({ id: m.id, name: m.name ?? m.corporateName ?? m.id }))
 }
 
+// ─── Merchant: detalhes, status, pausas e horários ───────────────────────────
+async function merchantPath(sub = ''): Promise<string> {
+  const { getConfig } = await import('./config')
+  const cfg = await getConfig()
+  return `/merchant/v1.0/merchants/${cfg.merchantId}${sub}`
+}
+
+export async function getMerchantDetail(): Promise<Record<string, unknown> | null> {
+  const res = await api(await merchantPath())
+  if (!res.ok) { await logIFood('error', 'merchant', `Detalhe da loja falhou (${res.status})`); return null }
+  return res.json()
+}
+
+export async function getMerchantStatus(): Promise<unknown[]> {
+  const res = await api(await merchantPath('/status'))
+  if (!res.ok) { await logIFood('error', 'merchant', `Status da loja falhou (${res.status})`); return [] }
+  const data = await res.json()
+  return Array.isArray(data) ? data : [data]
+}
+
+export interface IFoodInterruption { id: string; description?: string; start?: string; end?: string }
+
+export async function listInterruptions(): Promise<IFoodInterruption[]> {
+  const res = await api(await merchantPath('/interruptions'))
+  if (!res.ok) { await logIFood('error', 'merchant', `Listar pausas falhou (${res.status})`); return [] }
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
+}
+
+export async function createInterruption(description: string, minutes: number): Promise<boolean> {
+  const start = new Date()
+  const end = new Date(start.getTime() + minutes * 60_000)
+  const res = await api(await merchantPath('/interruptions'), {
+    method: 'POST',
+    body: JSON.stringify({ description, start: start.toISOString(), end: end.toISOString() }),
+  })
+  if (!res.ok) {
+    await logIFood('error', 'merchant', `Criar pausa falhou (${res.status})`, await res.text().catch(() => ''))
+    return false
+  }
+  await logIFood('success', 'merchant', `Pausa criada: ${description} (${minutes} min)`)
+  return true
+}
+
+export async function deleteInterruption(id: string): Promise<boolean> {
+  const res = await api(await merchantPath(`/interruptions/${id}`), { method: 'DELETE' })
+  if (!res.ok && res.status !== 204) {
+    await logIFood('error', 'merchant', `Remover pausa falhou (${res.status})`)
+    return false
+  }
+  await logIFood('success', 'merchant', 'Pausa removida')
+  return true
+}
+
+export interface IFoodShift { dayOfWeek: string; start: string; duration: number }
+
+export async function getOpeningHours(): Promise<{ shifts: IFoodShift[] } | null> {
+  const res = await api(await merchantPath('/opening-hours'))
+  if (!res.ok) { await logIFood('error', 'merchant', `Consultar horários falhou (${res.status})`); return null }
+  return res.json()
+}
+
+export async function putOpeningHours(shifts: IFoodShift[]): Promise<boolean> {
+  const res = await api(await merchantPath('/opening-hours'), {
+    method: 'PUT',
+    body: JSON.stringify({ shifts }),
+  })
+  if (!res.ok) {
+    await logIFood('error', 'merchant', `Salvar horários falhou (${res.status})`, await res.text().catch(() => ''))
+    return false
+  }
+  await logIFood('success', 'merchant', `Horários de funcionamento atualizados (${shifts.length} turno(s))`)
+  return true
+}
+
 // ─── Financeiro (módulo financial — precisa estar habilitado no app) ─────────
 // Vendas do período com valores bruto/líquido oficiais do iFood.
 export interface IFoodSale {

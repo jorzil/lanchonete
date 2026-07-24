@@ -52,6 +52,18 @@ export default function IFoodIntegrationPage() {
   })
   const [finLoading, setFinLoading] = useState(false)
   const [finError, setFinError] = useState("")
+
+  // ── Loja (Merchant): detalhes, status, pausas e horários ──
+  type Shift = { dayOfWeek: string; start: string; end: string }
+  const [mLoading, setMLoading] = useState(false)
+  const [mError, setMError] = useState("")
+  const [mDetail, setMDetail] = useState<Record<string, unknown> | null>(null)
+  const [mStatus, setMStatus] = useState<unknown[]>([])
+  const [mPauses, setMPauses] = useState<Array<{ id: string; description?: string; start?: string; end?: string }>>([])
+  const [mShifts, setMShifts] = useState<Shift[]>([])
+  const [pauseDesc, setPauseDesc] = useState("")
+  const [pauseMin, setPauseMin] = useState("30")
+  const [savingHours, setSavingHours] = useState(false)
   const [findingMerchants, setFindingMerchants] = useState(false)
   const [merchantsMsg, setMerchantsMsg] = useState("")
 
@@ -75,6 +87,82 @@ export default function IFoodIntegrationPage() {
   useEffect(() => { loadConfig(); loadLogs() }, [])
 
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+
+  const DAYS: Array<{ key: string; label: string }> = [
+    { key: "MONDAY", label: "Segunda" }, { key: "TUESDAY", label: "Terça" },
+    { key: "WEDNESDAY", label: "Quarta" }, { key: "THURSDAY", label: "Quinta" },
+    { key: "FRIDAY", label: "Sexta" }, { key: "SATURDAY", label: "Sábado" },
+    { key: "SUNDAY", label: "Domingo" },
+  ]
+  const dayLabel = (k: string) => DAYS.find((d) => d.key === k)?.label ?? k
+
+  // duração (min) → hora final "HH:MM"
+  const shiftToEnd = (start: string, duration: number) => {
+    const [h, m] = start.split(":").map(Number)
+    const total = h * 60 + m + duration
+    return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+  }
+
+  async function loadMerchant() {
+    setMLoading(true); setMError("")
+    try {
+      const res = await fetch("/api/integrations/ifood/merchant", { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.ok) {
+        setMDetail(data.detail ?? null)
+        setMStatus(Array.isArray(data.status) ? data.status : [])
+        setMPauses(Array.isArray(data.interruptions) ? data.interruptions : [])
+        const shifts = data.openingHours?.shifts
+        if (Array.isArray(shifts)) {
+          setMShifts(shifts.map((s: { dayOfWeek: string; start: string; duration: number }) => ({
+            dayOfWeek: s.dayOfWeek,
+            start: (s.start ?? "00:00:00").slice(0, 5),
+            end: shiftToEnd((s.start ?? "00:00:00").slice(0, 5), s.duration ?? 0),
+          })))
+        }
+      } else setMError(data.error || "Falha ao carregar a loja.")
+    } catch { setMError("Falha ao carregar a loja.") }
+    finally { setMLoading(false) }
+  }
+
+  async function merchantAction(body: Record<string, unknown>) {
+    const res = await fetch("/api/integrations/ifood/merchant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json().catch(() => ({}))
+    return !!(res.ok && data.ok)
+  }
+
+  async function addPause() {
+    if (!pauseDesc.trim()) return
+    const ok = await merchantAction({ action: "createInterruption", description: pauseDesc.trim(), minutes: parseInt(pauseMin) || 30 })
+    if (ok) { setPauseDesc(""); await loadMerchant() }
+    else setMError("Falha ao criar a pausa — veja os logs.")
+  }
+
+  async function removePause(id: string) {
+    const ok = await merchantAction({ action: "deleteInterruption", id })
+    if (ok) await loadMerchant()
+    else setMError("Falha ao remover a pausa — veja os logs.")
+  }
+
+  async function saveHours() {
+    setSavingHours(true)
+    const shifts = mShifts
+      .filter((s) => s.start && s.end)
+      .map((s) => {
+        const [sh, sm] = s.start.split(":").map(Number)
+        const [eh, em] = s.end.split(":").map(Number)
+        return { dayOfWeek: s.dayOfWeek, start: `${s.start}:00`, duration: (eh * 60 + em) - (sh * 60 + sm) }
+      })
+      .filter((s) => s.duration > 0)
+    const ok = await merchantAction({ action: "setOpeningHours", shifts })
+    setSavingHours(false)
+    if (ok) await loadMerchant()
+    else setMError("Falha ao salvar os horários — veja os logs.")
+  }
 
   async function loadFinancial() {
     setFinLoading(true); setFinError(""); setFinSales([])
@@ -236,6 +324,111 @@ export default function IFoodIntegrationPage() {
             <Copy size={14} />
           </Button>
         </div>
+      </Card>
+
+      {/* Loja (Merchant): detalhes, status, pausas e horários */}
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-gray-900">Loja iFood (Merchant)</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Detalhes, disponibilidade, pausas e horário de funcionamento da loja.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadMerchant} disabled={mLoading}>
+            {mLoading ? <Loader2 size={13} className="mr-1 animate-spin" /> : <RefreshCw size={13} className="mr-1" />} Carregar dados
+          </Button>
+        </div>
+        {mError && <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">{mError}</p>}
+
+        {mDetail && (
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm space-y-1">
+            <p className="font-bold text-gray-900">{String(mDetail.name ?? mDetail.corporateName ?? "Loja")}</p>
+            <p className="text-xs text-gray-500 font-mono">ID: {String(mDetail.id ?? "—")}</p>
+            {mDetail.averageTicket != null && <p className="text-xs text-gray-500">Ticket médio: {String(mDetail.averageTicket)}</p>}
+            {(() => {
+              const addr = mDetail.address as Record<string, unknown> | undefined
+              return addr ? (
+                <p className="text-xs text-gray-500">
+                  {String(addr.streetName ?? "")} {String(addr.streetNumber ?? "")} — {String(addr.city ?? "")}/{String(addr.state ?? "")}
+                </p>
+              ) : null
+            })()}
+            {mStatus.length > 0 && (
+              <div className="pt-1 flex flex-wrap gap-2">
+                {mStatus.map((s, i) => {
+                  const st = s as { state?: string; operation?: string; available?: boolean }
+                  const ok = st.available ?? st.state === "OK"
+                  return (
+                    <span key={i} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                      {ok ? "● Disponível" : "● Indisponível"}{st.operation ? ` — ${st.operation}` : ""}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mDetail && (
+          <>
+            {/* Pausas */}
+            <div className="space-y-2">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Pausas (interrupções)</p>
+              {mPauses.length === 0 ? (
+                <p className="text-xs text-gray-400">Nenhuma pausa ativa.</p>
+              ) : (
+                mPauses.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs">
+                    <span className="text-amber-800">
+                      <strong>{p.description ?? "Pausa"}</strong>
+                      {p.start && p.end && ` · ${new Date(p.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} → ${new Date(p.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+                    </span>
+                    <button onClick={() => removePause(p.id)} className="font-bold text-red-500 hover:text-red-700">Remover</button>
+                  </div>
+                ))
+              )}
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-40 space-y-1">
+                  <Label className="text-xs">Motivo da pausa</Label>
+                  <Input value={pauseDesc} onChange={(e) => setPauseDesc(e.target.value)} placeholder="Ex: Sem entregador" className="h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Duração (min)</Label>
+                  <Input type="number" min="1" value={pauseMin} onChange={(e) => setPauseMin(e.target.value)} className="h-9 w-24" />
+                </div>
+                <Button variant="outline" size="sm" onClick={addPause}>Pausar loja</Button>
+              </div>
+            </div>
+
+            {/* Horários */}
+            <div className="space-y-2">
+              <p className="text-xs font-black text-gray-500 uppercase tracking-wider">Horário de funcionamento</p>
+              {mShifts.map((s, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={s.dayOfWeek}
+                    onChange={(e) => setMShifts((prev) => prev.map((x, xi) => xi === i ? { ...x, dayOfWeek: e.target.value } : x))}
+                    className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm"
+                  >
+                    {DAYS.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+                  </select>
+                  <Input type="time" value={s.start} onChange={(e) => setMShifts((prev) => prev.map((x, xi) => xi === i ? { ...x, start: e.target.value } : x))} className="h-9 w-28" />
+                  <span className="text-xs text-gray-400">às</span>
+                  <Input type="time" value={s.end} onChange={(e) => setMShifts((prev) => prev.map((x, xi) => xi === i ? { ...x, end: e.target.value } : x))} className="h-9 w-28" />
+                  <button onClick={() => setMShifts((prev) => prev.filter((_, xi) => xi !== i))} className="text-xs font-bold text-red-400 hover:text-red-600">remover</button>
+                </div>
+              ))}
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={() => setMShifts((prev) => [...prev, { dayOfWeek: "MONDAY", start: "18:00", end: "23:00" }])}>
+                  + Adicionar turno
+                </Button>
+                <Button size="sm" onClick={saveHours} disabled={savingHours} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
+                  {savingHours ? <Loader2 size={13} className="mr-1 animate-spin" /> : null} Salvar horários no iFood
+                </Button>
+              </div>
+              <p className="text-[11px] text-gray-400">Um dia pode ter vários turnos (ex: Domingo 09–12, 13–16 e 17–23). Os horários salvos aqui refletem no Portal do Parceiro.</p>
+            </div>
+          </>
+        )}
       </Card>
 
       {/* Financeiro (bruto/líquido oficiais) */}
