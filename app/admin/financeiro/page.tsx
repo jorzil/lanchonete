@@ -330,6 +330,8 @@ function BillsTable({
   const [filter, setFilter] = useState<"todos" | Bill["status"]>("todos")
   // Filtro por mês de vencimento: "todos" ou "YYYY-MM"
   const [monthFilter, setMonthFilter] = useState<string>("todos")
+  const [catFilter, setCatFilter] = useState<string>("todos")
+  const [ccFilter, setCcFilter] = useState<string>("todos")
 
   const monthOptions = useMemo(() => {
     const set = new Set<string>()
@@ -337,9 +339,24 @@ function BillsTable({
     return Array.from(set).sort().reverse()
   }, [bills])
 
+  // Só as categorias que realmente aparecem nestas contas
+  const catOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const b of bills) set.add(b.category)
+    return Array.from(set).sort((a, b) => billCategoryLabel(a).localeCompare(billCategoryLabel(b)))
+  }, [bills])
+
+  const ccOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const b of bills) if (b.costCenter) set.add(b.costCenter)
+    return Array.from(set).sort((a, b) => costCenterName(a).localeCompare(costCenterName(b)))
+  }, [bills])
+
   const filtered = bills.filter((b) =>
     (filter === "todos" || b.status === filter) &&
-    (monthFilter === "todos" || b.dueDate.slice(0, 7) === monthFilter)
+    (monthFilter === "todos" || b.dueDate.slice(0, 7) === monthFilter) &&
+    (catFilter === "todos" || b.category === catFilter) &&
+    (ccFilter === "todos" || (ccFilter === "sem" ? !b.costCenter : b.costCenter === ccFilter))
   )
 
   // Auto-soma do que está filtrado + total geral de todas as contas
@@ -386,6 +403,37 @@ function BillsTable({
             return <option key={m} value={m}>{MONTHS[+mo - 1]}/{y}</option>
           })}
         </select>
+        <select
+          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-orange-400"
+          value={catFilter}
+          onChange={(e) => setCatFilter(e.target.value)}
+        >
+          <option value="todos">Todas as categorias</option>
+          {catOptions.map((c) => (
+            <option key={c} value={c}>{billCategoryLabel(c)}</option>
+          ))}
+        </select>
+        {ccOptions.length > 0 && (
+          <select
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-orange-400"
+            value={ccFilter}
+            onChange={(e) => setCcFilter(e.target.value)}
+          >
+            <option value="todos">Todos os centros de custo</option>
+            {ccOptions.map((c) => (
+              <option key={c} value={c}>🏷 {costCenterName(c)}</option>
+            ))}
+            <option value="sem">Sem centro de custo</option>
+          </select>
+        )}
+        {(catFilter !== "todos" || ccFilter !== "todos" || monthFilter !== "todos" || filter !== "todos") && (
+          <button
+            onClick={() => { setCatFilter("todos"); setCcFilter("todos"); setMonthFilter("todos"); setFilter("todos") }}
+            className="text-xs font-semibold text-gray-400 hover:text-gray-700 underline"
+          >
+            limpar filtros
+          </button>
+        )}
       </div>
 
       {/* Auto-soma do filtro + total geral */}
@@ -393,11 +441,14 @@ function BillsTable({
         <span className="text-gray-500">
           {monthFilter === "todos" ? "Todas as contas" : `Mês ${(() => { const [y, mo] = monthFilter.split("-"); return `${MONTHS[+mo - 1]}/${y}` })()}`}
           {filter !== "todos" && ` · ${filters.find((f) => f.key === filter)?.label}`}
+          {catFilter !== "todos" && ` · ${billCategoryLabel(catFilter)}`}
+          {ccFilter !== "todos" && ` · 🏷 ${ccFilter === "sem" ? "sem centro de custo" : costCenterName(ccFilter)}`}
           : <span className="font-bold text-gray-900">{fmt(filteredTotal)}</span>
+          <span className="ml-1 text-gray-400">({filtered.length})</span>
         </span>
         <span className="text-gray-500">Pago: <span className="font-bold text-emerald-600">{fmt(filteredPaid)}</span></span>
         <span className="text-gray-500">Falta: <span className="font-bold text-amber-600">{fmt(filteredTotal - filteredPaid)}</span></span>
-        {(monthFilter !== "todos" || filter !== "todos") && (
+        {(monthFilter !== "todos" || filter !== "todos" || catFilter !== "todos" || ccFilter !== "todos") && (
           <span className="ml-auto text-gray-400">Geral: <span className="font-bold text-gray-700">{fmt(grandTotal)}</span></span>
         )}
       </div>
@@ -508,6 +559,16 @@ export default function FinanceiroPage() {
   const [bankBase, setBankBase] = useState(0)
   const [costCenters, setCostCenters] = useState<CostCenter[]>([])
   const [newCC, setNewCC] = useState("")
+  const [txCatFilter, setTxCatFilter] = useState("todos")
+
+  // Lançamentos do mês selecionado, já filtrados por categoria
+  const monthTx = useMemo(() => transactions.filter((t) => {
+    const d = parseLocalDay(t.date)
+    if (d.getMonth() !== month || d.getFullYear() !== year) return false
+    if (txCatFilter === "todos") return true
+    if (txCatFilter === "receita") return t.kind === "receita"
+    return t.kind === "despesa" && t.category === txCatFilter
+  }), [transactions, month, year, txCatFilter])
   // qual saldo está sendo ajustado no modal
   const [cashModal, setCashModal] = useState<MoneyAccount | null>(null)
   const [cashInput, setCashInput] = useState("")
@@ -841,9 +902,22 @@ export default function FinanceiroPage() {
           {/* Transactions table */}
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
             <div className="border-b border-gray-100 px-5 py-3">
-              <p className="text-sm font-semibold text-gray-900">Lançamentos — {MONTHS[month]}/{year}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-gray-900">Lançamentos — {MONTHS[month]}/{year}</p>
+                <select
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-orange-400"
+                  value={txCatFilter}
+                  onChange={(e) => setTxCatFilter(e.target.value)}
+                >
+                  <option value="todos">Todas as categorias</option>
+                  <option value="receita">Receitas</option>
+                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            {transactions.filter((t) => { const d = parseLocalDay(t.date); return d.getMonth() === month && d.getFullYear() === year }).length === 0 ? (
+            {monthTx.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-400">Nenhum lançamento neste período.</div>
             ) : (
               <div className="overflow-x-auto">
@@ -858,9 +932,7 @@ export default function FinanceiroPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions
-                      .filter((t) => { const d = parseLocalDay(t.date); return d.getMonth() === month && d.getFullYear() === year })
-                      .map((t) => (
+                    {monthTx.map((t) => (
                       <tr key={t.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                         <td className="px-5 py-3 text-gray-500">
                           {parseLocalDay(t.date).toLocaleDateString("pt-BR")}
