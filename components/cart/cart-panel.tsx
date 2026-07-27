@@ -39,12 +39,14 @@ export function CartPanel() {
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
   const [pickupOnly, setPickupOnly] = useState(false)
   const [freeFrom, setFreeFrom] = useState(0)
+  const [alwaysFree, setAlwaysFree] = useState(false)
 
   // Regra de frete grátis (para incentivar o cliente a completar o valor)
   useEffect(() => {
     if (!isOpen) return
     pullDeliveryConfig().then((cfg) => {
       setFreeFrom(cfg.freeDelivery ? 0 : (cfg.freeDeliveryMinOrder ?? 0))
+      setAlwaysFree(!!cfg.freeDelivery)
       if (cfg.freeDelivery) setDeliveryFee(0)
     }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,7 +81,7 @@ export function CartPanel() {
   const handleOrderType = (type: 'entrega' | 'retirada') => {
     setOrderType(type)
     // Estimativa: a taxa exata é calculada no checkout, pelo CEP
-    const free = freeFrom > 0 && subtotal >= freeFrom
+    const free = alwaysFree || (freeFrom > 0 && subtotal >= freeFrom)
     setDeliveryFee(type === 'entrega' && !free ? 5.0 : 0)
   }
 

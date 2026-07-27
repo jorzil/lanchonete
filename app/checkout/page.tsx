@@ -19,7 +19,7 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
-import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, type FeeResult } from '@/lib/delivery-zones'
+import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, type FeeResult, type DeliveryConfig } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -81,6 +81,21 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
   const [pickupOnly, setPickupOnly] = useState(false)
+  const [deliveryCfg, setDeliveryCfg] = useState<DeliveryConfig | null>(null)
+
+  // Carrega a config de entrega ao abrir (antes dependia de digitar o CEP,
+  // então o frete grátis só valia depois da busca do endereço).
+  useEffect(() => {
+    pullDeliveryConfig().then(setDeliveryCfg).catch(() => {})
+  }, [])
+
+  // Reaplica a regra de frete grátis quando a config chega ou o carrinho muda
+  useEffect(() => {
+    if (!deliveryCfg || form.orderType !== 'entrega') return
+    const base = feeResult && !feeResult.outsideArea ? feeResult.fee : (deliveryCfg.zones[0]?.fee ?? 5)
+    setDeliveryFee(applyFreeDelivery(base, subtotal, deliveryCfg))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryCfg, subtotal, form.orderType, feeResult])
 
   useEffect(() => {
     fetchStoreStatus().then((s) => {
@@ -105,7 +120,7 @@ export default function CheckoutPage() {
     setForm((prev) => ({ ...prev, orderType: type }))
     if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
     else {
-      const cfg = getDeliveryConfig()
+      const cfg = deliveryCfg ?? getDeliveryConfig()
       const base = feeResult && !feeResult.outsideArea ? feeResult.fee : (cfg.zones[0]?.fee ?? 5)
       setDeliveryFee(applyFreeDelivery(base, subtotal, cfg))
     }
@@ -132,6 +147,7 @@ export default function CheckoutPage() {
 
         // Calcula a taxa pela distância até a loja (config vem do Supabase)
         const config = await pullDeliveryConfig()
+        setDeliveryCfg(config)
         const coords = await geocodeStructured({ street: `${street}, ${neighborhood}`, city, state, cep: clean })
         if (coords) {
           const result = calcDeliveryFee(coords.lat, coords.lng, config)
