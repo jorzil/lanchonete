@@ -19,7 +19,8 @@ import {
   getBillsSummary, replaceBills, fetchBillsRemote,
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
   loadCashBase, saveCashBase, loadBankBase, saveBankBase,
-  MONEY_ACCOUNT_LABELS, type MoneyAccount,
+  loadCostCenters, saveCostCenters, addCostCenter, deleteCostCenter, costCenterName,
+  MONEY_ACCOUNT_LABELS, type MoneyAccount, type CostCenter,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
   type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
@@ -68,7 +69,9 @@ function BillModal({
     notes: bill?.notes ?? "",
     recurrence: (bill?.recurrence ?? "none") as Recurrence,
     account: (bill?.account ?? "dinheiro") as MoneyAccount,
+    costCenter: bill?.costCenter ?? "",
   })
+  const centers = loadCostCenters()
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }))
@@ -90,6 +93,7 @@ function BillModal({
       notes: form.notes.trim() || undefined,
       recurrence: form.recurrence,
       account: form.account,
+      costCenter: form.costCenter || undefined,
     }
 
     if (bill) {
@@ -223,6 +227,20 @@ function BillModal({
                 )}
               </select>
             )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Centro de custo</label>
+            <select
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+              value={form.costCenter}
+              onChange={(e) => set("costCenter", e.target.value)}
+            >
+              <option value="">— sem centro de custo —</option>
+              {centers.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -417,7 +435,10 @@ function BillsTable({
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400">{b.account === "banco" ? "🏦" : "💵"} {billCategoryLabel(b.category)}</p>
+                        <p className="text-xs text-gray-400">
+                          {b.account === "banco" ? "🏦" : "💵"} {billCategoryLabel(b.category)}
+                          {b.costCenter && <span className="ml-1 text-gray-400">· 🏷 {costCenterName(b.costCenter)}</span>}
+                        </p>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {new Date(b.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
@@ -481,10 +502,12 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount, costCenter: "" })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
   const [cashBase, setCashBase] = useState(0)
   const [bankBase, setBankBase] = useState(0)
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([])
+  const [newCC, setNewCC] = useState("")
   // qual saldo está sendo ajustado no modal
   const [cashModal, setCashModal] = useState<MoneyAccount | null>(null)
   const [cashInput, setCashInput] = useState("")
@@ -510,7 +533,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadCostCenters())
   }
 
   useEffect(() => {
@@ -531,7 +554,9 @@ export default function FinanceiroPage() {
         saveCustomCategories(merged)
         saveCashBase(remoteFinance.cashBase)
         saveBankBase(remoteFinance.bankBase)
+        if (remoteFinance.costCenters.length > 0) saveCostCenters(remoteFinance.costCenters)
       }
+      setCostCenters(loadCostCenters())
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setCashBase(loadCashBase())
@@ -549,11 +574,11 @@ export default function FinanceiroPage() {
   function handleAddTx() {
     const amount = parseFloat(txForm.amount)
     if (!amount || !txForm.description.trim()) return
-    addTransaction({ ...txForm, amount })
+    addTransaction({ ...txForm, amount, costCenter: txForm.costCenter || undefined })
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro" })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro", costCenter: "" })
   }
 
   function handleDeleteTx(id: string) {
@@ -739,6 +764,80 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
+          {/* Gastos por centro de custo */}
+          <div className="rounded-xl border border-gray-100 bg-white p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-900">Gastos por centro de custo — {MONTHS[month]}/{year}</p>
+              <div className="flex gap-2">
+                <input
+                  className="w-44 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
+                  placeholder="Novo centro de custo"
+                  value={newCC}
+                  onChange={(e) => setNewCC(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && newCC.trim()) { addCostCenter(newCC.trim()); setCostCenters(loadCostCenters()); setNewCC(""); persist() } }}
+                />
+                <button
+                  onClick={() => { if (newCC.trim()) { addCostCenter(newCC.trim()); setCostCenters(loadCostCenters()); setNewCC(""); persist() } }}
+                  className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+            {(() => {
+              const inPeriod = (d: string) => { const x = parseLocalDay(d); return x.getMonth() === month && x.getFullYear() === year }
+              const rows = costCenters.map((cc) => {
+                const txOut = transactions
+                  .filter((t) => t.kind === "despesa" && t.costCenter === cc.id && inPeriod(t.date))
+                  .reduce((a, t) => a + t.amount, 0)
+                const billOut = bills
+                  .filter((b) => b.type === "pagar" && b.costCenter === cc.id && b.status !== "cancelado" && inPeriod(b.dueDate))
+                  .reduce((a, b) => a + b.amount, 0)
+                return { ...cc, total: txOut + billOut }
+              })
+              const semCC =
+                transactions.filter((t) => t.kind === "despesa" && !t.costCenter && inPeriod(t.date)).reduce((a, t) => a + t.amount, 0) +
+                bills.filter((b) => b.type === "pagar" && !b.costCenter && b.status !== "cancelado" && inPeriod(b.dueDate)).reduce((a, b) => a + b.amount, 0)
+              const grand = rows.reduce((a, r) => a + r.total, 0) + semCC
+              if (grand === 0) return <p className="py-6 text-center text-sm text-gray-400">Nenhum gasto registrado neste período.</p>
+              return (
+                <div className="space-y-2.5">
+                  {[...rows].sort((a, b) => b.total - a.total).map((r) => (
+                    <div key={r.id} className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm text-gray-700">{r.name}</span>
+                          <span className="shrink-0 text-xs text-gray-400">{grand > 0 ? ((r.total / grand) * 100).toFixed(1) : "0"}%</span>
+                        </div>
+                        <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                          <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${grand > 0 ? (r.total / grand) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                      <span className="w-24 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.total)}</span>
+                      <button
+                        onClick={() => { if (confirm(`Excluir o centro de custo "${r.name}"? Os lançamentos existentes continuam salvos.`)) { deleteCostCenter(r.id); setCostCenters(loadCostCenters()); persist() } }}
+                        className="shrink-0 text-gray-300 hover:text-red-500"
+                        title="Excluir centro de custo"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  {semCC > 0 && (
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-sm">
+                      <span className="text-gray-400">Sem centro de custo</span>
+                      <span className="font-semibold text-gray-500">{fmt(semCC)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-2">
+                    <span className="text-sm font-bold text-gray-700">Total de gastos</span>
+                    <span className="text-base font-black text-gray-900">{fmt(grand)}</span>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
           {/* Transactions table */}
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
             <div className="border-b border-gray-100 px-5 py-3">
@@ -769,6 +868,7 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">
                           {t.kind === "receita" ? "Receita" : EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                          {t.costCenter && <span className="ml-1">· 🏷 {costCenterName(t.costCenter)}</span>}
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
@@ -883,6 +983,19 @@ export default function FinanceiroPage() {
                     onChange={(e) => setTxForm((p) => ({ ...p, date: e.target.value }))}
                   />
                 </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Centro de custo</label>
+                <select
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                  value={txForm.costCenter}
+                  onChange={(e) => setTxForm((p) => ({ ...p, costCenter: e.target.value }))}
+                >
+                  <option value="">— sem centro de custo —</option>
+                  {costCenters.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
