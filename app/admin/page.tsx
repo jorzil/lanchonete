@@ -29,7 +29,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { formatCurrency, ORDER_SOURCE_LABELS, type Order } from "@/lib/store"
+import { formatCurrency, formatPaymentMethod, ORDER_SOURCE_LABELS, type Order } from "@/lib/store"
 import { STATUS_LABELS, STATUS_STYLES } from "@/lib/mock-orders"
 import { loadOrders } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
@@ -189,7 +189,30 @@ export default function AdminDashboard() {
       }
     }
     const topProducts = [...prodMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 10)
-    return { revenue, count, ticket, cancelled, bySource, topProducts }
+
+    // Vendas por forma de pagamento
+    const PAYMENTS = [
+      { key: "pix", label: "Pix", emoji: "💠" },
+      { key: "cartao-credito", label: "Crédito", emoji: "💳" },
+      { key: "cartao-debito", label: "Débito", emoji: "💳" },
+      { key: "dinheiro", label: "Dinheiro", emoji: "💵" },
+    ] as const
+    const byPayment = PAYMENTS.map((p) => {
+      const list = valid.filter((o) => o.paymentMethod === p.key)
+      const rev = list.reduce((s, o) => s + o.total, 0)
+      return { ...p, count: list.length, revenue: rev, pct: revenue > 0 ? (rev / revenue) * 100 : 0 }
+    })
+    // Pagamentos fora dos padrões (ex: pedidos antigos/importados sem método)
+    const knownRev = byPayment.reduce((s, p) => s + p.revenue, 0)
+    const otherRevenue = Math.max(0, revenue - knownRev)
+
+    // Entrega × Retirada
+    const byType = (["entrega", "retirada"] as const).map((t) => {
+      const list = valid.filter((o) => o.orderType === t)
+      return { type: t, count: list.length, revenue: list.reduce((s, o) => s + o.total, 0) }
+    })
+
+    return { revenue, count, ticket, cancelled, bySource, topProducts, byPayment, otherRevenue, byType }
   }, [periodOrders])
 
   const periodLabel = PERIOD_LABELS.find((p) => p.key === period)?.label ?? ""
@@ -342,6 +365,43 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Vendas por forma de pagamento (período) */}
+      <Card className="p-5">
+        <h3 className="mb-4 text-sm font-semibold text-gray-900">Vendas por forma de pagamento · {periodLabel}</h3>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {periodStats.byPayment.map((p) => (
+            <div key={p.key} className="rounded-xl border border-gray-100 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-500">{p.emoji} {p.label}</p>
+                <span className="text-[11px] font-bold text-gray-400">{p.pct.toFixed(1)}%</span>
+              </div>
+              <p className="mt-1 text-xl font-bold text-gray-900">{formatCurrency(p.revenue)}</p>
+              <p className="text-xs text-gray-400">{p.count} pedido(s)</p>
+              <div className="mt-2 h-1.5 rounded-full bg-gray-100">
+                <div
+                  className={cn("h-1.5 rounded-full", p.key === "pix" ? "bg-teal-500" : p.key === "dinheiro" ? "bg-emerald-500" : "bg-blue-500")}
+                  style={{ width: `${Math.min(100, p.pct)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        {periodStats.otherRevenue > 0.009 && (
+          <p className="mt-3 text-xs text-gray-400">
+            + {formatCurrency(periodStats.otherRevenue)} em pedidos sem forma de pagamento identificada (ex: importados).
+          </p>
+        )}
+        {/* Entrega × Retirada */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {periodStats.byType.map((t) => (
+            <div key={t.type} className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-4 py-2.5">
+              <span className="text-sm font-medium text-gray-600 capitalize">{t.type === "entrega" ? "🛵 Entrega" : "🏪 Retirada"}</span>
+              <span className="text-sm text-gray-500">{t.count} pedido(s) · <strong className="text-gray-900">{formatCurrency(t.revenue)}</strong></span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       {/* Por origem (período) */}
       <Card className="p-5">
         <h3 className="mb-4 text-sm font-semibold text-gray-900">Pedidos por origem · {periodLabel}</h3>
@@ -475,6 +535,7 @@ export default function AdminDashboard() {
                 <th className="px-5 py-3 font-medium">Pedido</th>
                 <th className="px-5 py-3 font-medium">Cliente</th>
                 <th className="px-5 py-3 font-medium">Tipo</th>
+                <th className="px-5 py-3 font-medium">Pagamento</th>
                 <th className="px-5 py-3 font-medium">Total</th>
                 <th className="px-5 py-3 font-medium">Status</th>
               </tr>
@@ -485,6 +546,7 @@ export default function AdminDashboard() {
                   <td className="px-5 py-3 font-medium text-gray-900">{o.orderNumber}</td>
                   <td className="px-5 py-3 text-gray-700">{o.customer.name}</td>
                   <td className="px-5 py-3 capitalize text-gray-500">{o.orderType}</td>
+                  <td className="px-5 py-3 text-gray-500">{formatPaymentMethod(o.paymentMethod)}</td>
                   <td className="px-5 py-3 font-medium text-gray-900">{formatCurrency(o.total)}</td>
                   <td className="px-5 py-3">
                     <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[o.status])}>
@@ -495,7 +557,7 @@ export default function AdminDashboard() {
               ))}
               {recentOrders.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-gray-400">
+                  <td colSpan={6} className="px-5 py-10 text-center text-gray-400">
                     Sem pedidos ainda. Os pedidos do site aparecerão aqui.
                   </td>
                 </tr>
