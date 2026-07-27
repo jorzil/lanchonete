@@ -513,6 +513,39 @@ export default function FinanceiroPage() {
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
   const [txCatFilter, setTxCatFilter] = useState("todos")
+  const [expenseSource, setExpenseSource] = useState<"todos" | "lancamentos" | "contas">("todos")
+
+  // Gastos do mês agrupados por categoria (lançamentos de despesa + contas a pagar)
+  const expensesByCategory = useMemo(() => {
+    const inPeriod = (d: string) => {
+      const x = parseLocalDay(d)
+      return x.getMonth() === month && x.getFullYear() === year
+    }
+    const acc = new Map<string, { label: string; amount: number }>()
+    const add = (key: string, label: string, amount: number) => {
+      const cur = acc.get(key) ?? { label, amount: 0 }
+      cur.amount += amount
+      acc.set(key, cur)
+    }
+
+    if (expenseSource !== "contas") {
+      for (const t of transactions) {
+        if (t.kind !== "despesa" || !inPeriod(t.date)) continue
+        add(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category, t.amount)
+      }
+    }
+    if (expenseSource !== "lancamentos") {
+      for (const b of bills) {
+        if (b.type !== "pagar" || b.status === "cancelado" || !inPeriod(b.dueDate)) continue
+        add(b.category, billCategoryLabel(b.category), b.amount)
+      }
+    }
+
+    const rows = [...acc.entries()]
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => b.amount - a.amount)
+    return { rows, total: rows.reduce((s, r) => s + r.amount, 0) }
+  }, [transactions, bills, month, year, expenseSource])
 
   // Lançamentos do mês selecionado, já filtrados por categoria
   const monthTx = useMemo(() => transactions.filter((t) => {
@@ -776,6 +809,59 @@ export default function FinanceiroPage() {
               </div>
               <p className={`text-2xl font-bold ${resultMes >= 0 ? "text-blue-700" : "text-orange-700"}`}>{fmt(resultMes)}</p>
             </div>
+          </div>
+
+          {/* Gastos por categoria */}
+          <div className="rounded-xl border border-gray-100 bg-white p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-gray-900">Gastos por categoria — {MONTHS[month]}/{year}</p>
+              <div className="flex gap-1.5">
+                {([
+                  { key: "todos", label: "Tudo" },
+                  { key: "lancamentos", label: "Lançamentos" },
+                  { key: "contas", label: "Contas a pagar" },
+                ] as const).map((o) => (
+                  <button
+                    key={o.key}
+                    onClick={() => setExpenseSource(o.key)}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                      expenseSource === o.key ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {expensesByCategory.total === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">Nenhum gasto registrado neste período.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {expensesByCategory.rows.map((r) => (
+                  <div key={r.key} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm text-gray-700">{r.label}</span>
+                        <span className="shrink-0 text-xs text-gray-400">
+                          {((r.amount / expensesByCategory.total) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                        <div
+                          className="h-1.5 rounded-full bg-orange-500"
+                          style={{ width: `${(r.amount / expensesByCategory.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="w-28 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between border-t border-gray-200 pt-2">
+                  <span className="text-sm font-bold text-gray-700">Total de gastos</span>
+                  <span className="text-base font-black text-gray-900">{fmt(expensesByCategory.total)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Transactions table */}
