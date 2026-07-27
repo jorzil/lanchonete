@@ -673,6 +673,54 @@ export default function FinanceiroPage() {
     persist()
   }
 
+  /**
+   * Gera centros de custo a partir das categorias já usadas nas despesas
+   * lançadas e vincula cada categoria ao seu centro. Não mexe no que já
+   * estiver vinculado nem cria centros duplicados.
+   */
+  function generateCostCentersFromCategories() {
+    // Categorias realmente usadas em despesas (lançamentos + contas a pagar)
+    const used = new Map<string, string>() // categoria -> rótulo
+    for (const t of loadTransactions()) {
+      if (t.kind !== "despesa") continue
+      used.set(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category)
+    }
+    for (const b of loadBills()) {
+      if (b.type !== "pagar" || b.status === "cancelado") continue
+      used.set(b.category, billCategoryLabel(b.category))
+    }
+    if (used.size === 0) {
+      alert("Nenhuma despesa lançada ainda — não há categorias para converter.")
+      return
+    }
+
+    const pending = [...used.entries()].filter(([cat]) => !ccMap[cat])
+    if (pending.length === 0) {
+      alert("Todas as categorias com despesas já estão vinculadas a um centro de custo.")
+      return
+    }
+
+    const nomes = pending.map(([, label]) => label).join(", ")
+    if (!confirm(`Criar/vincular centros de custo para as categorias: ${nomes}?\n\nAs despesas já lançadas passam a somar automaticamente nesses centros. Você pode renomear ou remanejar depois.`)) return
+
+    let centers = loadCostCenters()
+    const nextMap = { ...ccMap }
+    for (const [cat, label] of pending) {
+      // Reaproveita um centro de custo de mesmo nome, se já existir
+      let center = centers.find((c) => c.name.toLowerCase() === label.toLowerCase())
+      if (!center) {
+        center = addCostCenter(label)
+        centers = loadCostCenters()
+      }
+      nextMap[cat] = center.id
+    }
+    saveCategoryCostCenterMap(nextMap)
+    setCcMap(nextMap)
+    setCostCenters(loadCostCenters())
+    persist()
+    alert(`Pronto! ${pending.length} categoria(s) vinculada(s). As despesas já lançadas foram classificadas.`)
+  }
+
   // Summary cards
   const resultMes = dre.resultadoLiquido
 
@@ -849,6 +897,13 @@ export default function FinanceiroPage() {
                   Adicionar
                 </button>
                 <button
+                  onClick={generateCostCentersFromCategories}
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                  title="Cria centros de custo com base nas categorias das despesas já lançadas"
+                >
+                  ⚡ Gerar pelas categorias
+                </button>
+                <button
                   onClick={() => setShowCcMap((v) => !v)}
                   className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                 >
@@ -987,8 +1042,13 @@ export default function FinanceiroPage() {
                     </div>
                   ))}
                   {semCC > 0 && (
-                    <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-sm">
-                      <span className="text-amber-600">⚠ Sem centro de custo</span>
+                    <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2 text-sm">
+                      <span className="text-amber-600">
+                        ⚠ Sem centro de custo
+                        <button onClick={generateCostCentersFromCategories} className="ml-2 text-xs font-semibold underline hover:text-amber-700">
+                          classificar pelas categorias
+                        </button>
+                      </span>
                       <span className="font-semibold text-amber-600">{fmt(semCC)}</span>
                     </div>
                   )}
