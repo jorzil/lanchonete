@@ -53,6 +53,11 @@ export default function ConfiguracoesPage() {
 
   // Loja
   const [storeStatus, setStoreStatus] = useState<StoreStatus | null>(null)
+  const [waStatus, setWaStatus] = useState<boolean | null>(null)
+  const [waChecking, setWaChecking] = useState(false)
+  const [waSending, setWaSending] = useState(false)
+  const [waTestPhone, setWaTestPhone] = useState("")
+  const [waMsg, setWaMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   // Impressão
   const [printSettings, setPrintSettings] = useState<PrintSettings | null>(null)
@@ -63,6 +68,11 @@ export default function ConfiguracoesPage() {
     fetchStoreStatus().then(setStoreStatus)
     setPrintSettings(getPrintSettings())
     setPrintQueue(getPrintQueue())
+    // Status do envio automático de WhatsApp
+    fetch("/api/whatsapp", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setWaStatus(!!d.configured))
+      .catch(() => setWaStatus(false))
   }, [])
 
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
@@ -94,6 +104,44 @@ export default function ConfiguracoesPage() {
   async function handlePickupOnly(value: boolean) {
     const next = await patchStoreStatus({ pickupOnly: value })
     setStoreStatus(next)
+  }
+
+  // ── Diagnóstico do WhatsApp automático ──
+  async function checkWa() {
+    setWaChecking(true); setWaMsg(null)
+    try {
+      const res = await fetch("/api/whatsapp", { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      setWaStatus(!!data.configured)
+      if (!data.configured) {
+        setWaMsg({ ok: false, text: "Faltam as variáveis EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE_NAME na Vercel." })
+      }
+    } catch {
+      setWaStatus(false)
+      setWaMsg({ ok: false, text: "Não foi possível verificar. Confira sua conexão." })
+    } finally {
+      setWaChecking(false)
+    }
+  }
+
+  async function sendWaTest() {
+    const phone = waTestPhone.replace(/\D/g, "")
+    if (phone.length < 10) { setWaMsg({ ok: false, text: "Informe um número válido com DDD." }); return }
+    setWaSending(true); setWaMsg(null)
+    try {
+      const res = await fetch("/api/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, text: "🥪 Mensagem de teste da Mais Sub — o envio automático está funcionando!" }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.success) setWaMsg({ ok: true, text: "✅ Mensagem enviada! Confira o WhatsApp do número informado." })
+      else setWaMsg({ ok: false, text: `Falha no envio: ${data.error ?? `erro ${res.status}`}` })
+    } catch {
+      setWaMsg({ ok: false, text: "Falha na requisição de envio." })
+    } finally {
+      setWaSending(false)
+    }
   }
 
   // Print helpers
@@ -432,6 +480,41 @@ export default function ConfiguracoesPage() {
                 onChange={(e) => update("whatsappMessage", e.target.value)}
               />
             </Field>
+
+            {/* Diagnóstico do envio automático */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Envio automático (Evolution API)</p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {waStatus === null && "Verificando…"}
+                    {waStatus === true && "✅ Configurado — as mensagens de status são enviadas sozinhas."}
+                    {waStatus === false && "⚠️ Não configurado — o sistema abre o WhatsApp Web para envio manual."}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={checkWa} disabled={waChecking}>
+                  {waChecking ? "Verificando…" : "Verificar"}
+                </Button>
+              </div>
+
+              {waStatus && (
+                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-200 pt-3">
+                  <div className="flex-1 min-w-48">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Enviar teste para (com DDD)</label>
+                    <Input value={waTestPhone} onChange={(e) => setWaTestPhone(e.target.value)} placeholder="33988887777" className="h-9" />
+                  </div>
+                  <Button variant="outline" size="sm" onClick={sendWaTest} disabled={waSending}>
+                    {waSending ? "Enviando…" : "Enviar teste"}
+                  </Button>
+                </div>
+              )}
+
+              {waMsg && (
+                <p className={`mt-2 rounded-lg px-3 py-2 text-xs font-medium ${waMsg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                  {waMsg.text}
+                </p>
+              )}
+            </div>
           </Card>
           <div className="mt-4 flex items-center gap-3">
             <Button onClick={handleSave} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">Salvar</Button>

@@ -416,7 +416,8 @@ export default function PedidosPage() {
       }).then(async (r) => {
         if (r.ok) toast.success('WhatsApp enviado ao cliente automaticamente')
         else {
-          toast.error('Falha no envio automático — abrindo WhatsApp Web')
+          const data = await r.json().catch(() => ({}))
+          toast.error(`Falha no envio automático: ${data.error ?? `erro ${r.status}`} — abrindo WhatsApp Web`)
           openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
         }
       }).catch(() => {
