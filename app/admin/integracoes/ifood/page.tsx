@@ -355,16 +355,35 @@ export default function IFoodIntegrationPage() {
             {mStatus.length > 0 && (
               <div className="pt-1 flex flex-wrap gap-2">
                 {mStatus.map((s, i) => {
-                  const st = s as { state?: string; operation?: string; available?: boolean }
+                  const st = s as { state?: string; operation?: string; available?: boolean; message?: { title?: string } }
                   const ok = st.available ?? st.state === "OK"
                   return (
                     <span key={i} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                      {ok ? "● Disponível" : "● Indisponível"}{st.operation ? ` — ${st.operation}` : ""}
+                      {ok ? "● Disponível" : "● Indisponível"}
+                      {st.operation ? ` — ${st.operation}` : ""}
+                      {st.message?.title ? ` (${st.message.title})` : ""}
                     </span>
                   )
                 })}
               </div>
             )}
+
+            {/* Detalhes completos (exigido no cenário 1 da homologação) */}
+            <details className="pt-2">
+              <summary className="cursor-pointer text-xs font-bold text-[#EE5C13] hover:underline">
+                Ver detalhes completos da loja
+              </summary>
+              <div className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                {Object.entries(mDetail).map(([k, v]) => (
+                  <div key={k} className="flex gap-2 border-b border-gray-100 py-1 text-xs">
+                    <span className="min-w-32 font-semibold text-gray-500">{k}</span>
+                    <span className="break-all text-gray-800">
+                      {v !== null && typeof v === "object" ? JSON.stringify(v) : String(v ?? "—")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </details>
           </div>
         )}
 
@@ -420,6 +439,18 @@ export default function IFoodIntegrationPage() {
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" size="sm" onClick={() => setMShifts((prev) => [...prev, { dayOfWeek: "MONDAY", start: "18:00", end: "23:00" }])}>
                   + Adicionar turno
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => setMShifts([
+                    { dayOfWeek: "SATURDAY", start: "10:00", end: "19:00" },
+                    { dayOfWeek: "SUNDAY", start: "09:00", end: "12:00" },
+                    { dayOfWeek: "SUNDAY", start: "13:00", end: "16:00" },
+                    { dayOfWeek: "SUNDAY", start: "17:00", end: "23:00" },
+                  ])}
+                  title="Preenche os horários do cenário 3 da homologação iFood"
+                >
+                  Preencher cenário de teste
                 </Button>
                 <Button size="sm" onClick={saveHours} disabled={savingHours} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
                   {savingHours ? <Loader2 size={13} className="mr-1 animate-spin" /> : null} Salvar horários no iFood

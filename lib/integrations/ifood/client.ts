@@ -172,11 +172,13 @@ export async function listInterruptions(): Promise<IFoodInterruption[]> {
 }
 
 export async function createInterruption(description: string, minutes: number): Promise<boolean> {
-  const start = new Date()
+  // O iFood rejeita 'start' no passado — começa 1 min à frente. Sem milissegundos.
+  const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const start = new Date(Date.now() + 60_000)
   const end = new Date(start.getTime() + minutes * 60_000)
   const res = await api(await merchantPath('/interruptions'), {
     method: 'POST',
-    body: JSON.stringify({ description, start: start.toISOString(), end: end.toISOString() }),
+    body: JSON.stringify({ description, start: iso(start), end: iso(end) }),
   })
   if (!res.ok) {
     await logIFood('error', 'merchant', `Criar pausa falhou (${res.status})`, await res.text().catch(() => ''))
