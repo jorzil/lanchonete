@@ -20,6 +20,7 @@ import {
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
   loadCashBase, saveCashBase, loadBankBase, saveBankBase,
   loadCostCenters, saveCostCenters, addCostCenter, deleteCostCenter, costCenterName,
+  loadCategoryCostCenterMap, saveCategoryCostCenterMap, resolveCostCenter, type CategoryCostCenterMap,
   MONEY_ACCOUNT_LABELS, type MoneyAccount, type CostCenter,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
@@ -559,6 +560,8 @@ export default function FinanceiroPage() {
   const [bankBase, setBankBase] = useState(0)
   const [costCenters, setCostCenters] = useState<CostCenter[]>([])
   const [newCC, setNewCC] = useState("")
+  const [ccMap, setCcMap] = useState<CategoryCostCenterMap>({})
+  const [showCcMap, setShowCcMap] = useState(false)
   const [txCatFilter, setTxCatFilter] = useState("todos")
 
   // Lançamentos do mês selecionado, já filtrados por categoria
@@ -594,7 +597,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadCostCenters())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadCostCenters(), loadCategoryCostCenterMap())
   }
 
   useEffect(() => {
@@ -616,8 +619,10 @@ export default function FinanceiroPage() {
         saveCashBase(remoteFinance.cashBase)
         saveBankBase(remoteFinance.bankBase)
         if (remoteFinance.costCenters.length > 0) saveCostCenters(remoteFinance.costCenters)
+        if (Object.keys(remoteFinance.categoryCostCenter).length > 0) saveCategoryCostCenterMap(remoteFinance.categoryCostCenter)
       }
       setCostCenters(loadCostCenters())
+      setCcMap(loadCategoryCostCenterMap())
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setCashBase(loadCashBase())
@@ -843,51 +848,148 @@ export default function FinanceiroPage() {
                 >
                   Adicionar
                 </button>
+                <button
+                  onClick={() => setShowCcMap((v) => !v)}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  {showCcMap ? "Fechar vínculos" : "Vincular categorias"}
+                </button>
               </div>
             </div>
+
+            {/* Vínculo categoria → centro de custo */}
+            {showCcMap && (
+              <div className="mb-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <p className="text-xs text-gray-500 mb-3">
+                  Defina o centro de custo padrão de cada categoria de despesa. Vale para todos os
+                  gastos daquela categoria — inclusive os já lançados — quando o lançamento não tiver
+                  um centro de custo escolhido individualmente.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-40 shrink-0 truncate text-xs text-gray-600">{label}</span>
+                      <select
+                        className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
+                        value={ccMap[key] ?? ""}
+                        onChange={(e) => {
+                          const next = { ...ccMap }
+                          if (e.target.value) next[key] = e.target.value
+                          else delete next[key]
+                          setCcMap(next)
+                          saveCategoryCostCenterMap(next)
+                          persist()
+                        }}
+                      >
+                        <option value="">— nenhum —</option>
+                        {costCenters.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                  {/* Categorias de contas a pagar */}
+                  {PAGAR_CATEGORIES.map((key) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-40 shrink-0 truncate text-xs text-gray-600">{BILL_CATEGORY_LABELS[key]} <span className="text-gray-300">(contas)</span></span>
+                      <select
+                        className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
+                        value={ccMap[key] ?? ""}
+                        onChange={(e) => {
+                          const next = { ...ccMap }
+                          if (e.target.value) next[key] = e.target.value
+                          else delete next[key]
+                          setCcMap(next)
+                          saveCategoryCostCenterMap(next)
+                          persist()
+                        }}
+                      >
+                        <option value="">— nenhum —</option>
+                        {costCenters.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {(() => {
               const inPeriod = (d: string) => { const x = parseLocalDay(d); return x.getMonth() === month && x.getFullYear() === year }
-              const rows = costCenters.map((cc) => {
-                const txOut = transactions
-                  .filter((t) => t.kind === "despesa" && t.costCenter === cc.id && inPeriod(t.date))
-                  .reduce((a, t) => a + t.amount, 0)
-                const billOut = bills
-                  .filter((b) => b.type === "pagar" && b.costCenter === cc.id && b.status !== "cancelado" && inPeriod(b.dueDate))
-                  .reduce((a, b) => a + b.amount, 0)
-                return { ...cc, total: txOut + billOut }
-              })
-              const semCC =
-                transactions.filter((t) => t.kind === "despesa" && !t.costCenter && inPeriod(t.date)).reduce((a, t) => a + t.amount, 0) +
-                bills.filter((b) => b.type === "pagar" && !b.costCenter && b.status !== "cancelado" && inPeriod(b.dueDate)).reduce((a, b) => a + b.amount, 0)
-              const grand = rows.reduce((a, r) => a + r.total, 0) + semCC
+              // Todas as despesas do período, normalizadas (lançamentos + contas a pagar)
+              const expenses: Array<{ cc?: string; category: string; label: string; amount: number }> = [
+                ...transactions
+                  .filter((t) => t.kind === "despesa" && inPeriod(t.date))
+                  .map((t) => ({
+                    cc: resolveCostCenter(t.costCenter, t.category, ccMap),
+                    category: t.category,
+                    label: EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category,
+                    amount: t.amount,
+                  })),
+                ...bills
+                  .filter((b) => b.type === "pagar" && b.status !== "cancelado" && inPeriod(b.dueDate))
+                  .map((b) => ({
+                    cc: resolveCostCenter(b.costCenter, b.category, ccMap),
+                    category: b.category,
+                    label: billCategoryLabel(b.category),
+                    amount: b.amount,
+                  })),
+              ]
+              const grand = expenses.reduce((a, e) => a + e.amount, 0)
               if (grand === 0) return <p className="py-6 text-center text-sm text-gray-400">Nenhum gasto registrado neste período.</p>
+
+              const rows = costCenters.map((cc) => {
+                const mine = expenses.filter((e) => e.cc === cc.id)
+                const byCat = new Map<string, { label: string; amount: number }>()
+                for (const e of mine) {
+                  const cur = byCat.get(e.category) ?? { label: e.label, amount: 0 }
+                  cur.amount += e.amount
+                  byCat.set(e.category, cur)
+                }
+                return { ...cc, total: mine.reduce((a, e) => a + e.amount, 0), byCat: [...byCat.values()].sort((a, b) => b.amount - a.amount) }
+              })
+              const semCC = expenses.filter((e) => !e.cc).reduce((a, e) => a + e.amount, 0)
+
               return (
                 <div className="space-y-2.5">
                   {[...rows].sort((a, b) => b.total - a.total).map((r) => (
-                    <div key={r.id} className="flex items-center gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm text-gray-700">{r.name}</span>
-                          <span className="shrink-0 text-xs text-gray-400">{grand > 0 ? ((r.total / grand) * 100).toFixed(1) : "0"}%</span>
+                    <div key={r.id}>
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-sm text-gray-700">{r.name}</span>
+                            <span className="shrink-0 text-xs text-gray-400">{((r.total / grand) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                            <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${(r.total / grand) * 100}%` }} />
+                          </div>
                         </div>
-                        <div className="mt-1 h-1.5 rounded-full bg-gray-100">
-                          <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${grand > 0 ? (r.total / grand) * 100 : 0}%` }} />
-                        </div>
+                        <span className="w-24 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.total)}</span>
+                        <button
+                          onClick={() => { if (confirm(`Excluir o centro de custo "${r.name}"? Os lançamentos existentes continuam salvos.`)) { deleteCostCenter(r.id); setCostCenters(loadCostCenters()); persist() } }}
+                          className="shrink-0 text-gray-300 hover:text-red-500"
+                          title="Excluir centro de custo"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                      <span className="w-24 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.total)}</span>
-                      <button
-                        onClick={() => { if (confirm(`Excluir o centro de custo "${r.name}"? Os lançamentos existentes continuam salvos.`)) { deleteCostCenter(r.id); setCostCenters(loadCostCenters()); persist() } }}
-                        className="shrink-0 text-gray-300 hover:text-red-500"
-                        title="Excluir centro de custo"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {/* Detalhe por categoria dentro do centro de custo */}
+                      {r.byCat.length > 0 && (
+                        <div className="ml-1 mt-1 space-y-0.5 border-l-2 border-gray-100 pl-3">
+                          {r.byCat.map((c) => (
+                            <div key={c.label} className="flex justify-between text-xs text-gray-400">
+                              <span>{c.label}</span>
+                              <span className="mr-[7.5rem] tabular-nums">{fmt(c.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {semCC > 0 && (
                     <div className="flex items-center justify-between border-t border-gray-100 pt-2 text-sm">
-                      <span className="text-gray-400">Sem centro de custo</span>
-                      <span className="font-semibold text-gray-500">{fmt(semCC)}</span>
+                      <span className="text-amber-600">⚠ Sem centro de custo</span>
+                      <span className="font-semibold text-amber-600">{fmt(semCC)}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between border-t border-gray-200 pt-2">
@@ -940,7 +1042,10 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">
                           {t.kind === "receita" ? "Receita" : EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
-                          {t.costCenter && <span className="ml-1">· 🏷 {costCenterName(t.costCenter)}</span>}
+                          {(() => {
+                            const cc = resolveCostCenter(t.costCenter, t.category, ccMap)
+                            return cc ? <span className="ml-1">· 🏷 {costCenterName(cc)}</span> : null
+                          })()}
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
