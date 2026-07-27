@@ -125,8 +125,53 @@ export default function EntregaPage() {
         <p className="text-xs text-gray-400">Acesse <a href="https://www.google.com.br/maps" target="_blank" rel="noopener noreferrer" className="text-orange-500 underline">Google Maps</a>, clique no endereço da loja e copie as coordenadas.</p>
       </div>
 
-      {/* Zones */}
+      {/* Frete grátis */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <h2 className="font-bold text-gray-800">Frete Grátis</h2>
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Frete grátis para todos os pedidos</p>
+            <p className="text-xs text-gray-500 mt-0.5">Ignora a tabela de zonas — nenhuma entrega é cobrada.</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!!config.freeDelivery}
+            onClick={() => setConfig(c => c ? { ...c, freeDelivery: !c.freeDelivery } : c)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${config.freeDelivery ? 'bg-orange-500' : 'bg-gray-300'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.freeDelivery ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        <div className={config.freeDelivery ? 'opacity-40 pointer-events-none' : ''}>
+          <label className="text-sm font-semibold text-gray-600">Frete grátis a partir de (R$)</label>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={config.freeDeliveryMinOrder ?? 0}
+            onChange={e => setConfig(c => c ? { ...c, freeDeliveryMinOrder: parseFloat(e.target.value) || 0 } : c)}
+            className={`${inputCls} mt-2`}
+            placeholder="0"
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Pedidos com subtotal igual ou acima deste valor não pagam entrega. Use <strong>0</strong> para desativar.
+          </p>
+        </div>
+
+        {(config.freeDelivery || (config.freeDeliveryMinOrder ?? 0) > 0) && (
+          <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm font-medium text-emerald-700">
+            🎉 {config.freeDelivery
+              ? 'Todos os pedidos estão com frete grátis.'
+              : `Frete grátis em pedidos a partir de ${formatCurrency(config.freeDeliveryMinOrder ?? 0)}.`}
+          </div>
+        )}
+      </div>
+
+      {/* Zones */}
+      <div className={`bg-white rounded-2xl border border-gray-200 p-5 space-y-4 ${config.freeDelivery ? 'opacity-50' : ''}`}>
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-gray-800">Zonas de Entrega</h2>
           <button onClick={addZone} className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors">

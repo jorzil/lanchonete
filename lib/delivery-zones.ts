@@ -13,6 +13,18 @@ export interface DeliveryConfig {
   storeLng: number
   zones: DeliveryZone[]
   outsideAreaMessage: string
+  /** Frete grátis para todos os pedidos (ignora as zonas) */
+  freeDelivery?: boolean
+  /** Frete grátis a partir deste valor de pedido (0 = desativado) */
+  freeDeliveryMinOrder?: number
+}
+
+/** Taxa final considerando as regras de frete grátis. */
+export function applyFreeDelivery(fee: number, subtotal: number, cfg: DeliveryConfig): number {
+  if (cfg.freeDelivery) return 0
+  const min = cfg.freeDeliveryMinOrder ?? 0
+  if (min > 0 && subtotal >= min) return 0
+  return fee
 }
 
 const DEFAULT_CONFIG: DeliveryConfig = {
@@ -41,6 +53,8 @@ const DEFAULT_CONFIG: DeliveryConfig = {
     { label: 'Até 15km',   maxKm: 15,   fee: 24.99 },
   ],
   outsideAreaMessage: 'Fora da área de entrega (máx. 15km)',
+  freeDelivery: false,
+  freeDeliveryMinOrder: 0,
 }
 
 const STORAGE_KEY = 'mais_sub_delivery_zones'

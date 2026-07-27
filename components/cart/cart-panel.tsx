@@ -11,6 +11,7 @@ import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
 import { pullCoupons } from '@/lib/coupon-storage'
 import { fetchStoreStatus } from '@/lib/store-status'
+import { pullDeliveryConfig } from '@/lib/delivery-zones'
 import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
 import { toast } from 'sonner'
 
@@ -37,6 +38,17 @@ export function CartPanel() {
   const [couponInput, setCouponInput] = useState('')
   const [orderType, setOrderType] = useState<'entrega' | 'retirada'>('entrega')
   const [pickupOnly, setPickupOnly] = useState(false)
+  const [freeFrom, setFreeFrom] = useState(0)
+
+  // Regra de frete grátis (para incentivar o cliente a completar o valor)
+  useEffect(() => {
+    if (!isOpen) return
+    pullDeliveryConfig().then((cfg) => {
+      setFreeFrom(cfg.freeDelivery ? 0 : (cfg.freeDeliveryMinOrder ?? 0))
+      if (cfg.freeDelivery) setDeliveryFee(0)
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   // Puxa os cupons do banco ao abrir o carrinho (para validar cupons criados no admin)
   useEffect(() => { if (isOpen) pullCoupons() }, [isOpen])
@@ -66,7 +78,9 @@ export function CartPanel() {
 
   const handleOrderType = (type: 'entrega' | 'retirada') => {
     setOrderType(type)
-    setDeliveryFee(type === 'entrega' ? 5.0 : 0)
+    // Estimativa: a taxa exata é calculada no checkout, pelo CEP
+    const free = freeFrom > 0 && subtotal >= freeFrom
+    setDeliveryFee(type === 'entrega' && !free ? 5.0 : 0)
   }
 
   return (
@@ -163,6 +177,11 @@ export function CartPanel() {
                 <div className="flex justify-between text-sm text-gray-700"><span>Subtotal</span><span className="font-semibold">{formatCurrency(subtotal)}</span></div>
                 {discount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Desconto</span><span className="font-bold">-{formatCurrency(discount)}</span></div>}
                 <div className="flex justify-between text-sm text-gray-700"><span>Taxa de entrega</span><span className="font-semibold">{deliveryFee === 0 ? '✓ Grátis' : formatCurrency(deliveryFee)}</span></div>
+                {freeFrom > 0 && orderType === 'entrega' && subtotal < freeFrom && (
+                  <p className="text-xs font-semibold text-emerald-600">
+                    Faltam {formatCurrency(freeFrom - subtotal)} para <strong>frete grátis</strong>! 🎉
+                  </p>
+                )}
                 <div className="h-px bg-gray-200 my-2" />
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900 font-black text-lg">Total</span>
