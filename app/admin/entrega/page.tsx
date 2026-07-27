@@ -7,10 +7,27 @@ import { formatCurrency } from '@/lib/data'
 import { toast } from 'sonner'
 
 const DEFAULT_ZONES: DeliveryZone[] = [
-  { label: 'Até 3km',  maxKm: 3,  fee: 5  },
-  { label: 'Até 6km',  maxKm: 6,  fee: 8  },
-  { label: 'Até 10km', maxKm: 10, fee: 12 },
-  { label: 'Até 15km', maxKm: 15, fee: 18 },
+  { label: 'Até 1km',    maxKm: 1,    fee: 5.0  },
+  { label: 'Até 1,5km',  maxKm: 1.5,  fee: 5.99 },
+  { label: 'Até 2km',    maxKm: 2,    fee: 6.99 },
+  { label: 'Até 2,5km',  maxKm: 2.5,  fee: 7.99 },
+  { label: 'Até 3km',    maxKm: 3,    fee: 8.99 },
+  { label: 'Até 4km',    maxKm: 4,    fee: 9.99 },
+  { label: 'Até 5km',    maxKm: 5,    fee: 11.99 },
+  { label: 'Até 5,5km',  maxKm: 5.5,  fee: 12.99 },
+  { label: 'Até 6km',    maxKm: 6,    fee: 13.99 },
+  { label: 'Até 6,5km',  maxKm: 6.5,  fee: 14.99 },
+  { label: 'Até 7km',    maxKm: 7,    fee: 15.99 },
+  { label: 'Até 7,5km',  maxKm: 7.5,  fee: 16.99 },
+  { label: 'Até 8km',    maxKm: 8,    fee: 17.99 },
+  { label: 'Até 8,5km',  maxKm: 8.5,  fee: 18.99 },
+  { label: 'Até 9km',    maxKm: 9,    fee: 19.99 },
+  { label: 'Até 9,5km',  maxKm: 9.5,  fee: 20.99 },
+  { label: 'Até 10km',   maxKm: 10,   fee: 21.99 },
+  { label: 'Até 11km',   maxKm: 11,   fee: 19.99 },
+  { label: 'Até 11,5km', maxKm: 11.5, fee: 20.99 },
+  { label: 'Até 12,5km', maxKm: 12.5, fee: 22.99 },
+  { label: 'Até 15km',   maxKm: 15,   fee: 24.99 },
 ]
 
 const inputCls = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
