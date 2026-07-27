@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { formatCurrency, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type OrderStatus, type OrderSource, type CartItem } from "@/lib/store"
+import { formatCurrency, effectivePrice, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type OrderStatus, type OrderSource, type CartItem } from "@/lib/store"
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
 import { loadOrders, saveOrders } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
-import { setOrderStatus, setOrderPayment, deleteDbOrder } from "@/lib/db-orders"
+import { setOrderStatus, setOrderPayment, setOrderItems, deleteDbOrder } from "@/lib/db-orders"
 import { toast } from "sonner"
 import { printOrder, getPrintSettings, getPrintQueue } from "@/lib/print-order"
 
@@ -206,6 +206,90 @@ export default function PedidosPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [soundReady, setSoundReady] = useState(false)
   const [ifoodFeePercent, setIfoodFeePercent] = useState(0)
+
+  // ── Edição do pedido (corrigir itens/valores) ──
+  const [editing, setEditing] = useState(false)
+  const [editItems, setEditItems] = useState<Order["items"]>([])
+  const [editDeliveryFee, setEditDeliveryFee] = useState(0)
+  const [editDiscount, setEditDiscount] = useState(0)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [addProductId, setAddProductId] = useState("")
+
+  const catalogProducts = useMemo(
+    () => PRODUCTS.filter((p) => p.active).sort((a, b) => a.name.localeCompare(b.name)),
+    [],
+  )
+  const editSubtotal = useMemo(
+    () => editItems.reduce((s, i) => s + i.price * i.quantity, 0),
+    [editItems],
+  )
+  const editTotal = Math.max(0, editSubtotal + editDeliveryFee - editDiscount)
+
+  function startEditOrder(order: Order) {
+    setEditItems(order.items.map((i) => ({ ...i })))
+    setEditDeliveryFee(order.deliveryFee)
+    setEditDiscount(order.discount)
+    setAddProductId("")
+    setEditing(true)
+  }
+
+  function cancelEditOrder() {
+    setEditing(false)
+    setEditItems([])
+  }
+
+  function updateEditItem(index: number, patch: Partial<Order["items"][number]>) {
+    setEditItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)))
+  }
+
+  function removeEditItem(index: number) {
+    setEditItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function addEditItem() {
+    const p = catalogProducts.find((x) => x.id === addProductId)
+    if (!p) return
+    setEditItems((prev) => [
+      ...prev,
+      {
+        id: `edit-${p.id}-${Date.now()}`,
+        productId: p.id,
+        name: p.name,
+        price: effectivePrice(p),
+        quantity: 1,
+        image: p.image,
+      },
+    ])
+    setAddProductId("")
+  }
+
+  async function saveEditOrder() {
+    if (!selected) return
+    if (editItems.length === 0) { toast.error("O pedido precisa ter ao menos um item."); return }
+    setSavingEdit(true)
+    const payload = {
+      items: editItems,
+      subtotal: editSubtotal,
+      deliveryFee: editDeliveryFee,
+      discount: editDiscount,
+      total: editTotal,
+    }
+    const result = await setOrderItems(selected, payload)
+    setSavingEdit(false)
+    if (!result.ok) {
+      toast.error(`Não foi possível salvar: ${result.error ?? "erro"}`)
+      return
+    }
+    const updated = { ...selected, ...payload, updatedAt: new Date().toISOString() }
+    setOrders((prev) => {
+      const next = prev.map((o) => (o.id === selected.id ? updated : o))
+      saveOrders(next)
+      return next
+    })
+    setSelected(updated)
+    setEditing(false)
+    toast.success("Pedido corrigido com sucesso")
+  }
   // Envio automático de WhatsApp (Evolution API) disponível?
   const [waAuto, setWaAuto] = useState(false)
 
@@ -797,7 +881,7 @@ export default function PedidosPage() {
 
       {/* Detail modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => { setSelected(null); cancelEditOrder() }}>
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div className="flex items-center gap-2">
@@ -806,7 +890,7 @@ export default function PedidosPage() {
                   {STATUS_CONFIG[selected.status]?.label}
                 </span>
               </div>
-              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+              <button onClick={() => { setSelected(null); cancelEditOrder() }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
 
             <div className="p-5 space-y-4 text-sm">
@@ -831,27 +915,117 @@ export default function PedidosPage() {
 
               {/* Items */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Itens</p>
-                <div className="space-y-2">
-                  {selected.items.map((item, i) => {
-                    const details = buildItemDetails(item)
-                    return (
-                      <div key={i}>
-                        <div className="flex justify-between gap-2">
-                          <span className="text-gray-900">{item.quantity}× {item.name}</span>
-                          <span className="text-gray-600 shrink-0">{formatCurrency(item.price * item.quantity)}</span>
-                        </div>
-                        {details.length > 0 && (
-                          <ul className="mt-0.5 ml-5 space-y-0.5">
-                            {details.map((d, j) => (
-                              <li key={j} className="text-[11px] text-gray-500 leading-snug">– {d}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-400 uppercase">Itens</p>
+                  {!editing ? (
+                    <button
+                      onClick={() => startEditOrder(selected)}
+                      className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                    >
+                      ✎ Corrigir pedido
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button onClick={cancelEditOrder} className="text-xs font-semibold text-gray-400 hover:text-gray-600">
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={saveEditOrder}
+                        disabled={savingEdit}
+                        className="rounded-lg bg-orange-500 px-2.5 py-1 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
+                      >
+                        {savingEdit ? "Salvando…" : "Salvar"}
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {!editing ? (
+                  <div className="space-y-2">
+                    {selected.items.map((item, i) => {
+                      const details = buildItemDetails(item)
+                      return (
+                        <div key={i}>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-gray-900">{item.quantity}× {item.name}</span>
+                            <span className="text-gray-600 shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+                          </div>
+                          {details.length > 0 && (
+                            <ul className="mt-0.5 ml-5 space-y-0.5">
+                              {details.map((d, j) => (
+                                <li key={j} className="text-[11px] text-gray-500 leading-snug">– {d}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {editItems.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 rounded-lg border border-gray-200 p-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-medium text-gray-900">{item.name}</p>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-400">Unit. R$</span>
+                            <input
+                              type="number" min="0" step="0.01"
+                              value={item.price}
+                              onChange={(e) => updateEditItem(i, { price: parseFloat(e.target.value) || 0 })}
+                              className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs text-gray-900 outline-none focus:border-orange-400"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => updateEditItem(i, { quantity: Math.max(1, item.quantity - 1) })}
+                            className="h-6 w-6 rounded border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50"
+                          >–</button>
+                          <span className="w-6 text-center text-sm font-bold text-gray-900">{item.quantity}</span>
+                          <button
+                            onClick={() => updateEditItem(i, { quantity: item.quantity + 1 })}
+                            className="h-6 w-6 rounded border border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50"
+                          >+</button>
+                        </div>
+                        <span className="w-20 shrink-0 text-right text-sm font-semibold text-gray-900">
+                          {formatCurrency(item.price * item.quantity)}
+                        </span>
+                        <button
+                          onClick={() => removeEditItem(i)}
+                          className="shrink-0 text-gray-300 hover:text-red-500"
+                          title="Remover item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    {editItems.length === 0 && (
+                      <p className="py-2 text-center text-xs text-gray-400">Nenhum item — adicione ao menos um.</p>
+                    )}
+
+                    {/* Adicionar produto */}
+                    <div className="flex gap-2 pt-1">
+                      <select
+                        value={addProductId}
+                        onChange={(e) => setAddProductId(e.target.value)}
+                        className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
+                      >
+                        <option value="">+ Adicionar produto…</option>
+                        {catalogProducts.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} — {formatCurrency(effectivePrice(p))}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={addEditItem}
+                        disabled={!addProductId}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {selected.notes && (
@@ -863,10 +1037,48 @@ export default function PedidosPage() {
 
               {/* Totals */}
               <div className="space-y-1 border-t pt-3">
+                {editing ? (
+                  <>
+                    <div className="flex items-center justify-between text-gray-500">
+                      <span>Subtotal</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(editSubtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-gray-500">
+                      <span>Entrega</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={editDeliveryFee}
+                        onChange={(e) => setEditDeliveryFee(parseFloat(e.target.value) || 0)}
+                        className="w-24 rounded border border-gray-200 px-2 py-0.5 text-right text-sm text-gray-900 outline-none focus:border-orange-400"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-gray-500">
+                      <span>Desconto</span>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={editDiscount}
+                        onChange={(e) => setEditDiscount(parseFloat(e.target.value) || 0)}
+                        className="w-24 rounded border border-gray-200 px-2 py-0.5 text-right text-sm text-gray-900 outline-none focus:border-orange-400"
+                      />
+                    </div>
+                    <div className="flex justify-between border-t pt-1 text-base font-bold text-gray-900">
+                      <span>Novo total</span>
+                      <span>{formatCurrency(editTotal)}</span>
+                    </div>
+                    {editTotal !== selected.total && (
+                      <p className="text-right text-[11px] text-gray-400">
+                        antes: {formatCurrency(selected.total)}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
                 <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{formatCurrency(selected.subtotal)}</span></div>
                 <div className="flex justify-between text-gray-500"><span>Entrega</span><span>{formatCurrency(selected.deliveryFee)}</span></div>
                 {selected.discount > 0 && <div className="flex justify-between text-gray-500"><span>Desconto{selected.couponCode ? ` (${selected.couponCode})` : ''}</span><span>-{formatCurrency(selected.discount)}</span></div>}
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-1"><span>Total{selected.source === 'ifood' && ifoodFeePercent > 0 ? ' (bruto)' : ''}</span><span>{formatCurrency(selected.total)}</span></div>
+                  </>
+                )}
                 {selected.source === 'ifood' && ifoodFeePercent > 0 && (
                   <>
                     <div className="flex justify-between text-red-500 text-xs"><span>Taxas iFood ({ifoodFeePercent}%)</span><span>-{formatCurrency(selected.total * ifoodFeePercent / 100)}</span></div>

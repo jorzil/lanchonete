@@ -221,6 +221,28 @@ export async function setOrderPayment(
   return { ok: false, error: 'Pedido não encontrado no banco' }
 }
 
+/** Atualiza itens e totais do pedido (edição no admin). */
+export async function setOrderItems(
+  order: { id: string; orderNumber: string },
+  data: { items: CartItem[]; subtotal: number; deliveryFee: number; discount: number; total: number }
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
+  const patch = {
+    items: data.items,
+    subtotal: data.subtotal,
+    delivery_fee: data.deliveryFee,
+    discount: data.discount,
+    total: data.total,
+  }
+  const byId = await supabase.from('orders').update(patch).eq('id', order.id).select('id')
+  if (byId.error) return { ok: false, error: byId.error.message }
+  if (byId.data && byId.data.length > 0) return { ok: true }
+  const byNumber = await supabase.from('orders').update(patch).eq('order_number', order.orderNumber).select('id')
+  if (byNumber.error) return { ok: false, error: byNumber.error.message }
+  if (byNumber.data && byNumber.data.length > 0) return { ok: true }
+  return { ok: false, error: 'Pedido não encontrado no banco' }
+}
+
 // ─── Delete order ───────────────────────────────────────────────────────────
 export async function deleteDbOrder(id: string): Promise<void> {
   if (!supabaseConfigured) throw new Error('Supabase not configured')
