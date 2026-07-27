@@ -79,95 +79,6 @@ export function billCategoryLabel(cat: string): string {
   return custom?.label ?? cat
 }
 
-// ---------- Centros de custo ----------
-export interface CostCenter {
-  id: string
-  name: string
-}
-
-const COST_CENTER_KEY = "mais_sub_cost_centers"
-
-/** Centros de custo sugeridos na primeira vez. */
-export const DEFAULT_COST_CENTERS: CostCenter[] = [
-  { id: "cc_cozinha", name: "Cozinha" },
-  { id: "cc_delivery", name: "Delivery" },
-  { id: "cc_administrativo", name: "Administrativo" },
-  { id: "cc_marketing", name: "Marketing" },
-]
-
-export function loadCostCenters(): CostCenter[] {
-  if (typeof window === "undefined") return DEFAULT_COST_CENTERS
-  try {
-    const raw = localStorage.getItem(COST_CENTER_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) return parsed as CostCenter[]
-    }
-  } catch {}
-  return DEFAULT_COST_CENTERS
-}
-
-export function saveCostCenters(list: CostCenter[]): void {
-  if (typeof window === "undefined") return
-  try { localStorage.setItem(COST_CENTER_KEY, JSON.stringify(list)) } catch { /* */ }
-}
-
-export function addCostCenter(name: string): CostCenter {
-  const cc: CostCenter = { id: `cc_${Date.now().toString(36)}`, name: name.trim() }
-  const list = loadCostCenters()
-  if (!list.some((c) => c.name.toLowerCase() === cc.name.toLowerCase())) {
-    list.push(cc)
-    saveCostCenters(list)
-  }
-  return cc
-}
-
-export function deleteCostCenter(id: string): void {
-  saveCostCenters(loadCostCenters().filter((c) => c.id !== id))
-}
-
-/** Nome do centro de custo (ou '—' quando não informado). */
-export function costCenterName(id?: string): string {
-  if (!id) return "—"
-  return loadCostCenters().find((c) => c.id === id)?.name ?? id
-}
-
-// ---------- Vínculo categoria → centro de custo ----------
-// Permite que despesas sem centro de custo explícito sejam atribuídas
-// automaticamente pelo tipo de gasto (inclusive lançamentos antigos).
-const CC_MAP_KEY = "mais_sub_category_cost_center"
-
-export type CategoryCostCenterMap = Record<string, string>
-
-export function loadCategoryCostCenterMap(): CategoryCostCenterMap {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = localStorage.getItem(CC_MAP_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === "object") return parsed as CategoryCostCenterMap
-    }
-  } catch {}
-  return {}
-}
-
-export function saveCategoryCostCenterMap(map: CategoryCostCenterMap): void {
-  if (typeof window === "undefined") return
-  try { localStorage.setItem(CC_MAP_KEY, JSON.stringify(map)) } catch { /* */ }
-}
-
-/**
- * Centro de custo efetivo de um gasto: o escolhido no lançamento tem
- * prioridade; sem ele, cai no vínculo da categoria.
- */
-export function resolveCostCenter(
-  costCenter: string | undefined,
-  category: string,
-  map: CategoryCostCenterMap,
-): string | undefined {
-  return costCenter || map[category] || undefined
-}
-
 // ---------- Onde o dinheiro fica ----------
 export type MoneyAccount = "dinheiro" | "banco"
 
@@ -211,8 +122,6 @@ export interface Bill {
   createdAt: string
   /** Onde o dinheiro entra/sai: espécie ou conta bancária (padrão: dinheiro) */
   account?: MoneyAccount
-  /** Centro de custo ao qual o gasto/receita pertence */
-  costCenter?: string
   /** Periodicidade da conta recorrente (padrão: none) */
   recurrence?: Recurrence
   /** Id que agrupa as parcelas de uma mesma conta recorrente */
@@ -372,7 +281,7 @@ export function saveBankBase(v: number): void {
 }
 
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; costCenters: CostCenter[]; categoryCostCenter: CategoryCostCenterMap; cashBase: number; bankBase: number } | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; cashBase: number; bankBase: number } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
@@ -380,8 +289,6 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
     return {
       bills: Array.isArray(data.bills) ? (data.bills as Bill[]) : [],
       customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
-      costCenters: Array.isArray(data.costCenters) ? (data.costCenters as CostCenter[]) : [],
-      categoryCostCenter: data.categoryCostCenter && typeof data.categoryCostCenter === "object" ? (data.categoryCostCenter as CategoryCostCenterMap) : {},
       cashBase: typeof data.cashBase === "number" ? data.cashBase : 0,
       bankBase: typeof data.bankBase === "number" ? data.bankBase : 0,
     }

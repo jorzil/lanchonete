@@ -33,8 +33,6 @@ export interface Transaction {
   date: string
   /** Onde entrou/saiu: espécie ou conta bancária (padrão: dinheiro) */
   account?: "dinheiro" | "banco"
-  /** Centro de custo ao qual o lançamento pertence */
-  costCenter?: string
   createdAt: string
 }
 
@@ -95,12 +93,12 @@ export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
 }
 
 /** Envia contas + lançamentos + categorias ao Supabase (chamado após cada mutação). */
-export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, costCenters: unknown[] = [], categoryCostCenter: Record<string, string> = {}): Promise<boolean> {
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0): Promise<boolean> {
   try {
     const res = await fetch("/api/finance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bills, transactions, customCategories, costCenters, categoryCostCenter, cashBase, bankBase }),
+      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase }),
     })
     const data = await res.json().catch(() => ({}))
     return !!(res.ok && data.ok)

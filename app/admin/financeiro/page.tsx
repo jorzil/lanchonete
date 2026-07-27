@@ -19,9 +19,7 @@ import {
   getBillsSummary, replaceBills, fetchBillsRemote,
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
   loadCashBase, saveCashBase, loadBankBase, saveBankBase,
-  loadCostCenters, saveCostCenters, addCostCenter, deleteCostCenter, costCenterName,
-  loadCategoryCostCenterMap, saveCategoryCostCenterMap, resolveCostCenter, type CategoryCostCenterMap,
-  MONEY_ACCOUNT_LABELS, type MoneyAccount, type CostCenter,
+  MONEY_ACCOUNT_LABELS, type MoneyAccount,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
   type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
@@ -70,9 +68,7 @@ function BillModal({
     notes: bill?.notes ?? "",
     recurrence: (bill?.recurrence ?? "none") as Recurrence,
     account: (bill?.account ?? "dinheiro") as MoneyAccount,
-    costCenter: bill?.costCenter ?? "",
   })
-  const centers = loadCostCenters()
 
   function set(k: string, v: string) {
     setForm((p) => ({ ...p, [k]: v }))
@@ -94,7 +90,6 @@ function BillModal({
       notes: form.notes.trim() || undefined,
       recurrence: form.recurrence,
       account: form.account,
-      costCenter: form.costCenter || undefined,
     }
 
     if (bill) {
@@ -231,20 +226,6 @@ function BillModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Centro de custo</label>
-            <select
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
-              value={form.costCenter}
-              onChange={(e) => set("costCenter", e.target.value)}
-            >
-              <option value="">— sem centro de custo —</option>
-              {centers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">
               {type === "pagar" ? "Sai de onde?" : "Entra onde?"}
             </label>
@@ -332,7 +313,6 @@ function BillsTable({
   // Filtro por mês de vencimento: "todos" ou "YYYY-MM"
   const [monthFilter, setMonthFilter] = useState<string>("todos")
   const [catFilter, setCatFilter] = useState<string>("todos")
-  const [ccFilter, setCcFilter] = useState<string>("todos")
 
   const monthOptions = useMemo(() => {
     const set = new Set<string>()
@@ -347,17 +327,10 @@ function BillsTable({
     return Array.from(set).sort((a, b) => billCategoryLabel(a).localeCompare(billCategoryLabel(b)))
   }, [bills])
 
-  const ccOptions = useMemo(() => {
-    const set = new Set<string>()
-    for (const b of bills) if (b.costCenter) set.add(b.costCenter)
-    return Array.from(set).sort((a, b) => costCenterName(a).localeCompare(costCenterName(b)))
-  }, [bills])
-
   const filtered = bills.filter((b) =>
     (filter === "todos" || b.status === filter) &&
     (monthFilter === "todos" || b.dueDate.slice(0, 7) === monthFilter) &&
-    (catFilter === "todos" || b.category === catFilter) &&
-    (ccFilter === "todos" || (ccFilter === "sem" ? !b.costCenter : b.costCenter === ccFilter))
+    (catFilter === "todos" || b.category === catFilter)
   )
 
   // Auto-soma do que está filtrado + total geral de todas as contas
@@ -414,22 +387,9 @@ function BillsTable({
             <option key={c} value={c}>{billCategoryLabel(c)}</option>
           ))}
         </select>
-        {ccOptions.length > 0 && (
-          <select
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-orange-400"
-            value={ccFilter}
-            onChange={(e) => setCcFilter(e.target.value)}
-          >
-            <option value="todos">Todos os centros de custo</option>
-            {ccOptions.map((c) => (
-              <option key={c} value={c}>🏷 {costCenterName(c)}</option>
-            ))}
-            <option value="sem">Sem centro de custo</option>
-          </select>
-        )}
-        {(catFilter !== "todos" || ccFilter !== "todos" || monthFilter !== "todos" || filter !== "todos") && (
+        {(catFilter !== "todos" || monthFilter !== "todos" || filter !== "todos") && (
           <button
-            onClick={() => { setCatFilter("todos"); setCcFilter("todos"); setMonthFilter("todos"); setFilter("todos") }}
+            onClick={() => { setCatFilter("todos"); setMonthFilter("todos"); setFilter("todos") }}
             className="text-xs font-semibold text-gray-400 hover:text-gray-700 underline"
           >
             limpar filtros
@@ -443,13 +403,12 @@ function BillsTable({
           {monthFilter === "todos" ? "Todas as contas" : `Mês ${(() => { const [y, mo] = monthFilter.split("-"); return `${MONTHS[+mo - 1]}/${y}` })()}`}
           {filter !== "todos" && ` · ${filters.find((f) => f.key === filter)?.label}`}
           {catFilter !== "todos" && ` · ${billCategoryLabel(catFilter)}`}
-          {ccFilter !== "todos" && ` · 🏷 ${ccFilter === "sem" ? "sem centro de custo" : costCenterName(ccFilter)}`}
           : <span className="font-bold text-gray-900">{fmt(filteredTotal)}</span>
           <span className="ml-1 text-gray-400">({filtered.length})</span>
         </span>
         <span className="text-gray-500">Pago: <span className="font-bold text-emerald-600">{fmt(filteredPaid)}</span></span>
         <span className="text-gray-500">Falta: <span className="font-bold text-amber-600">{fmt(filteredTotal - filteredPaid)}</span></span>
-        {(monthFilter !== "todos" || filter !== "todos" || catFilter !== "todos" || ccFilter !== "todos") && (
+        {(monthFilter !== "todos" || filter !== "todos" || catFilter !== "todos") && (
           <span className="ml-auto text-gray-400">Geral: <span className="font-bold text-gray-700">{fmt(grandTotal)}</span></span>
         )}
       </div>
@@ -487,10 +446,7 @@ function BillsTable({
                             </span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          {b.account === "banco" ? "🏦" : "💵"} {billCategoryLabel(b.category)}
-                          {b.costCenter && <span className="ml-1 text-gray-400">· 🏷 {costCenterName(b.costCenter)}</span>}
-                        </p>
+                        <p className="text-xs text-gray-400">{b.account === "banco" ? "🏦" : "💵"} {billCategoryLabel(b.category)}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-500">
                         {new Date(b.dueDate + "T12:00:00").toLocaleDateString("pt-BR")}
@@ -554,27 +510,8 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount, costCenter: "" })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
-  const [cashBase, setCashBase] = useState(0)
-  const [bankBase, setBankBase] = useState(0)
-  const [costCenters, setCostCenters] = useState<CostCenter[]>([])
-  const [newCC, setNewCC] = useState("")
-  const [ccMap, setCcMap] = useState<CategoryCostCenterMap>({})
-  const [showCcMap, setShowCcMap] = useState(false)
-
-  // Categorias de despesa sem repetição: lançamentos e contas a pagar
-  // compartilham várias chaves (aluguel, pessoal, marketing…), então a
-  // mesma categoria não pode aparecer duas vezes.
-  const allExpenseCategories = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const [key, label] of Object.entries(EXPENSE_CATEGORY_LABELS)) map.set(key, label)
-    for (const key of PAGAR_CATEGORIES) if (!map.has(key)) map.set(key, BILL_CATEGORY_LABELS[key])
-    for (const c of loadCustomCategories()) if (c.type === "pagar" && !map.has(c.key)) map.set(c.key, c.label)
-    return [...map.entries()]
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  }, [costCenters])
   const [txCatFilter, setTxCatFilter] = useState("todos")
 
   // Lançamentos do mês selecionado, já filtrados por categoria
@@ -585,6 +522,8 @@ export default function FinanceiroPage() {
     if (txCatFilter === "receita") return t.kind === "receita"
     return t.kind === "despesa" && t.category === txCatFilter
   }), [transactions, month, year, txCatFilter])
+  const [cashBase, setCashBase] = useState(0)
+  const [bankBase, setBankBase] = useState(0)
   // qual saldo está sendo ajustado no modal
   const [cashModal, setCashModal] = useState<MoneyAccount | null>(null)
   const [cashInput, setCashInput] = useState("")
@@ -610,7 +549,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadCostCenters(), loadCategoryCostCenterMap())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase())
   }
 
   useEffect(() => {
@@ -631,11 +570,7 @@ export default function FinanceiroPage() {
         saveCustomCategories(merged)
         saveCashBase(remoteFinance.cashBase)
         saveBankBase(remoteFinance.bankBase)
-        if (remoteFinance.costCenters.length > 0) saveCostCenters(remoteFinance.costCenters)
-        if (Object.keys(remoteFinance.categoryCostCenter).length > 0) saveCategoryCostCenterMap(remoteFinance.categoryCostCenter)
       }
-      setCostCenters(loadCostCenters())
-      setCcMap(loadCategoryCostCenterMap())
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setCashBase(loadCashBase())
@@ -653,11 +588,11 @@ export default function FinanceiroPage() {
   function handleAddTx() {
     const amount = parseFloat(txForm.amount)
     if (!amount || !txForm.description.trim()) return
-    addTransaction({ ...txForm, amount, costCenter: txForm.costCenter || undefined })
+    addTransaction({ ...txForm, amount })
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro", costCenter: "" })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro" })
   }
 
   function handleDeleteTx(id: string) {
@@ -684,90 +619,6 @@ export default function FinanceiroPage() {
   function handleBillSaved() {
     refreshBills()
     persist()
-  }
-
-  /**
-   * Gera centros de custo a partir das categorias já usadas nas despesas
-   * lançadas e vincula cada categoria ao seu centro. Não mexe no que já
-   * estiver vinculado nem cria centros duplicados.
-   */
-  function generateCostCentersFromCategories() {
-    // Categorias realmente usadas em despesas (lançamentos + contas a pagar).
-    // A chave é a categoria, então despesas e contas de mesma categoria
-    // (aluguel, pessoal, marketing…) entram uma única vez.
-    const used = new Map<string, string>() // categoria -> rótulo
-    for (const t of loadTransactions()) {
-      if (t.kind !== "despesa") continue
-      if (!used.has(t.category)) used.set(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category)
-    }
-    for (const b of loadBills()) {
-      if (b.type !== "pagar" || b.status === "cancelado") continue
-      if (!used.has(b.category)) used.set(b.category, billCategoryLabel(b.category))
-    }
-    if (used.size === 0) {
-      alert("Nenhuma despesa lançada ainda — não há categorias para converter.")
-      return
-    }
-
-    const pending = [...used.entries()].filter(([cat]) => !ccMap[cat])
-    if (pending.length === 0) {
-      alert("Todas as categorias com despesas já estão vinculadas a um centro de custo.")
-      return
-    }
-
-    const nomes = pending.map(([, label]) => label).join(", ")
-    if (!confirm(`Criar/vincular centros de custo para as categorias: ${nomes}?\n\nAs despesas já lançadas passam a somar automaticamente nesses centros. Você pode renomear ou remanejar depois.`)) return
-
-    let centers = loadCostCenters()
-    const nextMap = { ...ccMap }
-    for (const [cat, label] of pending) {
-      // Reaproveita um centro de custo de mesmo nome, se já existir
-      let center = centers.find((c) => c.name.toLowerCase() === label.toLowerCase())
-      if (!center) {
-        center = addCostCenter(label)
-        centers = loadCostCenters()
-      }
-      nextMap[cat] = center.id
-    }
-    saveCategoryCostCenterMap(nextMap)
-    setCcMap(nextMap)
-    setCostCenters(loadCostCenters())
-    persist()
-    alert(`Pronto! ${pending.length} categoria(s) vinculada(s). As despesas já lançadas foram classificadas.`)
-  }
-
-  /** Junta centros de custo com o mesmo nome, remanejando os vínculos. */
-  function mergeDuplicateCostCenters() {
-    const list = loadCostCenters()
-    const keep = new Map<string, CostCenter>() // nome minúsculo -> centro mantido
-    const remap = new Map<string, string>()    // id removido -> id mantido
-    for (const c of list) {
-      const k = c.name.trim().toLowerCase()
-      const existing = keep.get(k)
-      if (existing) remap.set(c.id, existing.id)
-      else keep.set(k, c)
-    }
-    if (remap.size === 0) {
-      alert("Não há centros de custo duplicados.")
-      return
-    }
-    if (!confirm(`Encontrei ${remap.size} centro(s) de custo duplicado(s). Deseja juntá-los? Os vínculos e lançamentos são remanejados para o centro que fica.`)) return
-
-    saveCostCenters([...keep.values()])
-    // Reaponta os vínculos de categoria
-    const nextMap: CategoryCostCenterMap = {}
-    for (const [cat, ccId] of Object.entries(ccMap)) nextMap[cat] = remap.get(ccId) ?? ccId
-    saveCategoryCostCenterMap(nextMap)
-    // Reaponta os lançamentos individuais
-    replaceBills(loadBills().map((b) => b.costCenter && remap.has(b.costCenter) ? { ...b, costCenter: remap.get(b.costCenter) } : b))
-    replaceTransactions(loadTransactions().map((t) => t.costCenter && remap.has(t.costCenter) ? { ...t, costCenter: remap.get(t.costCenter) } : t))
-
-    setCcMap(nextMap)
-    setCostCenters(loadCostCenters())
-    setTransactions(loadTransactions())
-    refreshBills()
-    persist()
-    alert(`${remap.size} centro(s) duplicado(s) juntado(s).`)
   }
 
   // Summary cards
@@ -927,173 +778,6 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
-          {/* Gastos por centro de custo */}
-          <div className="rounded-xl border border-gray-100 bg-white p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-gray-900">Gastos por centro de custo — {MONTHS[month]}/{year}</p>
-              <div className="flex gap-2">
-                <input
-                  className="w-44 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
-                  placeholder="Novo centro de custo"
-                  value={newCC}
-                  onChange={(e) => setNewCC(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && newCC.trim()) { addCostCenter(newCC.trim()); setCostCenters(loadCostCenters()); setNewCC(""); persist() } }}
-                />
-                <button
-                  onClick={() => { if (newCC.trim()) { addCostCenter(newCC.trim()); setCostCenters(loadCostCenters()); setNewCC(""); persist() } }}
-                  className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600"
-                >
-                  Adicionar
-                </button>
-                <button
-                  onClick={generateCostCentersFromCategories}
-                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                  title="Cria centros de custo com base nas categorias das despesas já lançadas"
-                >
-                  ⚡ Gerar pelas categorias
-                </button>
-                <button
-                  onClick={mergeDuplicateCostCenters}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-                  title="Junta centros de custo com o mesmo nome"
-                >
-                  Juntar duplicados
-                </button>
-                <button
-                  onClick={() => setShowCcMap((v) => !v)}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
-                >
-                  {showCcMap ? "Fechar vínculos" : "Vincular categorias"}
-                </button>
-              </div>
-            </div>
-
-            {/* Vínculo categoria → centro de custo */}
-            {showCcMap && (
-              <div className="mb-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <p className="text-xs text-gray-500 mb-3">
-                  Defina o centro de custo padrão de cada categoria de despesa. Vale para todos os
-                  gastos daquela categoria — inclusive os já lançados — quando o lançamento não tiver
-                  um centro de custo escolhido individualmente.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {allExpenseCategories.map(({ key, label }) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="w-40 shrink-0 truncate text-xs text-gray-600" title={label}>{label}</span>
-                      <select
-                        className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
-                        value={ccMap[key] ?? ""}
-                        onChange={(e) => {
-                          const next = { ...ccMap }
-                          if (e.target.value) next[key] = e.target.value
-                          else delete next[key]
-                          setCcMap(next)
-                          saveCategoryCostCenterMap(next)
-                          persist()
-                        }}
-                      >
-                        <option value="">— nenhum —</option>
-                        {costCenters.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(() => {
-              const inPeriod = (d: string) => { const x = parseLocalDay(d); return x.getMonth() === month && x.getFullYear() === year }
-              // Todas as despesas do período, normalizadas (lançamentos + contas a pagar)
-              const expenses: Array<{ cc?: string; category: string; label: string; amount: number }> = [
-                ...transactions
-                  .filter((t) => t.kind === "despesa" && inPeriod(t.date))
-                  .map((t) => ({
-                    cc: resolveCostCenter(t.costCenter, t.category, ccMap),
-                    category: t.category,
-                    label: EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category,
-                    amount: t.amount,
-                  })),
-                ...bills
-                  .filter((b) => b.type === "pagar" && b.status !== "cancelado" && inPeriod(b.dueDate))
-                  .map((b) => ({
-                    cc: resolveCostCenter(b.costCenter, b.category, ccMap),
-                    category: b.category,
-                    label: billCategoryLabel(b.category),
-                    amount: b.amount,
-                  })),
-              ]
-              const grand = expenses.reduce((a, e) => a + e.amount, 0)
-              if (grand === 0) return <p className="py-6 text-center text-sm text-gray-400">Nenhum gasto registrado neste período.</p>
-
-              const rows = costCenters.map((cc) => {
-                const mine = expenses.filter((e) => e.cc === cc.id)
-                const byCat = new Map<string, { label: string; amount: number }>()
-                for (const e of mine) {
-                  const cur = byCat.get(e.category) ?? { label: e.label, amount: 0 }
-                  cur.amount += e.amount
-                  byCat.set(e.category, cur)
-                }
-                return { ...cc, total: mine.reduce((a, e) => a + e.amount, 0), byCat: [...byCat.values()].sort((a, b) => b.amount - a.amount) }
-              })
-              const semCC = expenses.filter((e) => !e.cc).reduce((a, e) => a + e.amount, 0)
-
-              return (
-                <div className="space-y-2.5">
-                  {[...rows].sort((a, b) => b.total - a.total).map((r) => (
-                    <div key={r.id}>
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm text-gray-700">{r.name}</span>
-                            <span className="shrink-0 text-xs text-gray-400">{((r.total / grand) * 100).toFixed(1)}%</span>
-                          </div>
-                          <div className="mt-1 h-1.5 rounded-full bg-gray-100">
-                            <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${(r.total / grand) * 100}%` }} />
-                          </div>
-                        </div>
-                        <span className="w-24 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.total)}</span>
-                        <button
-                          onClick={() => { if (confirm(`Excluir o centro de custo "${r.name}"? Os lançamentos existentes continuam salvos.`)) { deleteCostCenter(r.id); setCostCenters(loadCostCenters()); persist() } }}
-                          className="shrink-0 text-gray-300 hover:text-red-500"
-                          title="Excluir centro de custo"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                      {/* Detalhe por categoria dentro do centro de custo */}
-                      {r.byCat.length > 0 && (
-                        <div className="ml-1 mt-1 space-y-0.5 border-l-2 border-gray-100 pl-3">
-                          {r.byCat.map((c) => (
-                            <div key={c.label} className="flex justify-between text-xs text-gray-400">
-                              <span>{c.label}</span>
-                              <span className="mr-[7.5rem] tabular-nums">{fmt(c.amount)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {semCC > 0 && (
-                    <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2 text-sm">
-                      <span className="text-amber-600">
-                        ⚠ Sem centro de custo
-                        <button onClick={generateCostCentersFromCategories} className="ml-2 text-xs font-semibold underline hover:text-amber-700">
-                          classificar pelas categorias
-                        </button>
-                      </span>
-                      <span className="font-semibold text-amber-600">{fmt(semCC)}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between border-t border-gray-200 pt-2">
-                    <span className="text-sm font-bold text-gray-700">Total de gastos</span>
-                    <span className="text-base font-black text-gray-900">{fmt(grand)}</span>
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-
           {/* Transactions table */}
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
             <div className="border-b border-gray-100 px-5 py-3">
@@ -1135,10 +819,6 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">
                           {t.kind === "receita" ? "Receita" : EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
-                          {(() => {
-                            const cc = resolveCostCenter(t.costCenter, t.category, ccMap)
-                            return cc ? <span className="ml-1">· 🏷 {costCenterName(cc)}</span> : null
-                          })()}
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
@@ -1253,19 +933,6 @@ export default function FinanceiroPage() {
                     onChange={(e) => setTxForm((p) => ({ ...p, date: e.target.value }))}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Centro de custo</label>
-                <select
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
-                  value={txForm.costCenter}
-                  onChange={(e) => setTxForm((p) => ({ ...p, costCenter: e.target.value }))}
-                >
-                  <option value="">— sem centro de custo —</option>
-                  {costCenters.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
