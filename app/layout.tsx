@@ -3,6 +3,7 @@ import { Inter, Bricolage_Grotesque, Poppins, Manrope } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
+import { FreeDeliveryBanner } from '@/components/layout/free-delivery-banner'
 import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider'
 import { MetaPixel } from '@/components/analytics/meta-pixel'
 import './globals.css'
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             {children}
           </SmoothScrollProvider>
           <CartPanelLazy />
+          <FreeDeliveryBanner />
           <Toaster position="top-center" richColors />
         </CartProvider>
       </body>
