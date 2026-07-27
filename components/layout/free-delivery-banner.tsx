@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { X, Truck } from 'lucide-react'
 import { pullDeliveryConfig } from '@/lib/delivery-zones'
 import { formatCurrency } from '@/lib/data'
+import { useCart } from '@/contexts/cart-context'
 
 /**
  * Barra de aviso no topo do site — só aparece quando o frete grátis está
@@ -15,11 +16,14 @@ export function FreeDeliveryBanner() {
   const [message, setMessage] = useState<string | null>(null)
   const [closed, setClosed] = useState(false)
   const pathname = usePathname()
+  const { isOpen: cartOpen } = useCart()
   // Só no site público — nunca no painel administrativo
-  const hidden = pathname?.startsWith('/admin') || pathname?.startsWith('/entrega')
+  const isInternal = pathname?.startsWith('/admin') || pathname?.startsWith('/entrega')
+  // Some também enquanto o carrinho estiver aberto
+  const hidden = isInternal || cartOpen
 
   useEffect(() => {
-    if (hidden) return
+    if (isInternal) return
     if (sessionStorage.getItem('free_delivery_banner_closed') === '1') {
       setClosed(true)
       return
@@ -33,7 +37,7 @@ export function FreeDeliveryBanner() {
         }
       })
       .catch(() => {})
-  }, [hidden])
+  }, [isInternal])
 
   // Desloca o header enquanto a barra estiver visível
   const visible = !hidden && !!message && !closed
