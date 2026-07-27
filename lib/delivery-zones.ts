@@ -37,8 +37,6 @@ const DEFAULT_CONFIG: DeliveryConfig = {
     { label: 'Até 9km',    maxKm: 9,    fee: 19.99 },
     { label: 'Até 9,5km',  maxKm: 9.5,  fee: 20.99 },
     { label: 'Até 10km',   maxKm: 10,   fee: 21.99 },
-    { label: 'Até 11km',   maxKm: 11,   fee: 19.99 },
-    { label: 'Até 11,5km', maxKm: 11.5, fee: 20.99 },
     { label: 'Até 12,5km', maxKm: 12.5, fee: 22.99 },
     { label: 'Até 15km',   maxKm: 15,   fee: 24.99 },
   ],
