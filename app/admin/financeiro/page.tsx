@@ -562,6 +562,19 @@ export default function FinanceiroPage() {
   const [newCC, setNewCC] = useState("")
   const [ccMap, setCcMap] = useState<CategoryCostCenterMap>({})
   const [showCcMap, setShowCcMap] = useState(false)
+
+  // Categorias de despesa sem repetição: lançamentos e contas a pagar
+  // compartilham várias chaves (aluguel, pessoal, marketing…), então a
+  // mesma categoria não pode aparecer duas vezes.
+  const allExpenseCategories = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const [key, label] of Object.entries(EXPENSE_CATEGORY_LABELS)) map.set(key, label)
+    for (const key of PAGAR_CATEGORIES) if (!map.has(key)) map.set(key, BILL_CATEGORY_LABELS[key])
+    for (const c of loadCustomCategories()) if (c.type === "pagar" && !map.has(c.key)) map.set(c.key, c.label)
+    return [...map.entries()]
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [costCenters])
   const [txCatFilter, setTxCatFilter] = useState("todos")
 
   // Lançamentos do mês selecionado, já filtrados por categoria
@@ -679,15 +692,17 @@ export default function FinanceiroPage() {
    * estiver vinculado nem cria centros duplicados.
    */
   function generateCostCentersFromCategories() {
-    // Categorias realmente usadas em despesas (lançamentos + contas a pagar)
+    // Categorias realmente usadas em despesas (lançamentos + contas a pagar).
+    // A chave é a categoria, então despesas e contas de mesma categoria
+    // (aluguel, pessoal, marketing…) entram uma única vez.
     const used = new Map<string, string>() // categoria -> rótulo
     for (const t of loadTransactions()) {
       if (t.kind !== "despesa") continue
-      used.set(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category)
+      if (!used.has(t.category)) used.set(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category)
     }
     for (const b of loadBills()) {
       if (b.type !== "pagar" || b.status === "cancelado") continue
-      used.set(b.category, billCategoryLabel(b.category))
+      if (!used.has(b.category)) used.set(b.category, billCategoryLabel(b.category))
     }
     if (used.size === 0) {
       alert("Nenhuma despesa lançada ainda — não há categorias para converter.")
@@ -719,6 +734,40 @@ export default function FinanceiroPage() {
     setCostCenters(loadCostCenters())
     persist()
     alert(`Pronto! ${pending.length} categoria(s) vinculada(s). As despesas já lançadas foram classificadas.`)
+  }
+
+  /** Junta centros de custo com o mesmo nome, remanejando os vínculos. */
+  function mergeDuplicateCostCenters() {
+    const list = loadCostCenters()
+    const keep = new Map<string, CostCenter>() // nome minúsculo -> centro mantido
+    const remap = new Map<string, string>()    // id removido -> id mantido
+    for (const c of list) {
+      const k = c.name.trim().toLowerCase()
+      const existing = keep.get(k)
+      if (existing) remap.set(c.id, existing.id)
+      else keep.set(k, c)
+    }
+    if (remap.size === 0) {
+      alert("Não há centros de custo duplicados.")
+      return
+    }
+    if (!confirm(`Encontrei ${remap.size} centro(s) de custo duplicado(s). Deseja juntá-los? Os vínculos e lançamentos são remanejados para o centro que fica.`)) return
+
+    saveCostCenters([...keep.values()])
+    // Reaponta os vínculos de categoria
+    const nextMap: CategoryCostCenterMap = {}
+    for (const [cat, ccId] of Object.entries(ccMap)) nextMap[cat] = remap.get(ccId) ?? ccId
+    saveCategoryCostCenterMap(nextMap)
+    // Reaponta os lançamentos individuais
+    replaceBills(loadBills().map((b) => b.costCenter && remap.has(b.costCenter) ? { ...b, costCenter: remap.get(b.costCenter) } : b))
+    replaceTransactions(loadTransactions().map((t) => t.costCenter && remap.has(t.costCenter) ? { ...t, costCenter: remap.get(t.costCenter) } : t))
+
+    setCcMap(nextMap)
+    setCostCenters(loadCostCenters())
+    setTransactions(loadTransactions())
+    refreshBills()
+    persist()
+    alert(`${remap.size} centro(s) duplicado(s) juntado(s).`)
   }
 
   // Summary cards
@@ -904,6 +953,13 @@ export default function FinanceiroPage() {
                   ⚡ Gerar pelas categorias
                 </button>
                 <button
+                  onClick={mergeDuplicateCostCenters}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                  title="Junta centros de custo com o mesmo nome"
+                >
+                  Juntar duplicados
+                </button>
+                <button
                   onClick={() => setShowCcMap((v) => !v)}
                   className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
                 >
@@ -921,32 +977,9 @@ export default function FinanceiroPage() {
                   um centro de custo escolhido individualmente.
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
+                  {allExpenseCategories.map(({ key, label }) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className="w-40 shrink-0 truncate text-xs text-gray-600">{label}</span>
-                      <select
-                        className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
-                        value={ccMap[key] ?? ""}
-                        onChange={(e) => {
-                          const next = { ...ccMap }
-                          if (e.target.value) next[key] = e.target.value
-                          else delete next[key]
-                          setCcMap(next)
-                          saveCategoryCostCenterMap(next)
-                          persist()
-                        }}
-                      >
-                        <option value="">— nenhum —</option>
-                        {costCenters.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
-                  {/* Categorias de contas a pagar */}
-                  {PAGAR_CATEGORIES.map((key) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="w-40 shrink-0 truncate text-xs text-gray-600">{BILL_CATEGORY_LABELS[key]} <span className="text-gray-300">(contas)</span></span>
+                      <span className="w-40 shrink-0 truncate text-xs text-gray-600" title={label}>{label}</span>
                       <select
                         className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 outline-none focus:border-orange-400"
                         value={ccMap[key] ?? ""}
