@@ -133,6 +133,9 @@
      'clip' não cria contêiner de rolagem (ao contrário de 'hidden'). */
   body { overflow-x: clip; }
 
+  /* Barra promocional fixa no topo: desloca o header (h-9 = 2.25rem) */
+  body.has-promo-bar header[class*="fixed"] { top: 2.25rem; }
+
   html { scroll-behavior: smooth; }
 
   .tabular-nums { font-variant-numeric: tabular-nums; }
