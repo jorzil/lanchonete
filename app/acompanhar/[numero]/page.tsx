@@ -42,6 +42,41 @@ export default function AcompanharPage() {
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  // Posição do entregador (enviada pela tela /entrega)
+  const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; at: number } | null>(null)
+  const [courierAgo, setCourierAgo] = useState('agora')
+
+  // Busca a posição a cada 15s enquanto o pedido estiver a caminho
+  useEffect(() => {
+    if (!order || order.status !== 'saiu_entrega' || order.orderType !== 'entrega') {
+      setCourierLoc(null)
+      return
+    }
+    let alive = true
+    const fetchLoc = async () => {
+      try {
+        const res = await fetch(`/api/entregas/localizacao?orderId=${encodeURIComponent(order.id)}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const { location } = await res.json()
+        if (alive) setCourierLoc(location ?? null)
+      } catch {}
+    }
+    fetchLoc()
+    const t = setInterval(fetchLoc, 15_000)
+    return () => { alive = false; clearInterval(t) }
+  }, [order])
+
+  // "há X min" desde a última posição recebida
+  useEffect(() => {
+    if (!courierLoc) return
+    const tick = () => {
+      const secs = Math.max(0, Math.round((Date.now() - courierLoc.at) / 1000))
+      setCourierAgo(secs < 60 ? 'agora há pouco' : `há ${Math.round(secs / 60)} min`)
+    }
+    tick()
+    const t = setInterval(tick, 20_000)
+    return () => clearInterval(t)
+  }, [courierLoc])
 
   const fetchOrder = useCallback(async () => {
     // Try Supabase API first
@@ -168,6 +203,40 @@ export default function AcompanharPage() {
             <p className="text-white/50 text-xs mt-2">
               Informe este código ao entregador para confirmar o recebimento do seu pedido. 🛵
             </p>
+          </div>
+        )}
+
+        {/* Mapa do entregador em tempo real */}
+        {order.status === 'saiu_entrega' && order.orderType === 'entrega' && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3">
+              <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest">
+                Entregador a caminho
+              </p>
+              {courierLoc && (
+                <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  ao vivo
+                </span>
+              )}
+            </div>
+            {courierLoc ? (
+              <>
+                <iframe
+                  title="Localização do entregador"
+                  className="h-64 w-full border-0"
+                  loading="lazy"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${courierLoc.lng - 0.006}%2C${courierLoc.lat - 0.004}%2C${courierLoc.lng + 0.006}%2C${courierLoc.lat + 0.004}&layer=mapnik&marker=${courierLoc.lat}%2C${courierLoc.lng}`}
+                />
+                <p className="px-5 py-2.5 text-[11px] text-white/35">
+                  Atualizado {courierAgo}. A posição se move sozinha conforme o entregador se aproxima.
+                </p>
+              </>
+            ) : (
+              <p className="px-5 pb-5 text-sm text-white/40">
+                Aguardando o entregador compartilhar a localização…
+              </p>
+            )}
           </div>
         )}
 

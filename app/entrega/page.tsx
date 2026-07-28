@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Logo } from '@/components/brand/logo'
 import { formatCurrency, type Order } from '@/lib/data'
-import { MapPin, Phone, Lock, LogOut, RotateCcw, CheckCircle2, Loader2, Bike } from 'lucide-react'
+import { MapPin, Phone, Lock, LogOut, RotateCcw, CheckCircle2, Loader2, Bike, Navigation } from 'lucide-react'
 
 const AUTH_KEY = 'entregas_auth'
 const TOKEN_KEY = 'entregas_token'
@@ -106,6 +106,69 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
   const [codes, setCodes] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
   const [confirming, setConfirming] = useState<string | null>(null)
+  // Compartilhamento de localização em tempo real
+  const [sharingId, setSharingId] = useState<string | null>(null)
+  const [geoError, setGeoError] = useState('')
+  const watchRef = useRef<number | null>(null)
+
+  const sendLocation = useCallback(async (orderId: string, lat: number, lng: number) => {
+    try {
+      const token = sessionStorage.getItem(TOKEN_KEY) ?? ''
+      await fetch('/api/entregas/localizacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-entregas-token': token },
+        body: JSON.stringify({ orderId, lat, lng }),
+      })
+    } catch {}
+  }, [])
+
+  const stopSharing = useCallback(async (orderId?: string) => {
+    const id = orderId ?? sharingId
+    if (watchRef.current !== null) {
+      navigator.geolocation.clearWatch(watchRef.current)
+      watchRef.current = null
+    }
+    setSharingId(null)
+    setGeoError('')
+    if (id) {
+      try {
+        const token = sessionStorage.getItem(TOKEN_KEY) ?? ''
+        await fetch(`/api/entregas/localizacao?orderId=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { 'x-entregas-token': token },
+        })
+      } catch {}
+    }
+  }, [sharingId])
+
+  function startSharing(orderId: string) {
+    if (!('geolocation' in navigator)) {
+      setGeoError('Este aparelho não permite localização.')
+      return
+    }
+    if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current)
+    setGeoError('')
+    setSharingId(orderId)
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setGeoError('')
+        sendLocation(orderId, pos.coords.latitude, pos.coords.longitude)
+      },
+      (err) => {
+        setGeoError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Permissão de localização negada. Libere no navegador.'
+            : 'Não foi possível obter a localização.',
+        )
+      },
+      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
+    )
+  }
+
+  // Encerra o watch ao sair da tela
+  useEffect(() => () => {
+    if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current)
+  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -143,6 +206,8 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
       const data = await res.json()
       if (res.ok && data.ok) {
         setFeedback((f) => ({ ...f, [order.id]: { type: 'ok', msg: 'Entrega confirmada! ✓' } }))
+        // Entrega concluída: encerra o compartilhamento de localização
+        if (sharingId === order.id) stopSharing(order.id)
         setTimeout(() => setOrders((prev) => prev.filter((o) => o.id !== order.id)), 1200)
       } else {
         setFeedback((f) => ({ ...f, [order.id]: { type: 'err', msg: data.error ?? 'Código incorreto.' } }))
@@ -206,6 +271,29 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
                         {order.address.complement ? ` - ${order.address.complement}` : ''} · {order.address.neighborhood}, {order.address.city}
                       </span>
                     </p>
+                  )}
+                </div>
+
+                {/* Compartilhar localização em tempo real */}
+                <div className="border-t border-white/10 pt-3">
+                  <button
+                    onClick={() => (sharingId === order.id ? stopSharing() : startSharing(order.id))}
+                    className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
+                      sharingId === order.id
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'bg-white/8 text-white/70 hover:bg-white/15 border border-white/10'
+                    }`}
+                  >
+                    <Navigation size={15} className={sharingId === order.id ? 'animate-pulse' : ''} />
+                    {sharingId === order.id ? 'Compartilhando localização — parar' : 'Compartilhar minha localização'}
+                  </button>
+                  {sharingId === order.id && (
+                    <p className="mt-1.5 text-center text-[11px] text-emerald-400">
+                      O cliente está acompanhando você no mapa.
+                    </p>
+                  )}
+                  {geoError && sharingId === order.id && (
+                    <p className="mt-1.5 text-center text-[11px] text-red-400">{geoError}</p>
                   )}
                 </div>
 
