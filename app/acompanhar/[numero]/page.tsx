@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { MapPin, Phone, Package, CheckCircle2, ChefHat, Bike, PartyPopper, XCircle, Clock, RotateCcw, Sandwich } from 'lucide-react'
@@ -8,6 +9,12 @@ import { Logo } from '@/components/brand/logo'
 import { formatCurrency, type Order, type OrderStatus } from '@/lib/data'
 import { loadOrders } from '@/lib/orders-storage'
 import { supabaseConfigured, supabase } from '@/lib/supabase'
+
+// Leaflet só funciona no navegador
+const CourierMap = dynamic(() => import('@/components/delivery/courier-map'), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full animate-pulse bg-white/5" />,
+})
 
 const STEPS: { status: OrderStatus; label: string; description: string; icon: React.ElementType; color: string }[] = [
   { status: 'novo',         label: 'Pedido Recebido',    description: 'Aguardando confirmação da loja',  icon: Package,       color: 'text-orange-500' },
@@ -46,24 +53,53 @@ export default function AcompanharPage() {
   const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; at: number } | null>(null)
   const [courierAgo, setCourierAgo] = useState('agora')
 
-  // Busca a posição a cada 15s enquanto o pedido estiver a caminho
+  // Posição do entregador: Supabase Realtime (instantâneo) + polling de apoio
   useEffect(() => {
     if (!order || order.status !== 'saiu_entrega' || order.orderType !== 'entrega') {
       setCourierLoc(null)
       return
     }
     let alive = true
+    const orderId = order.id
+
     const fetchLoc = async () => {
       try {
-        const res = await fetch(`/api/entregas/localizacao?orderId=${encodeURIComponent(order.id)}`, { cache: 'no-store' })
+        const res = await fetch(`/api/entregas/localizacao?orderId=${encodeURIComponent(orderId)}`, { cache: 'no-store' })
         if (!res.ok) return
         const { location } = await res.json()
         if (alive) setCourierLoc(location ?? null)
       } catch {}
     }
     fetchLoc()
-    const t = setInterval(fetchLoc, 15_000)
-    return () => { alive = false; clearInterval(t) }
+
+    // Empurrão instantâneo quando o entregador envia uma nova posição
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    if (supabaseConfigured) {
+      channel = supabase
+        .channel(`courier-${orderId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'customers', filter: 'phone=eq.__courier_locations__' },
+          (payload) => {
+            try {
+              const raw = (payload.new as { address_reference?: string } | null)?.address_reference
+              if (!raw) return
+              const all = JSON.parse(raw) as Record<string, { lat: number; lng: number; at: number }>
+              const loc = all[orderId]
+              if (alive && loc) setCourierLoc(loc)
+            } catch {}
+          },
+        )
+        .subscribe()
+    }
+
+    // Rede instável / realtime indisponível: confere a cada 20s
+    const t = setInterval(fetchLoc, 20_000)
+    return () => {
+      alive = false
+      clearInterval(t)
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [order])
 
   // "há X min" desde a última posição recebida
@@ -222,14 +258,9 @@ export default function AcompanharPage() {
             </div>
             {courierLoc ? (
               <>
-                <iframe
-                  title="Localização do entregador"
-                  className="h-64 w-full border-0"
-                  loading="lazy"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${courierLoc.lng - 0.006}%2C${courierLoc.lat - 0.004}%2C${courierLoc.lng + 0.006}%2C${courierLoc.lat + 0.004}&layer=mapnik&marker=${courierLoc.lat}%2C${courierLoc.lng}`}
-                />
+                <CourierMap lat={courierLoc.lat} lng={courierLoc.lng} />
                 <p className="px-5 py-2.5 text-[11px] text-white/35">
-                  Atualizado {courierAgo}. A posição se move sozinha conforme o entregador se aproxima.
+                  Atualizado {courierAgo} · a posição se move sozinha, em tempo real.
                 </p>
               </>
             ) : (

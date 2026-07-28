@@ -110,6 +110,7 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [geoError, setGeoError] = useState('')
   const watchRef = useRef<number | null>(null)
+  const lastSentRef = useRef(0)
 
   const sendLocation = useCallback(async (orderId: string, lat: number, lng: number) => {
     try {
@@ -152,6 +153,11 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         setGeoError('')
+        // Envia no máximo 1x a cada 5s para não sobrecarregar, mas sem perder
+        // movimento (o watchPosition dispara a cada mudança do GPS).
+        const now = Date.now()
+        if (now - lastSentRef.current < 5000) return
+        lastSentRef.current = now
         sendLocation(orderId, pos.coords.latitude, pos.coords.longitude)
       },
       (err) => {
@@ -161,7 +167,7 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
             : 'Não foi possível obter a localização.',
         )
       },
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
     )
   }
 
