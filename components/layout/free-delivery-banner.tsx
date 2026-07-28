@@ -17,8 +17,12 @@ export function FreeDeliveryBanner() {
   const [closed, setClosed] = useState(false)
   const pathname = usePathname()
   const { isOpen: cartOpen } = useCart()
-  // Só no site público — nunca no painel administrativo
-  const isInternal = pathname?.startsWith('/admin') || pathname?.startsWith('/entrega')
+  // Só nas telas de compra — fora do admin, da área de entregas e do
+  // acompanhamento (quem já pediu não precisa da promoção)
+  const isInternal =
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/entrega') ||
+    pathname?.startsWith('/acompanhar')
   // Some também enquanto o carrinho estiver aberto
   const hidden = isInternal || cartOpen
 
