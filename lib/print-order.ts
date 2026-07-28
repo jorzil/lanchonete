@@ -106,6 +106,8 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   const dateStr = now.toLocaleDateString('pt-BR')
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   const isDelivery = order.orderType === 'entrega'
+  // Pedidos do banco trazem 'couponCode'; os do carrinho, o objeto 'coupon'
+  const couponCode = order.couponCode ?? order.coupon?.code ?? ''
 
   const itemsHTML = order.items.map(item => {
     const opts: string[] = []
@@ -230,7 +232,8 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   <div class="section">
     <div class="total-row"><span>Subtotal</span><span>${formatCurrency(order.subtotal)}</span></div>
     ${isDelivery ? `<div class="total-row"><span>Taxa de entrega</span><span>${formatCurrency(order.deliveryFee)}</span></div>` : ''}
-    ${order.discount > 0 ? `<div class="total-row"><span>Desconto${order.coupon ? ` (${order.coupon.code})` : ''}</span><span>- ${formatCurrency(order.discount)}</span></div>` : ''}
+    ${order.discount > 0 ? `<div class="total-row"><span>Desconto${couponCode ? ` (${couponCode})` : ''}</span><span>- ${formatCurrency(order.discount)}</span></div>` : ''}
+    ${couponCode ? `<div class="total-row"><span>Cupom</span><span>${couponCode}</span></div>` : ''}
     <div class="divider"></div>
     <div class="total-grand"><span>TOTAL</span><span>${formatCurrency(order.total)}</span></div>
   </div>
