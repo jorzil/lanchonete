@@ -52,6 +52,7 @@ export default function AcompanharPage() {
   // Posição do entregador (enviada pela tela /entrega)
   const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; at: number } | null>(null)
   const [courierAgo, setCourierAgo] = useState('agora')
+  const [courierStale, setCourierStale] = useState(false)
 
   // Posição do entregador: Supabase Realtime (instantâneo) + polling de apoio
   useEffect(() => {
@@ -93,8 +94,8 @@ export default function AcompanharPage() {
         .subscribe()
     }
 
-    // Rede instável / realtime indisponível: confere a cada 20s
-    const t = setInterval(fetchLoc, 20_000)
+    // Realtime pode não estar habilitado para esta tabela: confere a cada 6s
+    const t = setInterval(fetchLoc, 6_000)
     return () => {
       alive = false
       clearInterval(t)
@@ -107,10 +108,13 @@ export default function AcompanharPage() {
     if (!courierLoc) return
     const tick = () => {
       const secs = Math.max(0, Math.round((Date.now() - courierLoc.at) / 1000))
-      setCourierAgo(secs < 60 ? 'agora há pouco' : `há ${Math.round(secs / 60)} min`)
+      setCourierStale(secs > 120)
+      setCourierAgo(
+        secs < 20 ? 'agora' : secs < 60 ? `há ${secs}s` : `há ${Math.round(secs / 60)} min`,
+      )
     }
     tick()
-    const t = setInterval(tick, 20_000)
+    const t = setInterval(tick, 5_000)
     return () => clearInterval(t)
   }, [courierLoc])
 
@@ -250,17 +254,26 @@ export default function AcompanharPage() {
                 Entregador a caminho
               </p>
               {courierLoc && (
-                <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  ao vivo
-                </span>
+                courierStale ? (
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    sinal pausado
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    ao vivo
+                  </span>
+                )
               )}
             </div>
             {courierLoc ? (
               <>
                 <CourierMap lat={courierLoc.lat} lng={courierLoc.lng} />
                 <p className="px-5 py-2.5 text-[11px] text-white/35">
-                  Atualizado {courierAgo} · a posição se move sozinha, em tempo real.
+                  {courierStale
+                    ? `Última posição ${courierAgo}. O entregador pode estar com a tela bloqueada.`
+                    : `Atualizado ${courierAgo} · acompanhando em tempo real.`}
                 </p>
               </>
             ) : (

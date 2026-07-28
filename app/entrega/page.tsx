@@ -111,16 +111,29 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
   const [geoError, setGeoError] = useState('')
   const watchRef = useRef<number | null>(null)
   const lastSentRef = useRef(0)
+  const pingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null)
+  const [lastSentAt, setLastSentAt] = useState<number | null>(null)
+  const [sentAgo, setSentAgo] = useState('')
 
   const sendLocation = useCallback(async (orderId: string, lat: number, lng: number) => {
     try {
       const token = sessionStorage.getItem(TOKEN_KEY) ?? ''
-      await fetch('/api/entregas/localizacao', {
+      const res = await fetch('/api/entregas/localizacao', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-entregas-token': token },
         body: JSON.stringify({ orderId, lat, lng }),
       })
-    } catch {}
+      if (res.ok) {
+        lastSentRef.current = Date.now()
+        setLastSentAt(Date.now())
+        setGeoError('')
+      } else {
+        setGeoError('Falha ao enviar a posição ao servidor.')
+      }
+    } catch {
+      setGeoError('Sem conexão — a posição não está sendo enviada.')
+    }
   }, [])
 
   const stopSharing = useCallback(async (orderId?: string) => {
@@ -129,8 +142,11 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
       navigator.geolocation.clearWatch(watchRef.current)
       watchRef.current = null
     }
+    if (pingRef.current) { clearInterval(pingRef.current); pingRef.current = null }
+    if (wakeLockRef.current) { wakeLockRef.current.release().catch(() => {}); wakeLockRef.current = null }
     setSharingId(null)
     setGeoError('')
+    setLastSentAt(null)
     if (id) {
       try {
         const token = sessionStorage.getItem(TOKEN_KEY) ?? ''
@@ -148,28 +164,73 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
       return
     }
     if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current)
+    if (pingRef.current) clearInterval(pingRef.current)
     setGeoError('')
     setSharingId(orderId)
+    lastSentRef.current = 0
+
+    const onError = (err: GeolocationPositionError) => {
+      setGeoError(
+        err.code === err.PERMISSION_DENIED
+          ? 'Permissão negada. Libere a localização para este site nas configurações do navegador.'
+          : err.code === err.TIMEOUT
+            ? 'GPS demorou a responder — tentando de novo…'
+            : 'Não foi possível obter a localização (sinal fraco?).',
+      )
+    }
+
+    // 1) watchPosition: reage a cada movimento detectado pelo GPS
     watchRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setGeoError('')
-        // Envia no máximo 1x a cada 5s para não sobrecarregar, mas sem perder
-        // movimento (o watchPosition dispara a cada mudança do GPS).
-        const now = Date.now()
-        if (now - lastSentRef.current < 5000) return
-        lastSentRef.current = now
+        // Limita a 1 envio a cada 4s para não sobrecarregar
+        if (Date.now() - lastSentRef.current < 4000) return
         sendLocation(orderId, pos.coords.latitude, pos.coords.longitude)
       },
-      (err) => {
-        setGeoError(
-          err.code === err.PERMISSION_DENIED
-            ? 'Permissão de localização negada. Libere no navegador.'
-            : 'Não foi possível obter a localização.',
-        )
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 20_000 },
+      onError,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 25_000 },
     )
+
+    // 2) Batida periódica: garante posição nova mesmo se o watch não disparar
+    //    (parado no semáforo, GPS "preguiçoso", aba em segundo plano…)
+    const ping = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => sendLocation(orderId, pos.coords.latitude, pos.coords.longitude),
+        onError,
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 25_000 },
+      )
+    }
+    ping()
+    pingRef.current = setInterval(ping, 10_000)
+
+    // 3) Mantém a tela ligada — com o celular bloqueado o GPS para
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }
+    nav.wakeLock?.request('screen').then((lock) => { wakeLockRef.current = lock }).catch(() => {})
   }
+
+  // Reativa a tela ligada ao voltar para a aba
+  useEffect(() => {
+    if (!sharingId) return
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }
+      nav.wakeLock?.request('screen').then((lock) => { wakeLockRef.current = lock }).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [sharingId])
+
+  // "enviado há X" para o entregador conferir se está funcionando
+  useEffect(() => {
+    if (!sharingId) { setSentAgo(''); return }
+    const tick = () => {
+      if (!lastSentAt) { setSentAgo('aguardando o GPS…'); return }
+      const s = Math.round((Date.now() - lastSentAt) / 1000)
+      setSentAgo(s < 15 ? 'enviando agora' : s < 60 ? `última: há ${s}s` : `última: há ${Math.round(s / 60)} min`)
+    }
+    tick()
+    const t = setInterval(tick, 5000)
+    return () => clearInterval(t)
+  }, [sharingId, lastSentAt])
 
   // Encerra o watch ao sair da tela
   useEffect(() => () => {
@@ -295,7 +356,12 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
                   </button>
                   {sharingId === order.id && (
                     <p className="mt-1.5 text-center text-[11px] text-emerald-400">
-                      O cliente está acompanhando você no mapa.
+                      O cliente está acompanhando você no mapa · {sentAgo}
+                    </p>
+                  )}
+                  {sharingId === order.id && (
+                    <p className="mt-1 text-center text-[10px] text-white/30">
+                      Mantenha esta tela aberta durante o trajeto.
                     </p>
                   )}
                   {geoError && sharingId === order.id && (
