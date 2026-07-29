@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { pollEvents, acknowledgeEvents } from '@/lib/integrations/ifood/client'
+import { pollEvents, acknowledgeEvents, isPollingBlocked } from '@/lib/integrations/ifood/client'
 import { ingestOrder } from '@/lib/integrations/ifood/mapper'
 import { logIFood } from '@/lib/integrations/ifood/logs'
 import { isPlacedEvent } from '@/lib/integrations/ifood/types'
@@ -18,7 +18,8 @@ export async function POST() {
       }
     }
     await acknowledgeEvents(events)
-    return NextResponse.json({ ok: true, events: events.length, imported })
+    // 'blocked' avisa o painel para parar o loop: o app usa webhook, não polling.
+    return NextResponse.json({ ok: true, events: events.length, imported, blocked: await isPollingBlocked() })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro'
     await logIFood('error', 'polling', msg)

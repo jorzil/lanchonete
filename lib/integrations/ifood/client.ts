@@ -7,6 +7,7 @@
 
 import { getConfig, patchRuntime } from './config'
 import { logIFood } from './logs'
+import { normalizeEvents } from './types'
 import type { IFoodConfig, IFoodEvent, IFoodOrder } from './types'
 
 const BASE = 'https://merchant-api.ifood.com.br'
@@ -69,7 +70,8 @@ export async function testConnection(): Promise<{ ok: boolean; message: string }
     await getAccessToken(true)
     const res = await api(`/merchant/v1.0/merchants/${cfg.merchantId}/status`)
     if (res.ok) {
-      await patchRuntime({ connected: true, lastSyncAt: new Date().toISOString() })
+      // Novo teste = nova chance para o polling (a permissão pode ter mudado).
+      await patchRuntime({ connected: true, lastSyncAt: new Date().toISOString(), pollingBlockedAt: null })
       await logIFood('success', 'config', 'Conexão testada com sucesso')
       return { ok: true, message: 'Conexão estabelecida com o iFood.' }
     }
@@ -85,20 +87,41 @@ export async function testConnection(): Promise<{ ok: boolean; message: string }
 }
 
 // ─── Eventos (polling) ───────────────────────────────────────────────────────
+/** True quando o iFood recusou o polling — o app usa entrega por webhook. */
+export async function isPollingBlocked(): Promise<boolean> {
+  const cfg = await getConfig()
+  return !!cfg.pollingBlockedAt
+}
+
 export async function pollEvents(): Promise<IFoodEvent[]> {
   const cfg = await getConfig()
+  // Quando o app está configurado para receber eventos por webhook, o iFood
+  // devolve 403 no polling. Insistir só enche o log de erro falso.
+  if (cfg.pollingBlockedAt) return []
+
   const res = await api('/events/v1.0/events:polling', {
     method: 'GET',
     headers: { 'x-polling-merchants': cfg.merchantId },
   })
   if (res.status === 204) return []
   if (!res.ok) {
-    await logIFood('error', 'polling', `Polling falhou (${res.status})`, await res.text().catch(() => ''))
+    const body = await res.text().catch(() => '')
+    if (res.status === 403) {
+      await patchRuntime({ pollingBlockedAt: new Date().toISOString() })
+      await logIFood(
+        'warn',
+        'polling',
+        'Polling recusado pelo iFood (403) — o app entrega eventos por webhook. Polling desativado; os pedidos continuam chegando pelo webhook.',
+        body
+      )
+      return []
+    }
+    await logIFood('error', 'polling', `Polling falhou (${res.status})`, body)
     return []
   }
-  const events = (await res.json()) as IFoodEvent[]
+  const events = normalizeEvents(await res.json().catch(() => null))
   await patchRuntime({ lastSyncAt: new Date().toISOString() })
-  return events ?? []
+  return events
 }
 
 export async function acknowledgeEvents(events: IFoodEvent[]): Promise<void> {
@@ -242,6 +265,14 @@ export async function financialSales(beginDate: string, endDate: string): Promis
     const body = await res.text().catch(() => '')
     if (res.status === 403 || res.status === 401) {
       throw new Error('Sem acesso ao módulo Financial — adicione o módulo "financial" ao app no Portal do Desenvolvedor iFood.')
+    }
+    if (res.status === 404) {
+      // O iFood só registra a rota financeira para apps com o módulo liberado —
+      // sem ele a URL simplesmente não existe (404 em vez de 403).
+      await logIFood('warn', 'financial', 'Módulo Financial indisponível para este app/loja (404)', body)
+      throw new Error(
+        'O módulo Financial não está disponível para esta loja. Peça ao suporte do iFood para liberar o módulo "financial" no seu app — até lá, o líquido é estimado pelo percentual de taxa configurado.'
+      )
     }
     await logIFood('error', 'financial', `Consulta de vendas falhou (${res.status})`, body)
     throw new Error(`Consulta financeira falhou (${res.status})`)

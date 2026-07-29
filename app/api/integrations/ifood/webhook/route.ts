@@ -3,7 +3,7 @@ import { ingestOrder } from '@/lib/integrations/ifood/mapper'
 import { acknowledgeEvents } from '@/lib/integrations/ifood/client'
 import { getConfig } from '@/lib/integrations/ifood/config'
 import { logIFood } from '@/lib/integrations/ifood/logs'
-import { isPlacedEvent, type IFoodEvent } from '@/lib/integrations/ifood/types'
+import { isPlacedEvent, normalizeEvents, type IFoodEvent } from '@/lib/integrations/ifood/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,13 +27,20 @@ export async function POST(req: NextRequest) {
   let payload: unknown
   try { payload = await req.json() } catch { payload = null }
 
-  // O iFood pode enviar um evento único ou um array.
-  const events: IFoodEvent[] = Array.isArray(payload) ? payload : payload ? [payload as IFoodEvent] : []
-  await logIFood('info', 'webhook', `Webhook recebido (${events.length} evento(s))`)
+  // O iFood pode enviar um evento único, um array ou um objeto embrulhado.
+  const events = normalizeEvents(payload)
+  const rawCount = Array.isArray(payload) ? payload.length : payload ? 1 : 0
+
+  // O corpo cru vai no detalhe do log: sem ele é impossível diagnosticar um
+  // evento que o iFood entrega num formato diferente do esperado.
+  await logIFood('info', 'webhook', `Webhook recebido (${events.length} evento(s))`, payload)
+
+  if (rawCount > 0 && events.length === 0) {
+    await logIFood('error', 'webhook', 'Evento recebido sem orderId reconhecível — pedido não importado', payload)
+  }
 
   const handled: IFoodEvent[] = []
   for (const ev of events) {
-    if (!ev?.orderId) continue
     if (isPlacedEvent(ev)) {
       await ingestOrder(ev.orderId)
     } else {
