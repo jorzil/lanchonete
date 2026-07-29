@@ -89,22 +89,35 @@ function normalizeEvent(raw: unknown): IFoodEvent | null {
   }
 }
 
+/** Desembrulha o payload até a lista de eventos crus, em qualquer formato. */
+export function unwrapEvents(payload: unknown): unknown[] {
+  if (!payload) return []
+  if (Array.isArray(payload)) return payload
+  if (typeof payload !== 'object') return []
+  const o = payload as Record<string, unknown>
+  if (Array.isArray(o.events)) return o.events
+  if (Array.isArray(o.payload)) return o.payload
+  if (o.payload && typeof o.payload === 'object') return [o.payload]
+  return [o]
+}
+
+/**
+ * KEEPALIVE é o "ping" que o iFood envia a cada ~30s só para checar se o
+ * endpoint responde. Não tem orderId e não representa pedido nenhum.
+ */
+export function isKeepAlive(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object') return false
+  const o = raw as Record<string, unknown>
+  const codes = [o.fullCode, o.code, o.eventType, o.type]
+  return codes.some((c) => typeof c === 'string' && c.toUpperCase() === 'KEEPALIVE')
+}
+
 /** Extrai a lista de eventos de um payload de webhook/polling em qualquer formato. */
 export function normalizeEvents(payload: unknown): IFoodEvent[] {
-  if (!payload) return []
-  let list: unknown[]
-  if (Array.isArray(payload)) {
-    list = payload
-  } else if (typeof payload === 'object') {
-    const o = payload as Record<string, unknown>
-    if (Array.isArray(o.events)) list = o.events
-    else if (Array.isArray(o.payload)) list = o.payload
-    else if (o.payload && typeof o.payload === 'object') list = [o.payload]
-    else list = [o]
-  } else {
-    return []
-  }
-  return list.map(normalizeEvent).filter((e): e is IFoodEvent => e !== null)
+  return unwrapEvents(payload)
+    .filter((raw) => !isKeepAlive(raw))
+    .map(normalizeEvent)
+    .filter((e): e is IFoodEvent => e !== null)
 }
 
 // ─── Pedido do iFood (resumo dos campos usados) ──────────────────────────────
