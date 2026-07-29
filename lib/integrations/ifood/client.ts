@@ -266,6 +266,14 @@ export async function financialSales(beginDate: string, endDate: string): Promis
     if (res.status === 403 || res.status === 401) {
       throw new Error('Sem acesso ao módulo Financial — adicione o módulo "financial" ao app no Portal do Desenvolvedor iFood.')
     }
+    if (res.status === 404) {
+      // O iFood só registra a rota financeira para apps com o módulo liberado —
+      // sem ele a URL simplesmente não existe (404 em vez de 403).
+      await logIFood('warn', 'financial', 'Módulo Financial indisponível para este app/loja (404)', body)
+      throw new Error(
+        'O módulo Financial não está disponível para esta loja. Peça ao suporte do iFood para liberar o módulo "financial" no seu app — até lá, o líquido é estimado pelo percentual de taxa configurado.'
+      )
+    }
     await logIFood('error', 'financial', `Consulta de vendas falhou (${res.status})`, body)
     throw new Error(`Consulta financeira falhou (${res.status})`)
   }
