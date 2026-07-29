@@ -48,9 +48,13 @@ export async function POST(req: NextRequest) {
   }
 
   const handled: IFoodEvent[] = []
+  let failed = 0
   for (const ev of events) {
     if (isPlacedEvent(ev)) {
-      await ingestOrder(ev.orderId)
+      // Só confirmamos o que realmente entrou. Confirmar um pedido que falhou
+      // faz o iFood parar de reenviá-lo — foi assim que o pedido de 14:58 se
+      // perdeu e acabou cancelado por "não foi enviado para a Loja".
+      if ((await ingestOrder(ev.orderId)) === 'failed') { failed++; continue }
     } else {
       await logIFood('info', 'webhook', `Evento ${ev.fullCode ?? ev.code} ignorado (pedido ${ev.orderId})`)
     }
@@ -60,5 +64,9 @@ export async function POST(req: NextRequest) {
   // Confirma o recebimento dos eventos para o iFood não reenviar.
   try { await acknowledgeEvents(handled) } catch {}
 
+  // 500 sinaliza ao iFood que o evento não foi processado e deve ser reenviado.
+  if (failed > 0) {
+    return NextResponse.json({ ok: false, processed: handled.length, failed }, { status: 500 })
+  }
   return NextResponse.json({ ok: true, processed: handled.length })
 }
