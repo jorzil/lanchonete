@@ -406,6 +406,8 @@ export default function PedidosPage() {
             const r = await fetch("/api/integrations/ifood/poll", { method: "POST" })
             const data = await r.json().catch(() => ({}))
             if (data?.imported > 0) loadAll()
+            // O app entrega eventos por webhook: o iFood recusa o polling.
+            if (data?.blocked && timer) { clearInterval(timer); timer = null }
           } catch {}
         }
         poll()

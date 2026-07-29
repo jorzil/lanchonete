@@ -539,11 +539,19 @@ export default function IFoodIntegrationPage() {
         ) : (
           <div className="max-h-80 overflow-y-auto space-y-1 text-xs font-mono">
             {logs.map((l, i) => (
-              <div key={i} className="flex gap-2 border-b border-gray-50 py-1">
-                <span className="text-gray-400 shrink-0">{new Date(l.ts).toLocaleTimeString("pt-BR")}</span>
-                <span className={`shrink-0 font-bold uppercase ${LEVEL_COLOR[l.level] ?? "text-gray-500"}`}>{l.level}</span>
-                <span className="text-gray-400 shrink-0">[{l.scope}]</span>
-                <span className="text-gray-700">{l.message}</span>
+              <div key={i} className="border-b border-gray-50 py-1">
+                <div className="flex gap-2">
+                  <span className="text-gray-400 shrink-0">{new Date(l.ts).toLocaleTimeString("pt-BR")}</span>
+                  <span className={`shrink-0 font-bold uppercase ${LEVEL_COLOR[l.level] ?? "text-gray-500"}`}>{l.level}</span>
+                  <span className="text-gray-400 shrink-0">[{l.scope}]</span>
+                  <span className="text-gray-700">{l.message}</span>
+                </div>
+                {l.detail && (
+                  <details className="ml-2 mt-0.5">
+                    <summary className="cursor-pointer text-[10px] text-gray-400 hover:text-gray-600">ver detalhe</summary>
+                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-2 text-[10px] text-gray-600">{l.detail}</pre>
+                  </details>
+                )}
               </div>
             ))}
           </div>
