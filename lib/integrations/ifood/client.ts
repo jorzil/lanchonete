@@ -12,6 +12,25 @@ import type { IFoodConfig, IFoodEvent, IFoodOrder } from './types'
 
 const BASE = 'https://merchant-api.ifood.com.br'
 
+/**
+ * Lê as permissões declaradas no token (JWT). Não valida assinatura — serve só
+ * para diagnóstico: mostra quais escopos/lojas o iFood concedeu ao app, que é
+ * a diferença entre "token expirado" e "app sem o módulo Order".
+ */
+function tokenClaims(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+    const all = JSON.parse(json) as Record<string, unknown>
+    // Só os campos de permissão — nada de dado sensível vai para o log.
+    const keep = ['scope', 'scopes', 'authorities', 'aud', 'tenant', 'merchantIds', 'exp']
+    return Object.fromEntries(Object.entries(all).filter(([k]) => keep.includes(k)))
+  } catch {
+    return null
+  }
+}
+
 function authHeader(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
@@ -59,7 +78,7 @@ export async function getAccessToken(force = false): Promise<string> {
   const expiresAt = Date.now() + expiresIn * 1000
   memToken = { token, expiresAt }
   await patchRuntime({ accessToken: token, tokenExpiresAt: expiresAt })
-  await logIFood('success', 'auth', 'Token de acesso renovado')
+  await logIFood('success', 'auth', 'Token de acesso renovado', tokenClaims(token))
   return token
 }
 
@@ -152,9 +171,15 @@ export async function acknowledgeEvents(events: IFoodEvent[]): Promise<void> {
 
 // ─── Pedido ──────────────────────────────────────────────────────────────────
 export async function getOrder(orderId: string): Promise<IFoodOrder | null> {
-  const res = await api(`/order/v1.0/orders/${orderId}`)
+  const path = `/order/v1.0/orders/${orderId}`
+  const res = await api(path)
   if (!res.ok) {
-    await logIFood('error', 'order', `Detalhe do pedido ${orderId} falhou (${res.status})`)
+    // Sem o corpo da resposta não dá para distinguir token inválido de falta
+    // de permissão no módulo Order — são erros com soluções bem diferentes.
+    await logIFood('error', 'order', `Detalhe do pedido ${orderId} falhou (${res.status})`, {
+      path,
+      body: await res.text().catch(() => ''),
+    })
     return null
   }
   return (await res.json()) as IFoodOrder
