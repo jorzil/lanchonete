@@ -17,13 +17,21 @@ function authHeader(token: string) {
 }
 
 // ─── OAuth ───────────────────────────────────────────────────────────────────
+// Cache em memória: além de poupar leituras, garante que esta instância use o
+// token que ela mesma acabou de renovar, mesmo que a linha compartilhada esteja
+// momentaneamente desatualizada.
+let memToken: { token: string; expiresAt: number } | null = null
+
 export async function getAccessToken(force = false): Promise<string> {
+  const now = Date.now()
+  if (!force && memToken && memToken.expiresAt - 60_000 > now) return memToken.token
+
   const cfg = await getConfig()
   // Para o token basta clientId + clientSecret (merchantId só é exigido nas chamadas da loja)
   if (!cfg.clientId || !cfg.clientSecret) throw new Error('Configure o Client ID e o Client Secret do iFood.')
 
-  const now = Date.now()
   if (!force && cfg.accessToken && cfg.tokenExpiresAt && cfg.tokenExpiresAt - 60_000 > now) {
+    memToken = { token: cfg.accessToken, expiresAt: cfg.tokenExpiresAt }
     return cfg.accessToken
   }
 
@@ -48,7 +56,9 @@ export async function getAccessToken(force = false): Promise<string> {
   const data = await res.json()
   const token = data.accessToken as string
   const expiresIn = (data.expiresIn as number) ?? 3600
-  await patchRuntime({ accessToken: token, tokenExpiresAt: now + expiresIn * 1000 })
+  const expiresAt = Date.now() + expiresIn * 1000
+  memToken = { token, expiresAt }
+  await patchRuntime({ accessToken: token, tokenExpiresAt: expiresAt })
   await logIFood('success', 'auth', 'Token de acesso renovado')
   return token
 }
@@ -56,9 +66,15 @@ export async function getAccessToken(force = false): Promise<string> {
 async function api(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   const token = await getAccessToken()
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { ...authHeader(token), ...(init.headers || {}) } })
-  if (res.status === 401 && retry) {
-    await getAccessToken(true)
-    return api(path, init, false)
+  if (!res.ok && retry && (res.status === 401 || res.status === 403)) {
+    // O iFood responde 403 "Invalid token" (e não 401) quando o token expirou
+    // ou foi invalidado. Sem renovar aqui, toda chamada falha até alguém abrir
+    // a tela e clicar em "Testar conexão".
+    const body = await res.clone().text().catch(() => '')
+    if (res.status === 401 || /invalid\s*token/i.test(body)) {
+      await getAccessToken(true)
+      return api(path, init, false)
+    }
   }
   return res
 }
@@ -107,11 +123,13 @@ export async function pollEvents(): Promise<IFoodEvent[]> {
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     if (res.status === 403) {
+      // Chegou aqui já com token renovado (api() tenta de novo em "Invalid
+      // token"), então é permissão mesmo: o app não tem o módulo de eventos.
       await patchRuntime({ pollingBlockedAt: new Date().toISOString() })
       await logIFood(
         'warn',
         'polling',
-        'Polling recusado pelo iFood (403) — o app entrega eventos por webhook. Polling desativado; os pedidos continuam chegando pelo webhook.',
+        'Polling negado pelo iFood (403) mesmo com token novo — o app não tem permissão de polling. Desativado; os pedidos continuam vindo pelo webhook.',
         body
       )
       return []

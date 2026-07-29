@@ -77,23 +77,26 @@ async function alreadyImported(externalId: string): Promise<boolean> {
   }
 }
 
+/** 'imported' = novo pedido salvo · 'duplicate' = já existia · 'failed' = não foi possível */
+export type IngestResult = 'imported' | 'duplicate' | 'failed'
+
 /** Busca o pedido no iFood e o persiste (idempotente por externalId). */
-export async function ingestOrder(orderId: string): Promise<boolean> {
+export async function ingestOrder(orderId: string): Promise<IngestResult> {
   if (await alreadyImported(orderId)) {
     await logIFood('info', 'order', `Pedido ${orderId} já importado — ignorado`)
-    return false
+    return 'duplicate'
   }
   const detail = await getOrder(orderId)
   if (!detail) {
     await logIFood('error', 'order', `Não foi possível obter os detalhes do pedido ${orderId} no iFood`)
-    return false
+    return 'failed'
   }
   try {
     const order = await createOrder(mapOrder(detail))
     await logIFood('success', 'order', `Pedido iFood importado: ${order.orderNumber}`, { externalId: orderId })
-    return true
+    return 'imported'
   } catch (e) {
     await logIFood('error', 'order', `Falha ao salvar pedido ${orderId}`, e instanceof Error ? e.message : String(e))
-    return false
+    return 'failed'
   }
 }

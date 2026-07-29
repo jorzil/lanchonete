@@ -12,12 +12,16 @@ export async function POST() {
   try {
     const events = await pollEvents()
     let imported = 0
+    const handled = []
     for (const ev of events) {
       if (isPlacedEvent(ev) && ev.orderId) {
-        if (await ingestOrder(ev.orderId)) imported++
+        const r = await ingestOrder(ev.orderId)
+        if (r === 'failed') continue // não confirma: deixa o iFood reenviar
+        if (r === 'imported') imported++
       }
+      handled.push(ev)
     }
-    await acknowledgeEvents(events)
+    await acknowledgeEvents(handled)
     // 'blocked' avisa o painel para parar o loop: o app usa webhook, não polling.
     return NextResponse.json({ ok: true, events: events.length, imported, blocked: await isPollingBlocked() })
   } catch (e) {
