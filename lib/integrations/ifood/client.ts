@@ -325,13 +325,38 @@ export async function financialSales(beginDate: string, endDate: string): Promis
   return Array.isArray(arr) ? (arr as IFoodSale[]) : []
 }
 
+export interface IFoodCancellationReason { cancelCodeId: string; description: string }
+
+/** Motivos de cancelamento aceitos pelo iFood para este pedido. */
+export async function getCancellationReasons(orderId: string): Promise<IFoodCancellationReason[]> {
+  const res = await api(`/order/v1.0/orders/${orderId}/cancellationReasons`)
+  if (!res.ok) {
+    await logIFood('error', 'status', `Motivos de cancelamento indisponíveis (${res.status})`, await res.text().catch(() => ''))
+    return []
+  }
+  const data = await res.json().catch(() => null)
+  return Array.isArray(data) ? (data as IFoodCancellationReason[]) : []
+}
+
 export async function pushStatus(externalId: string, internalStatus: string): Promise<boolean> {
   const action = STATUS_ACTION[internalStatus]
   if (!action) return false
-  const path = action === 'requestCancellation'
-    ? `/order/v1.0/orders/${externalId}/requestCancellation`
-    : `/order/v1.0/orders/${externalId}/${action}`
-  const res = await api(path, { method: 'POST', body: JSON.stringify({}) })
+
+  const path = `/order/v1.0/orders/${externalId}/${action}`
+
+  // O cancelamento não aceita corpo vazio: o iFood exige um motivo da lista
+  // que ele mesmo autoriza para aquele pedido (varia conforme o estágio).
+  let payload: Record<string, unknown> = {}
+  if (action === 'requestCancellation') {
+    const reasons = await getCancellationReasons(externalId)
+    if (reasons.length === 0) {
+      await logIFood('error', 'status', `Cancelamento não enviado: o iFood não retornou motivos válidos para ${externalId}`)
+      return false
+    }
+    payload = { reason: reasons[0].description, cancellationCode: reasons[0].cancelCodeId }
+  }
+
+  const res = await api(path, { method: 'POST', body: JSON.stringify(payload) })
   if (res.ok) {
     await logIFood('success', 'status', `Status '${internalStatus}' enviado ao iFood (${externalId})`)
     return true
