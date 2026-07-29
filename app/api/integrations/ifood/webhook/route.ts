@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ingestOrder } from '@/lib/integrations/ifood/mapper'
 import { acknowledgeEvents } from '@/lib/integrations/ifood/client'
-import { getConfig } from '@/lib/integrations/ifood/config'
+import { getConfig, patchRuntime } from '@/lib/integrations/ifood/config'
 import { logIFood } from '@/lib/integrations/ifood/logs'
-import { isPlacedEvent, normalizeEvents, type IFoodEvent } from '@/lib/integrations/ifood/types'
+import { isKeepAlive, isPlacedEvent, normalizeEvents, unwrapEvents, type IFoodEvent } from '@/lib/integrations/ifood/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,14 +28,22 @@ export async function POST(req: NextRequest) {
   try { payload = await req.json() } catch { payload = null }
 
   // O iFood pode enviar um evento único, um array ou um objeto embrulhado.
+  const raw = unwrapEvents(payload)
   const events = normalizeEvents(payload)
-  const rawCount = Array.isArray(payload) ? payload.length : payload ? 1 : 0
+  const keepAlives = raw.filter(isKeepAlive).length
+
+  // KEEPALIVE é só o ping de saúde do iFood (a cada ~30s). Registrar cada um
+  // tornaria o log inútil — basta marcar que a integração respondeu.
+  if (keepAlives > 0 && raw.length === keepAlives) {
+    await patchRuntime({ lastSyncAt: new Date().toISOString() })
+    return NextResponse.json({ ok: true, keepAlive: true })
+  }
 
   // O corpo cru vai no detalhe do log: sem ele é impossível diagnosticar um
   // evento que o iFood entrega num formato diferente do esperado.
   await logIFood('info', 'webhook', `Webhook recebido (${events.length} evento(s))`, payload)
 
-  if (rawCount > 0 && events.length === 0) {
+  if (raw.length > keepAlives && events.length === 0) {
     await logIFood('error', 'webhook', 'Evento recebido sem orderId reconhecível — pedido não importado', payload)
   }
 
