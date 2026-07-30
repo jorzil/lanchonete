@@ -530,7 +530,9 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
               <div>
                 {/* Counter badge */}
                 <div className="flex items-center justify-between mb-5">
-                  <p className="text-sm text-gray-500">Selecione até <strong>{sauceMax}</strong> molhos</p>
+                  <p className="text-sm text-gray-500">
+                    Até <strong>{sauceMax}</strong> molhos · <strong>{formatCurrency(MENU.saucePrice)}</strong> cada
+                  </p>
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm transition-all ${
                     sauceCount >= sauceMax
                       ? 'bg-brand text-white shadow-md'
@@ -571,8 +573,11 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                         <span className="text-2xl leading-none shrink-0">
                           {SAUCE_EMOJIS[sauce.key] || '🥫'}
                         </span>
-                        <span className={`font-bold text-base flex-1 text-left ${selected ? 'text-brand' : disabled ? 'text-gray-300' : 'text-gray-800'}`}>
-                          {sauce.name}
+                        <span className={`flex-1 text-left ${selected ? 'text-brand' : disabled ? 'text-gray-300' : 'text-gray-800'}`}>
+                          <span className="font-bold text-base block">{sauce.name}</span>
+                          <span className={`text-xs font-semibold ${disabled ? 'text-gray-300' : 'text-brand'}`}>
+                            + {formatCurrency(sauce.price ?? MENU.saucePrice)}
+                          </span>
                         </span>
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                           selected ? 'bg-brand border-brand shadow-sm' : 'border-gray-300'
