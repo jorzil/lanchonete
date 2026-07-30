@@ -339,6 +339,9 @@ export default function PedidosPage() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Order | null>(null)
   const [toDelete, setToDelete] = useState<Order | null>(null)
+  // Seleção múltipla para ações em lote
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<"delete" | "purge" | null>(null)
   const [newCount, setNewCount] = useState(0)
   const [isRealtime, setIsRealtime] = useState(false)
   const prevOrderIds = useRef<Set<string>>(new Set())
@@ -563,6 +566,91 @@ export default function PedidosPage() {
     setToDelete(null)
   }
 
+  // Trocar de aba/busca muda a lista visível — manter seleção invisível seria
+  // um convite a excluir o que não se vê.
+  useEffect(() => { setSelectedIds(new Set()) }, [statusFilter, sourceFilter, query])
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const pageIds = pageItems.map((o) => o.id)
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id))
+
+  function toggleSelectPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id))
+      else pageIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  // Move os selecionados para a lixeira — uma única chamada, sem corrida.
+  async function bulkDelete() {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ add: ids }),
+      })
+    } catch {}
+    setDeletedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.add(id)); return next })
+    if (selected && ids.includes(selected.id)) setSelected(null)
+    setSelectedIds(new Set())
+    setBulkAction(null)
+    toast.success(`${ids.length} pedido(s) movido(s) para a lixeira`)
+  }
+
+  // Restaura em lote (aba Excluídos)
+  async function bulkRestore() {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove: ids }),
+      })
+    } catch {}
+    setDeletedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next })
+    setSelectedIds(new Set())
+    toast.success(`${ids.length} pedido(s) restaurado(s)`)
+  }
+
+  // Apaga de vez os selecionados (banco + lixeira). Não dá para desfazer.
+  async function bulkPurge() {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    if (supabaseConfigured) {
+      for (const id of ids) { try { await deleteDbOrder(id) } catch {} }
+    }
+    try {
+      await fetch('/api/deleted-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove: ids }),
+      })
+    } catch {}
+    setDeletedIds((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next })
+    setOrders((prev) => {
+      const next = prev.filter((o) => !ids.includes(o.id))
+      saveOrders(next)
+      return next
+    })
+    if (selected && ids.includes(selected.id)) setSelected(null)
+    setSelectedIds(new Set())
+    setBulkAction(null)
+    toast.success(`${ids.length} pedido(s) apagado(s) definitivamente`)
+  }
+
   // Restaura um pedido da lixeira
   async function restoreOrder(id: string) {
     try {
@@ -714,12 +802,61 @@ export default function PedidosPage() {
             />
           </div>
 
+          {/* Ações em lote — só aparece com algo selecionado */}
+          {selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+              <span className="text-sm font-semibold text-gray-800">
+                {selectedIds.size} pedido(s) selecionado(s)
+              </span>
+              <button
+                className="text-xs font-medium text-gray-500 underline hover:text-gray-700"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Limpar seleção
+              </button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                {statusFilter === "excluidos" ? (
+                  <>
+                    <button
+                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+                      onClick={bulkRestore}
+                    >
+                      Restaurar selecionados
+                    </button>
+                    <button
+                      className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                      onClick={() => setBulkAction("purge")}
+                    >
+                      <Trash2 size={13} /> Apagar definitivamente
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
+                    onClick={() => setBulkAction("delete")}
+                  >
+                    <Trash2 size={13} /> Excluir selecionados
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Table */}
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+                    <th className="pl-5 pr-2 py-3 font-medium">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer accent-[#EE5C13] align-middle"
+                        checked={allPageSelected}
+                        onChange={toggleSelectPage}
+                        title="Selecionar todos desta página"
+                      />
+                    </th>
                     <th className="px-5 py-3 font-medium">Pedido</th>
                     <th className="px-5 py-3 font-medium">Origem</th>
                     <th className="px-5 py-3 font-medium">Cliente</th>
@@ -741,9 +878,18 @@ export default function PedidosPage() {
                         key={o.id}
                         className={cn(
                           "border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors",
-                          isNew && "bg-orange-50/60 border-l-2 border-l-orange-400"
+                          isNew && "bg-orange-50/60 border-l-2 border-l-orange-400",
+                          selectedIds.has(o.id) && "bg-orange-50"
                         )}
                       >
+                        <td className="pl-5 pr-2 py-3">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 cursor-pointer accent-[#EE5C13] align-middle"
+                            checked={selectedIds.has(o.id)}
+                            onChange={() => toggleSelected(o.id)}
+                          />
+                        </td>
                         <td className="px-5 py-3">
                           <span className="font-medium text-gray-900">{o.orderNumber}</span>
                           {isNew && <span className="ml-2 text-[10px] font-bold text-orange-600 uppercase tracking-wide animate-pulse">novo</span>}
@@ -858,7 +1004,7 @@ export default function PedidosPage() {
                   })}
                   {pageItems.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-5 py-10 text-center text-gray-400">
+                      <td colSpan={9} className="px-5 py-10 text-center text-gray-400">
                         Nenhum pedido encontrado.
                       </td>
                     </tr>
@@ -1150,6 +1296,47 @@ export default function PedidosPage() {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmação das ações em lote */}
+      {bulkAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+              <Trash2 className="h-6 w-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {bulkAction === "purge" ? "Apagar definitivamente?" : "Excluir os selecionados?"}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {bulkAction === "purge" ? (
+                <>
+                  <strong>{selectedIds.size} pedido(s)</strong> serão apagados do banco de dados.
+                  Essa ação <strong>não pode ser desfeita</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>{selectedIds.size} pedido(s)</strong> vão para a aba <strong>🗑 Excluídos</strong> —
+                  dá para restaurar ou apagar de vez por lá.
+                </>
+              )}
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={() => setBulkAction(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 rounded-lg bg-red-500 py-2 text-sm font-medium text-white hover:bg-red-600"
+                onClick={bulkAction === "purge" ? bulkPurge : bulkDelete}
+              >
+                {bulkAction === "purge" ? "Apagar" : "Excluir"}
+              </button>
             </div>
           </div>
         </div>

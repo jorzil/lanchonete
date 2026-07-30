@@ -39,15 +39,23 @@ export async function GET() {
   return NextResponse.json({ ids: await readIds() })
 }
 
-// { add: "id" } move para a lixeira · { remove: "id" } restaura/apaga da lixeira
+/** Aceita um id ou uma lista — em lote numa chamada só, para não haver
+ *  ler-alterar-gravar concorrente perdendo IDs. */
+function asIds(value: unknown): string[] {
+  if (typeof value === 'string') return value ? [value] : []
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string' && !!v)
+  return []
+}
+
+// { add: "id" | ["id"] } move para a lixeira · { remove: ... } restaura/apaga
 export async function PATCH(req: NextRequest) {
   if (!supabaseConfigured) {
     return NextResponse.json({ ok: false, error: 'Supabase not configured' }, { status: 503 })
   }
   const body = await req.json()
   const ids = new Set(await readIds())
-  if (typeof body.add === 'string' && body.add) ids.add(body.add)
-  if (typeof body.remove === 'string' && body.remove) ids.delete(body.remove)
+  for (const id of asIds(body.add)) ids.add(id)
+  for (const id of asIds(body.remove)) ids.delete(id)
   const err = await writeIds([...ids])
   if (err) return NextResponse.json({ ok: false, error: err.message }, { status: 500 })
   return NextResponse.json({ ok: true, ids: [...ids] })
