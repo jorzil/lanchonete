@@ -6,7 +6,7 @@ export interface BreadOption  { key: string; name: string; description: string; 
 export interface MeatOption   { key: string; name: string; description: string; emoji: string }
 export interface CheeseOption { key: string; name: string }
 export interface SaladOption  { key: string; name: string }
-export interface SauceOption  { key: string; name: string }
+export interface SauceOption  { key: string; name: string; price?: number }
 export interface ExtraOption  { key: string; name: string; price15cm: number; price30cm: number }
 
 export interface SubCustomization {
@@ -124,6 +124,8 @@ export const MENU = {
     { key: 'baconese',           name: 'Baconese' },
   ] as SauceOption[],
   maxSauces: 3,
+  /** Preço de cada molho escolhido (mesmo valor nos dois tamanhos). */
+  saucePrice: 2,
   extras: [
     { key: 'bacon',               name: 'Bacon',                price15cm: 5, price30cm: 8 },
     { key: 'peito-peru',          name: 'Peito de Peru',        price15cm: 5, price30cm: 8 },
@@ -351,6 +353,7 @@ export function generateOrderNumber(): string {
 }
 
 const _extrasMap = new Map(MENU.extras.map((e) => [e.key, e]))
+const _saucesMap = new Map(MENU.sauces.map((s) => [s.key, s]))
 
 export function calculateSubTotal(customization: SubCustomization): number {
   const is15 = customization.size === '15cm'
@@ -365,6 +368,10 @@ export function calculateSubTotal(customization: SubCustomization): number {
   if (customization.cheeses.length > 1) {
     const cheeseExtraPrice = is15 ? 3 : 5
     total += cheeseExtraPrice * (customization.cheeses.length - 1)
+  }
+  // Cada molho é cobrado à parte (o molho tem preço próprio, se definido).
+  for (const key of customization.sauces ?? []) {
+    total += _saucesMap.get(key)?.price ?? MENU.saucePrice
   }
   return total
 }
