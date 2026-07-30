@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, PRODUCTS } from '@/lib/store'
 import { fetchDisabledProducts } from '@/lib/products-availability'
@@ -58,9 +58,14 @@ export function OrderBumpSuggestions({ variant = 'light' }: { variant?: 'light' 
     ? 'flex items-center gap-3 bg-white/5 rounded-lg border border-white/10 p-2'
     : 'flex items-center gap-3 bg-white rounded-lg border border-gray-200 p-2'
   const nameCls = dark ? 'text-white' : 'text-gray-900'
+  // 'appearance-none' é obrigatório: sem ele o Chrome pinta o select com o
+  // widget nativo (fundo branco), ignorando o bg-transparent — era o que
+  // deixava o bloco com cara de fora do lugar no checkout escuro.
+  const selectBase =
+    'w-full appearance-none text-[13px] font-bold rounded-md pl-1.5 pr-6 py-1 outline-none cursor-pointer transition-colors'
   const selectCls = dark
-    ? 'w-full text-[13px] font-bold text-white bg-transparent border border-white/15 rounded-md px-1.5 py-1 outline-none focus:border-brand [&>option]:text-black'
-    : 'w-full text-[13px] font-bold text-gray-900 bg-transparent border border-gray-200 rounded-md px-1.5 py-1 outline-none focus:border-brand'
+    ? `${selectBase} text-white bg-white/10 border border-white/15 hover:border-white/30 focus:border-brand [&>option]:bg-navy [&>option]:text-white`
+    : `${selectBase} text-gray-900 bg-white border border-gray-200 hover:border-gray-300 focus:border-brand`
 
   return (
     <div className={wrap}>
@@ -76,9 +81,15 @@ export function OrderBumpSuggestions({ variant = 'light' }: { variant?: 'light' 
               <div className="w-10 h-10 bg-gradient-to-br from-[#FFF5EB] to-[#FFE8D6] rounded-lg flex items-center justify-center text-xl shrink-0">{selected.image}</div>
               <div className="flex-1 min-w-0">
                 {isCategory ? (
-                  <select value={selectedId} onChange={(e) => setPicks((prev) => ({ ...prev, [offer.id]: e.target.value }))} className={selectCls}>
-                    {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select value={selectedId} onChange={(e) => setPicks((prev) => ({ ...prev, [offer.id]: e.target.value }))} className={selectCls}>
+                      {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <ChevronDown
+                      size={13}
+                      className={`pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 ${dark ? 'text-white/60' : 'text-gray-400'}`}
+                    />
+                  </div>
                 ) : (
                   <p className={`text-[13px] font-bold truncate ${nameCls}`}>{selected.name}</p>
                 )}

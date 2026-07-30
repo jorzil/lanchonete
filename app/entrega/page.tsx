@@ -77,20 +77,20 @@ function LoginScreen({ onSuccess }: { onSuccess: (token: string) => void }) {
             onChange={(e) => setUser(e.target.value)}
             placeholder="Usuário"
             autoCapitalize="none"
-            className="w-full bg-white border border-white/10 rounded-xl px-4 py-3.5 text-black font-bold placeholder:text-black/30 outline-none focus:border-[#EE5C13] transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white font-bold placeholder:text-white/30 outline-none focus:border-[#EE5C13] transition-colors"
           />
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Senha"
-            className="w-full bg-white border border-white/10 rounded-xl px-4 py-3.5 text-black font-bold placeholder:text-black/30 outline-none focus:border-[#EE5C13] transition-colors"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white font-bold placeholder:text-white/30 outline-none focus:border-[#EE5C13] transition-colors"
           />
           {error && <p className="text-red-400 text-xs text-center">{error}</p>}
           <button
             type="submit"
             disabled={loading || !user || !password}
-            className="w-full flex items-center justify-center gap-2 bg-[#EE5C13] hover:bg-orange-600 text-white font-black py-3.5 rounded-xl text-sm transition-colors disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-2 bg-[#EE5C13] hover:bg-orange-600 text-white font-black py-3.5 rounded-xl text-sm transition-colors disabled:bg-white/10 disabled:text-white/40 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Lock size={14} /> Entrar</>}
           </button>
