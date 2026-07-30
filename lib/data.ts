@@ -123,8 +123,11 @@ export const MENU = {
     { key: 'barbecue',           name: 'Barbecue' },
     { key: 'baconese',           name: 'Baconese' },
   ] as SauceOption[],
-  maxSauces: 3,
-  /** Preço de cada molho escolhido (mesmo valor nos dois tamanhos). */
+  /** Teto de molhos por sub (o cliente não repete o mesmo molho). */
+  maxSauces: 6,
+  /** Os primeiros molhos saem sem custo. */
+  freeSauces: 3,
+  /** Preço de cada molho além da cota grátis (igual nos dois tamanhos). */
   saucePrice: 2,
   extras: [
     { key: 'bacon',               name: 'Bacon',                price15cm: 5, price30cm: 8 },
@@ -369,8 +372,9 @@ export function calculateSubTotal(customization: SubCustomization): number {
     const cheeseExtraPrice = is15 ? 3 : 5
     total += cheeseExtraPrice * (customization.cheeses.length - 1)
   }
-  // Cada molho é cobrado à parte (o molho tem preço próprio, se definido).
-  for (const key of customization.sauces ?? []) {
+  // Os primeiros molhos são cortesia; a partir daí cada um é cobrado.
+  const sauces = customization.sauces ?? []
+  for (const key of sauces.slice(MENU.freeSauces)) {
     total += _saucesMap.get(key)?.price ?? MENU.saucePrice
   }
   return total

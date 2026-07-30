@@ -167,6 +167,12 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
 
   const sauceCount = customization.sauces.length
   const sauceMax   = MENU.maxSauces
+  const sauceFree  = MENU.freeSauces
+  /** Molho cobrado = escolhido depois da cota grátis (ou o próximo, se ela acabou). */
+  const saucePaid = (key: string) => {
+    const i = customization.sauces.indexOf(key)
+    return i === -1 ? sauceCount >= sauceFree : i >= sauceFree
+  }
 
   const previewLines = useMemo(() => {
     const lines: { emoji: string; label: string; sub?: string }[] = []
@@ -281,7 +287,7 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                   {step === 2 && 'Opcional — pode pedir sem carne'}
                   {step === 3 && 'Opcional — pode pedir sem queijo'}
                   {step === 4 && 'Opcional — escolha à vontade'}
-                  {step === 5 && `Opcional — máximo ${sauceMax} molhos`}
+                  {step === 5 && `Opcional — ${sauceFree} grátis, até ${sauceMax}`}
                   {step === 6 && 'Adicione ingredientes extras ao seu sub'}
                   {step === 7 && 'Algum detalhe especial? Escreva aqui'}
                 </p>
@@ -531,7 +537,8 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                 {/* Counter badge */}
                 <div className="flex items-center justify-between mb-5">
                   <p className="text-sm text-gray-500">
-                    Até <strong>{sauceMax}</strong> molhos · <strong>{formatCurrency(MENU.saucePrice)}</strong> cada
+                    <strong>{sauceFree} grátis</strong> · a partir do {sauceFree + 1}º,{' '}
+                    <strong>{formatCurrency(MENU.saucePrice)}</strong> cada
                   </p>
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-sm transition-all ${
                     sauceCount >= sauceMax
@@ -545,10 +552,13 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
 
                 {/* Progress dots */}
                 <div className="flex gap-2 mb-5">
+                  {/* Verde = cota grátis · laranja = cobrado */}
                   {Array.from({ length: sauceMax }).map((_, i) => (
                     <div
                       key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-all ${i < sauceCount ? 'bg-brand' : 'bg-gray-200'}`}
+                      className={`h-1.5 flex-1 rounded-full transition-all ${
+                        i >= sauceCount ? 'bg-gray-200' : i < sauceFree ? 'bg-emerald-500' : 'bg-brand'
+                      }`}
                     />
                   ))}
                 </div>
@@ -575,9 +585,15 @@ export function SandwichBuilder({ product, open, onClose }: SandwichBuilderProps
                         </span>
                         <span className={`flex-1 text-left ${selected ? 'text-brand' : disabled ? 'text-gray-300' : 'text-gray-800'}`}>
                           <span className="font-bold text-base block">{sauce.name}</span>
-                          <span className={`text-xs font-semibold ${disabled ? 'text-gray-300' : 'text-brand'}`}>
-                            + {formatCurrency(sauce.price ?? MENU.saucePrice)}
-                          </span>
+                          {saucePaid(sauce.key) ? (
+                            <span className={`text-xs font-semibold ${disabled ? 'text-gray-300' : 'text-brand'}`}>
+                              + {formatCurrency(sauce.price ?? MENU.saucePrice)}
+                            </span>
+                          ) : (
+                            <span className={`text-xs font-semibold ${disabled ? 'text-gray-300' : 'text-emerald-600'}`}>
+                              Grátis
+                            </span>
+                          )}
                         </span>
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                           selected ? 'bg-brand border-brand shadow-sm' : 'border-gray-300'
