@@ -63,7 +63,9 @@ function ProductCard({ product, onBread, onAdd, onCombo }: {
       {lightboxOpen && product.imageUrl && (
         <ImageLightbox src={product.imageUrl} alt={product.name} onClose={() => setLightboxOpen(false)} />
       )}
-    <div className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/6 hover:border-brand/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
+    {/* h-full: sem isso o card encolhe para o seu conteúdo e os preços/botões
+        da mesma linha param em alturas diferentes. */}
+    <div className="group h-full flex flex-col bg-navy-surface rounded-2xl overflow-hidden border border-white/6 hover:border-brand/40 hover:shadow-[0_0_40px_rgba(238,92,19,0.08)] transition-all duration-400 cursor-pointer">
       <div
         className="relative aspect-[4/3] overflow-hidden bg-navy-deep"
         onClick={() => product.imageUrl && setLightboxOpen(true)}
@@ -217,7 +219,7 @@ export default function CardapioPage() {
           </div>
 
           <div className="relative max-w-7xl mx-auto px-5 sm:px-8">
-            <div className="animate-slide-up">
+            <div className="h-full animate-slide-up">
               <p className="text-[11px] font-semibold text-brand uppercase tracking-[0.22em] mb-3">Mais Sub</p>
               <h1 className="text-[2.8rem] sm:text-[3.8rem] font-black text-white leading-[1.04] tracking-[-0.045em] mb-5">
                 Cardápio
@@ -287,7 +289,7 @@ export default function CardapioPage() {
                   <h2 className="text-[11px] font-bold text-amber-400 uppercase tracking-[0.2em] mb-4">🔥 Lanche do Dia</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {promoProducts.map((product, i) => (
-                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                      <div key={product.id} className="h-full animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={{ ...product, badge: { label: '🔥 Lanche do Dia', color: 'bg-amber-500' } }}
                           onBread={p => setBreadProduct(p)}
@@ -315,10 +317,10 @@ export default function CardapioPage() {
                         category: size === '15cm' ? 'subs-15cm' : 'subs-30cm', active: true,
                       }
                       return (
-                        <div key={size} className="animate-slide-up">
+                        <div key={size} className="h-full animate-slide-up">
                           <div
                             onClick={() => { setBuilderProduct(dummyProduct); setBuilderOpen(true) }}
-                            className="group flex flex-col bg-navy-surface rounded-2xl overflow-hidden border-2 border-brand/30 hover:border-brand/70 hover:shadow-[0_0_40px_rgba(238,92,19,0.15)] transition-all duration-300 cursor-pointer"
+                            className="group h-full flex flex-col bg-navy-surface rounded-2xl overflow-hidden border-2 border-brand/30 hover:border-brand/70 hover:shadow-[0_0_40px_rgba(238,92,19,0.15)] transition-all duration-300 cursor-pointer"
                           >
                             <div className="relative aspect-[4/3] overflow-hidden bg-navy-deep">
                               <Image
@@ -360,7 +362,7 @@ export default function CardapioPage() {
                   {showMonte && <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Subs Prontos</h2>}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'subs-15cm' || p.category === 'subs-30cm').map((product, i) => (
-                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                      <div key={product.id} className="h-full animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={product}
                           onBread={p => setBreadProduct(p)}
@@ -379,7 +381,7 @@ export default function CardapioPage() {
                   <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Cookies</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'cookies').map((product, i) => (
-                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                      <div key={product.id} className="h-full animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
                     ))}
@@ -393,7 +395,7 @@ export default function CardapioPage() {
                   <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Combos <span className="text-green-400">— 5% OFF</span></h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'combos').map((product, i) => (
-                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                      <div key={product.id} className="h-full animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard product={product} onBread={p => setBreadProduct(p)} onAdd={handleAdd} onCombo={p => setComboProduct(p)} />
                       </div>
                     ))}
@@ -407,7 +409,7 @@ export default function CardapioPage() {
                   <h2 className="text-[11px] font-bold text-brand uppercase tracking-[0.2em] mb-4">Bebidas</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
                     {filtered.filter(p => p.category === 'bebidas').map((product, i) => (
-                      <div key={product.id} className="animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
+                      <div key={product.id} className="h-full animate-slide-up" style={{ animationDelay: `${Math.min(i * 0.04, 0.25)}s` }}>
                         <ProductCard
                           product={product}
                           onBread={p => setBreadProduct(p)}
