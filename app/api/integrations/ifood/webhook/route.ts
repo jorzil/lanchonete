@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ingestOrder } from '@/lib/integrations/ifood/mapper'
+import { ingestOrder, syncOrderStatus } from '@/lib/integrations/ifood/mapper'
 import { acknowledgeEvents } from '@/lib/integrations/ifood/client'
 import { getConfig, patchRuntime } from '@/lib/integrations/ifood/config'
 import { logIFood } from '@/lib/integrations/ifood/logs'
@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
       // faz o iFood parar de reenviá-lo — foi assim que o pedido de 14:58 se
       // perdeu e acabou cancelado por "não foi enviado para a Loja".
       if ((await ingestOrder(ev.orderId)) === 'failed') { failed++; continue }
-    } else {
-      await logIFood('info', 'webhook', `Evento ${ev.fullCode ?? ev.code} ignorado (pedido ${ev.orderId})`)
+    } else if ((await syncOrderStatus(ev)) === 'unmapped') {
+      await logIFood('info', 'webhook', `Evento ${ev.fullCode ?? ev.code} sem efeito no painel (pedido ${ev.orderId})`)
     }
     handled.push(ev)
   }
