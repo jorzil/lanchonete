@@ -21,6 +21,8 @@ export async function PATCH(req: NextRequest) {
     ...(typeof body.commissionPercent === 'number' && isFinite(body.commissionPercent)
       ? { commissionPercent: Math.min(100, Math.max(0, body.commissionPercent)) }
       : {}),
+    ...(typeof body.autoConfirm === 'boolean' ? { autoConfirm: body.autoConfirm } : {}),
+    ...(typeof body.homologationMode === 'boolean' ? { homologationMode: body.homologationMode } : {}),
   })
   await logIFood('info', 'config', 'Configuração atualizada')
   return NextResponse.json(toPublic(cfg))

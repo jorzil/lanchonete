@@ -18,6 +18,8 @@ interface PublicConfig {
   environment: "sandbox" | "production"
   webhookUrl: string
   commissionPercent?: number
+  autoConfirm?: boolean
+  homologationMode?: boolean
   connected: boolean
   lastSyncAt: string | null
 }
@@ -36,6 +38,8 @@ export default function IFoodIntegrationPage() {
   const [environment, setEnvironment] = useState<"sandbox" | "production">("sandbox")
   const [webhookUrl, setWebhookUrl] = useState("")
   const [commissionPercent, setCommissionPercent] = useState("")
+  const [autoConfirm, setAutoConfirm] = useState(true)
+  const [homologationMode, setHomologationMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -77,6 +81,8 @@ export default function IFoodIntegrationPage() {
       setEnvironment(data.environment)
       setWebhookUrl(data.webhookUrl || (typeof window !== "undefined" ? `${window.location.origin}/api/integrations/ifood/webhook` : ""))
       setCommissionPercent(data.commissionPercent ? String(data.commissionPercent) : "")
+      setAutoConfirm(data.autoConfirm !== false)
+      setHomologationMode(!!data.homologationMode)
     }
   }
   async function loadLogs() {
@@ -183,7 +189,7 @@ export default function IFoodIntegrationPage() {
     await fetch("/api/integrations/ifood/config", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0 }),
+      body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0, autoConfirm, homologationMode }),
     })
     setClientSecret("")
     await loadConfig()
@@ -209,7 +215,7 @@ export default function IFoodIntegrationPage() {
       // garante que clientId/secret estão salvos no servidor antes de listar
       await fetch("/api/integrations/ifood/config", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0 }),
+        body: JSON.stringify({ clientId, clientSecret, merchantId, environment, webhookUrl, commissionPercent: parseFloat(commissionPercent) || 0, autoConfirm, homologationMode }),
       })
       const res = await fetch("/api/integrations/ifood/merchants", { cache: "no-store" })
       const data = await res.json()
@@ -298,6 +304,41 @@ export default function IFoodIntegrationPage() {
             </p>
           </div>
         </div>
+
+        <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 cursor-pointer accent-[#EE5C13]"
+              checked={autoConfirm}
+              onChange={(e) => setAutoConfirm(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">Confirmar pedidos automaticamente</span>
+              <span className="block text-[11px] text-gray-500">
+                O pedido entra já aceito no iFood. Sem isso ele fica aguardando confirmação até
+                alguém clicar no painel — e o iFood cancela sozinho depois de alguns minutos.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 cursor-pointer accent-[#EE5C13]"
+              checked={homologationMode}
+              onChange={(e) => setHomologationMode(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">Modo homologação</span>
+              <span className="block text-[11px] text-gray-500">
+                Leva o pedido sozinho até &quot;saiu para entrega&quot;. Use <strong>somente</strong> durante os
+                testes do Portal do iFood — em produção isso marcaria como despachado um pedido que
+                nem foi preparado. Desligue assim que a homologação for aprovada.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <div className="flex items-center gap-2 pt-1">
           <Button onClick={save} disabled={saving} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Salvar
