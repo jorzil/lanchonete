@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pollEvents, acknowledgeEvents, isPollingBlocked } from '@/lib/integrations/ifood/client'
-import { ingestOrder } from '@/lib/integrations/ifood/mapper'
+import { ingestOrder, syncOrderStatus } from '@/lib/integrations/ifood/mapper'
 import { logIFood } from '@/lib/integrations/ifood/logs'
 import { isPlacedEvent } from '@/lib/integrations/ifood/types'
 
@@ -18,6 +18,8 @@ export async function POST() {
         const r = await ingestOrder(ev.orderId)
         if (r === 'failed') continue // não confirma: deixa o iFood reenviar
         if (r === 'imported') imported++
+      } else if (ev.orderId) {
+        await syncOrderStatus(ev)
       }
       handled.push(ev)
     }

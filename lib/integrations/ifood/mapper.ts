@@ -7,7 +7,7 @@
 import { createOrder, type CreateOrderPayload } from '@/lib/db-orders'
 import { supabase } from '@/lib/supabase'
 import type { CartItem, PaymentMethod } from '@/lib/data'
-import type { IFoodOrder } from './types'
+import type { IFoodEvent, IFoodOrder } from './types'
 import { getOrder } from './client'
 import { logIFood } from './logs'
 
@@ -75,6 +75,52 @@ async function alreadyImported(externalId: string): Promise<boolean> {
   } catch {
     return false // se a coluna não existe ainda, deixa seguir (não bloqueia)
   }
+}
+
+// ─── Eventos de status vindos do iFood ───────────────────────────────────────
+// O iFood muda o status por conta própria (o entregador despacha, o pedido de
+// envio imediato vira CONCLUDED sozinho). Sem refletir isso aqui, o painel
+// mostra um estado defasado — e a homologação cobra exatamente essa sincronia.
+const EVENT_STATUS: Record<string, string> = {
+  CONFIRMED: 'aceito',
+  CFM: 'aceito',
+  SEPARATION_STARTED: 'em_preparo',
+  SPS: 'em_preparo',
+  READY_TO_PICKUP: 'pronto',
+  RTP: 'pronto',
+  DISPATCHED: 'saiu_entrega',
+  DSP: 'saiu_entrega',
+  CONCLUDED: 'entregue',
+  CON: 'entregue',
+  CANCELLED: 'cancelado',
+  CAN: 'cancelado',
+}
+
+export type StatusSyncResult = 'updated' | 'unmapped' | 'not_found'
+
+/** Reflete no pedido local a mudança de status anunciada pelo iFood. */
+export async function syncOrderStatus(ev: IFoodEvent): Promise<StatusSyncResult> {
+  const key = (ev.fullCode ?? ev.code ?? '').toUpperCase()
+  const status = EVENT_STATUS[key]
+  if (!status) return 'unmapped'
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('external_id', ev.orderId)
+    .select('order_number')
+
+  if (error) {
+    await logIFood('error', 'status', `Falha ao aplicar ${key} no pedido ${ev.orderId}`, error.message)
+    return 'not_found'
+  }
+  if (!data || data.length === 0) {
+    await logIFood('warn', 'status', `Evento ${key} recebido para um pedido que não está no sistema (${ev.orderId})`)
+    return 'not_found'
+  }
+
+  await logIFood('success', 'status', `${data[0].order_number}: iFood mudou para '${status}' (${key})`)
+  return 'updated'
 }
 
 /** 'imported' = novo pedido salvo · 'duplicate' = já existia · 'failed' = não foi possível */
