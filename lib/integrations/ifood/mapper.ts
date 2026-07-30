@@ -8,7 +8,8 @@ import { createOrder, type CreateOrderPayload } from '@/lib/db-orders'
 import { supabase } from '@/lib/supabase'
 import type { CartItem, PaymentMethod } from '@/lib/data'
 import type { IFoodEvent, IFoodOrder } from './types'
-import { getOrder } from './client'
+import { getOrder, pushStatus } from './client'
+import { getConfig } from './config'
 import { logIFood } from './logs'
 
 function mapPayment(o: IFoodOrder): PaymentMethod {
@@ -123,6 +124,31 @@ export async function syncOrderStatus(ev: IFoodEvent): Promise<StatusSyncResult>
   return 'updated'
 }
 
+/**
+ * Confirma o pedido no iFood assim que ele entra. Sem isso o pedido fica em
+ * "aguardando confirmação" até alguém clicar no painel — e a homologação
+ * reprova com "o pedido foi criado, mas não foi confirmado pelo restaurante".
+ * No modo homologação segue até o despacho, para os testes automáticos do
+ * Portal, que não têm ninguém clicando.
+ */
+async function autoAdvance(externalId: string, orderNumber: string): Promise<void> {
+  const cfg = await getConfig()
+  if (cfg.autoConfirm === false) return
+
+  if (!(await pushStatus(externalId, 'aceito'))) return
+  await supabase.from('orders').update({ status: 'aceito' }).eq('external_id', externalId)
+  await logIFood('success', 'status', `${orderNumber}: confirmado automaticamente no iFood`)
+
+  if (!cfg.homologationMode) return
+
+  // Só nos testes: percorre o restante do fluxo sem intervenção humana.
+  for (const step of ['em_preparo', 'pronto', 'saiu_entrega'] as const) {
+    if (!(await pushStatus(externalId, step))) break
+    await supabase.from('orders').update({ status: step }).eq('external_id', externalId)
+    await logIFood('success', 'status', `${orderNumber}: '${step}' enviado (modo homologação)`)
+  }
+}
+
 /** 'imported' = novo pedido salvo · 'duplicate' = já existia · 'failed' = não foi possível */
 export type IngestResult = 'imported' | 'duplicate' | 'failed'
 
@@ -140,6 +166,7 @@ export async function ingestOrder(orderId: string): Promise<IngestResult> {
   try {
     const order = await createOrder(mapOrder(detail))
     await logIFood('success', 'order', `Pedido iFood importado: ${order.orderNumber}`, { externalId: orderId })
+    await autoAdvance(orderId, order.orderNumber)
     return 'imported'
   } catch (e) {
     await logIFood('error', 'order', `Falha ao salvar pedido ${orderId}`, e instanceof Error ? e.message : String(e))

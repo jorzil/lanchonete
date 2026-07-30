@@ -14,6 +14,11 @@ export interface IFoodConfig {
   webhookUrl: string
   /** % total de taxas do iFood (comissão + pagamento online) para estimar o líquido */
   commissionPercent?: number
+  /** Confirma o pedido no iFood assim que ele entra (sem esperar o operador) */
+  autoConfirm?: boolean
+  /** Modo homologação: percorre o pedido até 'despachado' sozinho. Só para os
+   *  testes do Portal do iFood — em produção quem despacha é o operador. */
+  homologationMode?: boolean
   // estado de conexão (preenchido pelo sistema)
   connected: boolean
   lastSyncAt: string | null
@@ -33,6 +38,8 @@ export interface IFoodConfigPublic {
   environment: IFoodEnvironment
   webhookUrl: string
   commissionPercent?: number
+  autoConfirm?: boolean
+  homologationMode?: boolean
   connected: boolean
   lastSyncAt: string | null
 }
@@ -110,6 +117,18 @@ export function isKeepAlive(raw: unknown): boolean {
   const o = raw as Record<string, unknown>
   const codes = [o.fullCode, o.code, o.eventType, o.type]
   return codes.some((c) => typeof c === 'string' && c.toUpperCase() === 'KEEPALIVE')
+}
+
+/** Keepalives em forma de evento, só com o id — o suficiente para o ACK. */
+export function keepAliveEvents(raw: unknown[]): IFoodEvent[] {
+  return raw
+    .filter(isKeepAlive)
+    .map((r): IFoodEvent | null => {
+      const o = r as Record<string, unknown>
+      const id = typeof o.id === 'string' ? o.id : ''
+      return id ? { id, code: 'KEEPALIVE', fullCode: 'KEEPALIVE', orderId: '' } : null
+    })
+    .filter((e): e is IFoodEvent => e !== null)
 }
 
 /** Extrai a lista de eventos de um payload de webhook/polling em qualquer formato. */

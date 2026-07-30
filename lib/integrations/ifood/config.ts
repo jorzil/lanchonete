@@ -127,6 +127,8 @@ export function toPublic(cfg: IFoodConfig): IFoodConfigPublic {
     environment: cfg.environment,
     webhookUrl: cfg.webhookUrl,
     commissionPercent: cfg.commissionPercent ?? 0,
+    autoConfirm: cfg.autoConfirm ?? true,
+    homologationMode: cfg.homologationMode ?? false,
     connected: cfg.connected,
     lastSyncAt: cfg.lastSyncAt,
   }

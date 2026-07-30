@@ -3,7 +3,7 @@ import { ingestOrder, syncOrderStatus } from '@/lib/integrations/ifood/mapper'
 import { acknowledgeEvents } from '@/lib/integrations/ifood/client'
 import { getConfig, patchRuntime } from '@/lib/integrations/ifood/config'
 import { logIFood } from '@/lib/integrations/ifood/logs'
-import { isKeepAlive, isPlacedEvent, normalizeEvents, unwrapEvents, type IFoodEvent } from '@/lib/integrations/ifood/types'
+import { isKeepAlive, isPlacedEvent, keepAliveEvents, normalizeEvents, unwrapEvents, type IFoodEvent } from '@/lib/integrations/ifood/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +32,12 @@ export async function POST(req: NextRequest) {
   const events = normalizeEvents(payload)
   const keepAlives = raw.filter(isKeepAlive).length
 
-  // KEEPALIVE é só o ping de saúde do iFood (a cada ~30s). Registrar cada um
-  // tornaria o log inútil — basta marcar que a integração respondeu.
+  // KEEPALIVE é o ping de saúde do iFood (a cada ~30s). Não gera log — seria
+  // ruído —, mas PRECISA ser confirmado: é o ACK do keepalive que registra a
+  // presença da integração com origem WEBHOOK no Firefly. Sem ele a
+  // homologação reprova com "No heartbeat found with source 'WEBHOOK'".
   if (keepAlives > 0 && raw.length === keepAlives) {
+    try { await acknowledgeEvents(keepAliveEvents(raw)) } catch {}
     await patchRuntime({ lastSyncAt: new Date().toISOString() })
     return NextResponse.json({ ok: true, keepAlive: true })
   }
@@ -55,6 +58,9 @@ export async function POST(req: NextRequest) {
       // faz o iFood parar de reenviá-lo — foi assim que o pedido de 14:58 se
       // perdeu e acabou cancelado por "não foi enviado para a Loja".
       if ((await ingestOrder(ev.orderId)) === 'failed') { failed++; continue }
+    } else if (isKeepAlive(ev)) {
+      handled.push(ev)
+      continue
     } else if ((await syncOrderStatus(ev)) === 'unmapped') {
       await logIFood('info', 'webhook', `Evento ${ev.fullCode ?? ev.code} sem efeito no painel (pedido ${ev.orderId})`)
     }
@@ -64,9 +70,9 @@ export async function POST(req: NextRequest) {
   // Confirma o recebimento dos eventos para o iFood não reenviar.
   try { await acknowledgeEvents(handled) } catch {}
 
-  // 500 sinaliza ao iFood que o evento não foi processado e deve ser reenviado.
-  if (failed > 0) {
-    return NextResponse.json({ ok: false, processed: handled.length, failed }, { status: 500 })
-  }
-  return NextResponse.json({ ok: true, processed: handled.length })
+  // Sempre 200: para o iFood o que importa é a ENTREGA do webhook. Responder
+  // 500 marca a entrega como falha na auditoria (Firefly Audit) e reprova a
+  // homologação. O reenvio do que falhou vem do ACK — só confirmamos o que
+  // entrou, então o evento não confirmado é reenviado de qualquer forma.
+  return NextResponse.json({ ok: true, processed: handled.length, failed })
 }
