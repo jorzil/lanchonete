@@ -309,7 +309,9 @@ export default function CheckoutPage() {
   return (
     <><Header />
       <main className="pt-16 bg-navy min-h-screen">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Mesma largura e recuo do cabeçalho e do rodapé (max-w-7xl px-5 sm:px-8):
+            com valores próprios, as bordas do checkout não batiam com as deles. */}
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
           {!storeOpen && (
             <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-center">
               <p className="text-lg font-bold text-red-400">🔴 Estamos fechados no momento</p>
