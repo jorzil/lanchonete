@@ -81,9 +81,14 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile menu */}
-      <div className={`fixed inset-0 z-[100] bg-navy flex flex-col transition-all duration-400 ${
-        mobileOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'
+      {/* Mobile menu — o painel fica sempre montado, deslocado uma tela para a
+          direita quando fechado. Como é 'fixed', o overflow-x do body não o
+          alcança: sem este invólucro que o recorta, o Safari pode incluí-lo na
+          área rolável e reduzir a escala da página (o conteúdo então para antes
+          da borda direita). O invólucro é fixo, então recorta o filho. */}
+      <div className="fixed inset-0 z-[100] overflow-x-clip pointer-events-none">
+      <div className={`absolute inset-0 bg-navy flex flex-col transition-all duration-400 ${
+        mobileOpen ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-full pointer-events-none'
       }`}>
         <div className="flex items-center justify-between h-16 px-5 border-b border-white/8">
           <div className="flex items-center">
@@ -109,6 +114,7 @@ export function Header() {
             </button>
           </Link>
         </div>
+      </div>
       </div>
     </>
   )
