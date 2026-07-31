@@ -148,12 +148,12 @@ export default function ClientesPage() {
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                 <th className="px-5 py-3 font-medium">Cliente</th>
-                <th className="px-5 py-3 font-medium">Telefone</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Telefone</th>
                 <th className="px-5 py-3 font-medium">Pedidos</th>
                 <th className="px-5 py-3 font-medium">Total Gasto</th>
-                <th className="px-5 py-3 font-medium">Ticket Médio</th>
-                <th className="px-5 py-3 font-medium">Último Pedido</th>
-                <th className="px-5 py-3 font-medium">Classificação</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Ticket Médio</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Último Pedido</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Classificação</th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
@@ -174,16 +174,16 @@ export default function ClientesPage() {
                         <span className="font-medium text-gray-900">{c.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-500">{c.phone}</td>
+                    <td className="hidden px-5 py-3 text-gray-500 md:table-cell">{c.phone}</td>
                     <td className="px-5 py-3 text-gray-700 font-medium">{c.totalOrders}</td>
                     <td className="px-5 py-3 font-semibold text-gray-900">{formatCurrency(c.totalSpent)}</td>
-                    <td className="px-5 py-3 text-gray-600">{formatCurrency(c.avgTicket)}</td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">
+                    <td className="hidden px-5 py-3 text-gray-600 md:table-cell">{formatCurrency(c.avgTicket)}</td>
+                    <td className="hidden px-5 py-3 text-gray-500 text-xs md:table-cell">
                       {new Date(c.lastOrder).toLocaleDateString('pt-BR')}
                       {c.daysSinceLast === 0 && <span className="ml-1 text-green-500">hoje</span>}
                       {c.daysSinceLast > 0 && <span className="ml-1 text-gray-400">({c.daysSinceLast}d)</span>}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="hidden px-5 py-3 md:table-cell">
                       <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.cls}`}>
                         {cfg.label}
                       </span>

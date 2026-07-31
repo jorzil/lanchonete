@@ -278,9 +278,9 @@ export default function FichasTecnicasPage() {
               <thead>
                 <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                   <th className="py-2 pr-3 font-medium">Ingrediente</th>
-                  <th className="py-2 px-3 font-medium">Unidade</th>
+                  <th className="hidden py-2 px-3 font-medium md:table-cell">Unidade</th>
                   <th className="py-2 px-3 font-medium text-right">Custo / unidade</th>
-                  <th className="py-2 px-3 font-medium text-right">Equivale a</th>
+                  <th className="hidden py-2 px-3 font-medium text-right md:table-cell">Equivale a</th>
                   <th className="py-2 pl-3"></th>
                 </tr>
               </thead>
@@ -301,11 +301,11 @@ export default function FichasTecnicasPage() {
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-gray-500">{UNIT_LABEL[ing.unit] ?? ing.unit}</td>
+                      <td className="hidden py-2 px-3 text-gray-500 md:table-cell">{UNIT_LABEL[ing.unit] ?? ing.unit}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-gray-800">
                         {formatCurrency(cost)}/{UNIT_LABEL[ing.unit] ?? ing.unit}
                       </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-gray-400">{perK}</td>
+                      <td className="hidden py-2 px-3 text-right tabular-nums text-gray-400 md:table-cell">{perK}</td>
                       <td className="py-2 pl-3 text-right">
                         <button onClick={() => removeIngredient(ing.id)} className="rounded-md p-1.5 hover:bg-gray-100">
                           <Trash2 className="h-4 w-4 text-gray-400" />

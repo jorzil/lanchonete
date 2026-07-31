@@ -302,15 +302,15 @@ export default function CuponsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                <th className="px-5 py-3 font-medium">Código</th>
-                <th className="px-5 py-3 font-medium">Nome</th>
-                <th className="px-5 py-3 font-medium">Tipo</th>
-                <th className="px-5 py-3 font-medium">Desconto</th>
-                <th className="px-5 py-3 font-medium">Mínimo</th>
-                <th className="px-5 py-3 font-medium">Usos</th>
-                <th className="px-5 py-3 font-medium">Validade</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3"></th>
+                <th className="px-2 py-3 md:px-5 font-medium">Código</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Nome</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Tipo</th>
+                <th className="px-2 py-3 md:px-5 font-medium">Desconto</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Mínimo</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Usos</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Validade</th>
+                <th className="px-2 py-3 md:px-5 font-medium">Status</th>
+                <th className="px-2 py-3 md:px-5"></th>
               </tr>
             </thead>
             <tbody>
@@ -323,25 +323,25 @@ export default function CuponsPage() {
                 return (
                   <React.Fragment key={c.id}>
                   <tr className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                    <td className="px-5 py-3">
+                    <td className="px-2 py-3 md:px-5">
                       <code className="rounded bg-gray-100 px-2 py-0.5 text-[13px] font-mono font-bold text-gray-800">
                         {c.code}
                       </code>
                     </td>
-                    <td className="px-5 py-3 font-medium text-gray-900">{c.name}</td>
-                    <td className="px-5 py-3">
+                    <td className="hidden px-5 py-3 font-medium text-gray-900 md:table-cell">{c.name}</td>
+                    <td className="hidden px-5 py-3 md:table-cell">
                       <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${typeCfg.cls}`}>
                         {typeCfg.label}
                       </span>
                     </td>
-                    <td className="px-5 py-3 font-semibold text-gray-900">
+                    <td className="px-2 py-3 md:px-5 font-semibold text-gray-900">
                       {c.type === 'percentage' ? `${c.discount}%` :
                        c.type === 'fixed' ? formatCurrency(c.discount) : 'Grátis'}
                     </td>
-                    <td className="px-5 py-3 text-gray-500">
+                    <td className="hidden px-5 py-3 text-gray-500 md:table-cell">
                       {c.minOrder > 0 ? formatCurrency(c.minOrder) : '—'}
                     </td>
-                    <td className="px-5 py-3 text-gray-700">
+                    <td className="hidden px-5 py-3 text-gray-700 md:table-cell">
                       {(() => {
                         const linked = ordersByCoupon.get(c.code.toUpperCase()) ?? []
                         return (
@@ -357,7 +357,7 @@ export default function CuponsPage() {
                       })()}
                       {limitReached && <span className="ml-1 text-[10px] text-red-500">esgotado</span>}
                     </td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">
+                    <td className="hidden px-5 py-3 text-gray-500 text-xs md:table-cell">
                       {c.validUntil ? (
                         <span className={expired ? 'text-red-500' : ''}>
                           até {new Date(c.validUntil).toLocaleDateString('pt-BR')}
@@ -365,7 +365,7 @@ export default function CuponsPage() {
                         </span>
                       ) : '∞'}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-2 py-3 md:px-5">
                       <button
                         onClick={() => toggleActive(c)}
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border transition-colors ${
@@ -377,8 +377,9 @@ export default function CuponsPage() {
                         {c.active && !expired && !limitReached ? 'Ativo' : 'Inativo'}
                       </button>
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
+                    <td className="px-2 py-3 md:px-5">
+                      {/* Ícones em 2 colunas no celular. */}
+                      <div className="grid grid-cols-2 gap-0.5 md:flex md:items-center md:gap-1">
                         <Button variant="ghost" size="sm" onClick={() => startEdit(c)} title="Editar">
                           <Edit2 className="h-4 w-4 text-gray-400" />
                         </Button>
@@ -401,7 +402,7 @@ export default function CuponsPage() {
                       .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
                     return (
                       <tr key={`${c.id}-orders`} className="bg-gray-50/60">
-                        <td colSpan={9} className="px-5 py-3">
+                        <td colSpan={9} className="px-2 py-3 md:px-5">
                           {linked.length === 0 ? (
                             <p className="text-xs text-gray-400">Nenhum pedido usou este cupom ainda.</p>
                           ) : (
