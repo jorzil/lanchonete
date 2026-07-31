@@ -5,13 +5,13 @@ import { MaisSubMark, MBadge } from '@/components/brand/logo'
 export function Footer() {
   return (
     <footer className="relative bg-navy-deep border-t border-white/8 overflow-hidden">
-      <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
+      <div className="relative max-w-7xl mx-auto px-5 sm:px-8 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 text-center sm:text-left">
 
         <div>
-          <div className="mb-5">
+          <div className="mb-5 flex justify-center sm:justify-start">
             <MaisSubMark />
           </div>
-          <p className="text-white/40 text-[13px] leading-relaxed mb-6 max-w-[220px]">
+          <p className="text-white/40 text-[13px] leading-relaxed mb-6 max-w-[220px] mx-auto sm:mx-0">
             Subs artesanais com ingredientes selecionados. Do seu jeito.
           </p>
           <a href="https://wa.me/5533984619205" target="_blank" rel="noopener noreferrer"
@@ -58,20 +58,20 @@ export function Footer() {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 mb-5">Contato</p>
           <ul className="space-y-3.5 mb-7">
-            <li className="flex items-start gap-2.5 text-[13px] text-white/45">
+            <li className="flex items-start justify-center gap-2.5 text-[13px] text-white/45 sm:justify-start">
               <MapPin size={14} className="text-brand mt-0.5 shrink-0" />
               <span>Governador Valadares · MG</span>
             </li>
-            <li className="flex items-start gap-2.5 text-[13px] text-white/45">
+            <li className="flex items-start justify-center gap-2.5 text-[13px] text-white/45 sm:justify-start">
               <Clock size={14} className="text-brand mt-0.5 shrink-0" />
               <span>Seg–Sex 11h–22h · Sáb–Dom 11h–23h</span>
             </li>
-            <li className="flex items-center gap-2.5 text-[13px] text-white/45">
+            <li className="flex items-center justify-center gap-2.5 text-[13px] text-white/45 sm:justify-start">
               <Phone size={14} className="text-brand shrink-0" />
               <a href="https://wa.me/5533984619205" className="hover:text-white transition-colors">(33) 98461-9205</a>
             </li>
           </ul>
-          <div className="flex gap-2">
+          <div className="flex justify-center gap-2 sm:justify-start">
             <a href="https://www.instagram.com/maissub.gv/" target="_blank" rel="noopener noreferrer"
               className="w-9 h-9 rounded-full bg-white/6 hover:bg-brand flex items-center justify-center transition-all duration-200 text-white/55 hover:text-white">
               <Instagram size={15} />
