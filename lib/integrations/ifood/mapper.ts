@@ -131,7 +131,7 @@ export async function syncOrderStatus(ev: IFoodEvent): Promise<StatusSyncResult>
  * No modo homologação segue até o despacho, para os testes automáticos do
  * Portal, que não têm ninguém clicando.
  */
-async function autoAdvance(externalId: string, orderNumber: string): Promise<void> {
+async function autoAdvance(externalId: string, orderNumber: string, isDelivery: boolean): Promise<void> {
   const cfg = await getConfig()
   if (cfg.autoConfirm === false) return
 
@@ -142,10 +142,20 @@ async function autoAdvance(externalId: string, orderNumber: string): Promise<voi
   if (!cfg.homologationMode) return
 
   // Só nos testes: percorre o restante do fluxo sem intervenção humana.
-  for (const step of ['em_preparo', 'pronto', 'saiu_entrega'] as const) {
-    if (!(await pushStatus(externalId, step))) break
-    await supabase.from('orders').update({ status: step }).eq('external_id', externalId)
-    await logIFood('success', 'status', `${orderNumber}: '${step}' enviado (modo homologação)`)
+  // 'pronto' vira readyToPickup, que o iFood só aceita em retirada — mandar
+  // isso num pedido de entrega falha. E a falha de um passo não pode abortar
+  // os seguintes: o despacho é justamente o último, e é o que a homologação
+  // cobra no cenário "Pedido Despachado Imediato".
+  const steps: string[] = isDelivery
+    ? ['em_preparo', 'saiu_entrega']
+    : ['em_preparo', 'pronto', 'saiu_entrega']
+  for (const step of steps) {
+    if (await pushStatus(externalId, step)) {
+      await supabase.from('orders').update({ status: step }).eq('external_id', externalId)
+      await logIFood('success', 'status', `${orderNumber}: '${step}' enviado (modo homologação)`)
+    } else {
+      await logIFood('warn', 'status', `${orderNumber}: '${step}' recusado — seguindo para o próximo passo`)
+    }
   }
 }
 
@@ -164,9 +174,10 @@ export async function ingestOrder(orderId: string): Promise<IngestResult> {
     return 'failed'
   }
   try {
-    const order = await createOrder(mapOrder(detail))
+    const payload = mapOrder(detail)
+    const order = await createOrder(payload)
     await logIFood('success', 'order', `Pedido iFood importado: ${order.orderNumber}`, { externalId: orderId })
-    await autoAdvance(orderId, order.orderNumber)
+    await autoAdvance(orderId, order.orderNumber, payload.orderType === 'entrega')
     return 'imported'
   } catch (e) {
     await logIFood('error', 'order', `Falha ao salvar pedido ${orderId}`, e instanceof Error ? e.message : String(e))
