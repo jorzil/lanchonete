@@ -534,8 +534,8 @@ export default function AdminDashboard() {
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                 <th className="px-5 py-3 font-medium">Pedido</th>
                 <th className="px-5 py-3 font-medium">Cliente</th>
-                <th className="px-5 py-3 font-medium">Tipo</th>
-                <th className="px-5 py-3 font-medium">Pagamento</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Tipo</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Pagamento</th>
                 <th className="px-5 py-3 font-medium">Total</th>
                 <th className="px-5 py-3 font-medium">Status</th>
               </tr>
@@ -545,8 +545,8 @@ export default function AdminDashboard() {
                 <tr key={o.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{o.orderNumber}</td>
                   <td className="px-5 py-3 text-gray-700">{o.customer.name}</td>
-                  <td className="px-5 py-3 capitalize text-gray-500">{o.orderType}</td>
-                  <td className="px-5 py-3 text-gray-500">{formatPaymentMethod(o.paymentMethod)}</td>
+                  <td className="hidden px-5 py-3 capitalize text-gray-500 md:table-cell">{o.orderType}</td>
+                  <td className="hidden px-5 py-3 text-gray-500 md:table-cell">{formatPaymentMethod(o.paymentMethod)}</td>
                   <td className="px-5 py-3 font-medium text-gray-900">{formatCurrency(o.total)}</td>
                   <td className="px-5 py-3">
                     <Badge variant="outline" className={cn("font-medium", STATUS_STYLES[o.status])}>

@@ -277,9 +277,9 @@ export default function EstoquePage() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Ingrediente</th>
                   <th className="px-4 py-3 font-semibold">Estoque</th>
-                  <th className="px-4 py-3 font-semibold">Custo médio</th>
-                  <th className="px-4 py-3 font-semibold">Valor total</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="hidden px-4 py-3 font-semibold md:table-cell">Custo médio</th>
+                  <th className="hidden px-4 py-3 font-semibold md:table-cell">Valor total</th>
+                  <th className="hidden px-4 py-3 font-semibold md:table-cell">Status</th>
                   <th className="px-4 py-3 text-right font-semibold">Ações</th>
                 </tr>
               </thead>
@@ -304,9 +304,9 @@ export default function EstoquePage() {
                         {ing.stock} {ing.unit}
                         <span className="ml-1 text-xs text-gray-400">/ ideal {ing.idealStock}</span>
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{formatCurrency(ing.avgCost)}</td>
-                      <td className="px-4 py-3 tabular-nums font-medium">{formatCurrency(ing.avgCost * ing.stock)}</td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 tabular-nums md:table-cell">{formatCurrency(ing.avgCost)}</td>
+                      <td className="hidden px-4 py-3 tabular-nums font-medium md:table-cell">{formatCurrency(ing.avgCost * ing.stock)}</td>
+                      <td className="hidden px-4 py-3 md:table-cell">
                         {out ? (
                           <Badge className="bg-red-100 text-red-700">Sem estoque</Badge>
                         ) : low ? (
@@ -315,8 +315,10 @@ export default function EstoquePage() {
                           <Badge className="bg-emerald-100 text-emerald-700">OK</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="px-2 py-3 md:px-4">
+                        {/* No celular os ícones vão em 2 colunas: numa linha só a
+                            coluna de ações empurrava a tabela para fora da tela. */}
+                        <div className="grid grid-cols-2 justify-items-end gap-0.5 md:flex md:items-center md:justify-end md:gap-1">
                           <IconBtn title="Entrada" onClick={() => openMovement(ing, "entrada")}><ArrowDownToLine className="h-4 w-4 text-emerald-600" /></IconBtn>
                           <IconBtn title="Saída" onClick={() => openMovement(ing, "saida")}><ArrowUpFromLine className="h-4 w-4 text-red-600" /></IconBtn>
                           <IconBtn title="Ajuste" onClick={() => openMovement(ing, "ajuste")}><SlidersHorizontal className="h-4 w-4 text-blue-600" /></IconBtn>

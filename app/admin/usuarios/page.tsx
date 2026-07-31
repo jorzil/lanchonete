@@ -84,9 +84,9 @@ export default function UsuariosPage() {
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
                 <th className="px-5 py-3 font-medium">Nome</th>
-                <th className="px-5 py-3 font-medium">Usuário (login)</th>
-                <th className="px-5 py-3 font-medium">Função</th>
-                <th className="px-5 py-3 font-medium">Acessos</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Usuário (login)</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Função</th>
+                <th className="hidden px-5 py-3 font-medium md:table-cell">Acessos</th>
                 <th className="px-5 py-3 text-right font-medium">Ações</th>
               </tr>
             </thead>
@@ -94,11 +94,11 @@ export default function UsuariosPage() {
               {users.map((u) => (
                 <tr key={u.email} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{u.name}</td>
-                  <td className="px-5 py-3 text-gray-600">{u.email}</td>
-                  <td className="px-5 py-3">
+                  <td className="hidden px-5 py-3 text-gray-600 md:table-cell">{u.email}</td>
+                  <td className="hidden px-5 py-3 md:table-cell">
                     <Badge className="bg-orange-100 text-orange-700 gap-1"><Shield size={11} /> {ROLE_LABELS[u.role]}</Badge>
                   </td>
-                  <td className="px-5 py-3 text-xs text-gray-400">{ROLE_PERMISSIONS[u.role].length} módulo(s)</td>
+                  <td className="hidden px-5 py-3 text-xs text-gray-400 md:table-cell">{ROLE_PERMISSIONS[u.role].length} módulo(s)</td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(u)}>

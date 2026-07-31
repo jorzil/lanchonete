@@ -858,11 +858,11 @@ export default function PedidosPage() {
                       />
                     </th>
                     <th className="px-5 py-3 font-medium">Pedido</th>
-                    <th className="px-5 py-3 font-medium">Origem</th>
+                    <th className="hidden px-5 py-3 font-medium md:table-cell">Origem</th>
                     <th className="px-5 py-3 font-medium">Cliente</th>
-                    <th className="px-5 py-3 font-medium">Data</th>
+                    <th className="hidden px-5 py-3 font-medium md:table-cell">Data</th>
                     <th className="px-5 py-3 font-medium text-right">Total</th>
-                    <th className="px-5 py-3 font-medium">Pagamento</th>
+                    <th className="hidden px-5 py-3 font-medium md:table-cell">Pagamento</th>
                     <th className="px-5 py-3 font-medium">Status</th>
                     <th className="px-5 py-3 text-right font-medium">Ações</th>
                   </tr>
@@ -905,7 +905,7 @@ export default function PedidosPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="hidden px-5 py-3 md:table-cell">
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600">
                             {ORDER_SOURCE_LABELS[o.source ?? "site"].emoji} {ORDER_SOURCE_LABELS[o.source ?? "site"].label}
                           </span>
@@ -919,9 +919,9 @@ export default function PedidosPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-5 py-3 text-gray-500 text-xs">{formatDate(o.createdAt)}</td>
+                        <td className="hidden px-5 py-3 text-gray-500 text-xs md:table-cell">{formatDate(o.createdAt)}</td>
                         <td className="px-5 py-3 font-semibold text-gray-900 text-right">{formatCurrency(o.total)}</td>
-                        <td className="px-5 py-3 text-gray-600 text-xs">
+                        <td className="hidden px-5 py-3 text-gray-600 text-xs md:table-cell">
                           {PAYMENT_LABELS[o.paymentMethod as keyof typeof PAYMENT_LABELS] ?? o.paymentMethod}
                         </td>
                         <td className="px-5 py-3">

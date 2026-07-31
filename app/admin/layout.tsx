@@ -222,25 +222,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="lg:pl-60">
         {/* Header */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-gray-200 bg-white/80 px-4 backdrop-blur lg:px-8">
-          <div className="flex items-center gap-3">
+          {/* min-w-0 + truncate: sem isso o nome longo da página (Disponibilidade,
+              Configurações…) empurrava o bloco da direita para fora da tela. */}
+          <div className="flex min-w-0 items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-gray-500 hover:text-gray-800"
+              className="lg:hidden shrink-0 text-gray-500 hover:text-gray-800"
               onClick={() => setMobileOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2 text-[13px]">
-              <span className="text-gray-400">ERP</span>
-              <span className="text-gray-300">/</span>
-              <span className="font-medium text-gray-800">
+            <div className="flex min-w-0 items-center gap-2 text-[13px]">
+              <span className="hidden text-gray-400 sm:inline">ERP</span>
+              <span className="hidden text-gray-300 sm:inline">/</span>
+              <span className="truncate font-medium text-gray-800">
                 {BREADCRUMBS[pathname] ?? "Página"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <StoreStatusWidget />
             <div className="hidden text-right sm:block">
               <p className="text-[13px] font-medium text-gray-800">{user?.name ?? "Administrador"}</p>
