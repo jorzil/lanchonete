@@ -111,6 +111,7 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
 
   const itemsHTML = order.items.map(item => {
     const opts: string[] = []
+    let note = ''
     // Subs prontos: lista os ingredientes que vêm de fábrica (descrição do produto)
     const prod = PRODUCT_BY_ID.get(item.productId)
     if (prod && (prod.category === 'subs-15cm' || prod.category === 'subs-30cm') && prod.description) {
@@ -129,7 +130,8 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
       if (c.sauces?.length) opts.push(`Molhos: ${c.sauces.map((k) => SAUCE_NAMES.get(k) ?? k).join(', ')}`)
       const extras = Object.entries(c.extras ?? {}).filter(([, q]) => q > 0)
       if (extras.length) opts.push(`Adicionais: ${extras.map(([k, q]) => `${EXTRA_NAMES.get(k) ?? k} x${q}`).join(', ')}`)
-      if (c.notes) opts.push(`Obs: ${c.notes}`)
+      // A observacao sai da lista de detalhes e ganha linha propria em destaque
+      if (c.notes) note = c.notes
     } else if (item.notes) {
       // Itens sem customizacao estruturada (ex: combos) trazem detalhes em notes
       opts.push(item.notes)
@@ -142,6 +144,7 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
           <span class="item-price">${formatCurrency(item.price * item.quantity)}</span>
         </div>
         ${opts.map(o => `<div class="item-opt">  - ${o}</div>`).join('')}
+        ${note ? `<div class="item-note">&gt;&gt; OBS: ${note}</div>` : ''}
       </div>`
   }).join('')
 
@@ -186,6 +189,14 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   .item-name { flex: 1; }
   .item-price { white-space: nowrap; }
   .item-opt { font-size: 13px; padding-left: 24px; }
+  /* Observacao do item: maior que os demais detalhes e com marcador proprio,
+     senao se perde no meio de pao/carne/queijos/molhos. */
+  .item-note { font-size: 15px; padding-left: 24px; margin-top: 2px; text-transform: uppercase; }
+  /* Observacao do pedido: o dado mais critico do cupom. Caixa grossa e a maior
+     fonte depois do numero do pedido — antes saia em 11px, menor que tudo. */
+  .notes-box { border: 3px solid #000; padding: 6px 6px; margin: 4px 0; }
+  .notes-title { font-size: 15px; text-align: center; letter-spacing: 1px; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 5px; }
+  .notes-text { font-size: 17px; line-height: 1.35; text-transform: uppercase; word-break: break-word; }
   .total-row { display: flex; justify-content: space-between; font-size: 14px; margin: 2px 0; }
   .total-grand { display: flex; justify-content: space-between; font-size: 18px; margin: 4px 0; }
   .payment-box { border: 2px solid #000; padding: 4px 5px; margin: 4px 0; font-size: 15px; text-align: center; }
@@ -244,9 +255,9 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
 
   ${order.notes ? `
   <div class="divider"></div>
-  <div class="section">
-    <div class="section-title">--- OBSERVACOES ---</div>
-    <div style="font-size:11px">${order.notes}</div>
+  <div class="notes-box">
+    <div class="notes-title">** OBSERVACOES **</div>
+    <div class="notes-text">${order.notes}</div>
   </div>` : ''}
 
   <div class="divider-solid"></div>
