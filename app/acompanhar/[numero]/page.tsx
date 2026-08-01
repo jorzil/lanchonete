@@ -53,6 +53,7 @@ export default function AcompanharPage() {
   const [courierLoc, setCourierLoc] = useState<{ lat: number; lng: number; at: number } | null>(null)
   const [courierAgo, setCourierAgo] = useState('agora')
   const [courierStale, setCourierStale] = useState(false)
+  const [arrivedAt, setArrivedAt] = useState<number | null>(null)
 
   // Posição do entregador: Supabase Realtime (instantâneo) + polling de apoio
   useEffect(() => {
@@ -69,6 +70,13 @@ export default function AcompanharPage() {
         if (!res.ok) return
         const { location } = await res.json()
         if (alive) setCourierLoc(location ?? null)
+      } catch {}
+      // Chegada ao endereço — vem junto do mesmo ciclo do mapa
+      try {
+        const res = await fetch(`/api/entregas/chegada?orderId=${encodeURIComponent(orderId)}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const { arrivedAt } = await res.json()
+        if (alive) setArrivedAt(arrivedAt ?? null)
       } catch {}
     }
     fetchLoc()
@@ -247,6 +255,22 @@ export default function AcompanharPage() {
         )}
 
         {/* Mapa do entregador em tempo real */}
+        {/* O entregador avisou que chegou — o aviso mais importante da tela,
+            então vem antes do mapa e com destaque. */}
+        {arrivedAt && order.status === 'saiu_entrega' && order.orderType === 'entrega' && (
+          <div className="rounded-2xl border-2 border-emerald-500/60 bg-emerald-500/10 px-5 py-4 text-center">
+            <p className="text-2xl">🛵</p>
+            <p className="mt-1 text-lg font-black text-emerald-400">O entregador chegou!</p>
+            <p className="mt-0.5 text-sm text-white/60">
+              Ele está no endereço desde as{' '}
+              {new Date(arrivedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.
+            </p>
+            <p className="mt-2 text-xs text-white/40">
+              Tenha o código de entrega em mãos para confirmar o recebimento.
+            </p>
+          </div>
+        )}
+
         {order.status === 'saiu_entrega' && order.orderType === 'entrega' && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-4 pb-3">
