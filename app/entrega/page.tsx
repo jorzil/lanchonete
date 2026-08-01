@@ -106,6 +106,9 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
   const [codes, setCodes] = useState<Record<string, string>>({})
   const [feedback, setFeedback] = useState<Record<string, { type: 'ok' | 'err'; msg: string }>>({})
   const [confirming, setConfirming] = useState<string | null>(null)
+  // Chegada ao endereço: orderId → timestamp (avisa o cliente antes do código)
+  const [arrivals, setArrivals] = useState<Record<string, number>>({})
+  const [arriving, setArriving] = useState<string | null>(null)
   // Compartilhamento de localização em tempo real
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [geoError, setGeoError] = useState('')
@@ -243,7 +246,20 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
       const res = await fetch('/api/entregas', { cache: 'no-store', headers: { 'x-entregas-token': token } })
       if (res.ok) {
         const { orders } = await res.json()
-        setOrders(orders ?? [])
+        const list: Delivery[] = orders ?? []
+        setOrders(list)
+        // Rebusca as chegadas já registradas: sem isso um refresh da tela faria
+        // o botão voltar a "Cheguei no endereço" num pedido já avisado.
+        const found = await Promise.all(
+          list.map(async (o) => {
+            try {
+              const r = await fetch(`/api/entregas/chegada?orderId=${encodeURIComponent(o.id)}`, { cache: 'no-store' })
+              const d = await r.json()
+              return d?.arrivedAt ? ([o.id, d.arrivedAt] as const) : null
+            } catch { return null }
+          })
+        )
+        setArrivals(Object.fromEntries(found.filter(Boolean) as Array<readonly [string, number]>))
       }
     } catch {}
     setLoading(false)
@@ -254,6 +270,30 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
     const t = setInterval(load, 20000)
     return () => clearInterval(t)
   }, [load])
+
+  /** Avisa que chegou ao endereço. O cliente vê na tela de acompanhamento. */
+  async function announceArrival(order: Delivery) {
+    if (arrivals[order.id]) return
+    setArriving(order.id)
+    try {
+      const token = sessionStorage.getItem(TOKEN_KEY) ?? ''
+      const res = await fetch('/api/entregas/chegada', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-entregas-token': token },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.ok) {
+        setArrivals((a) => ({ ...a, [order.id]: data.arrivedAt ?? Date.now() }))
+      } else {
+        setFeedback((f) => ({ ...f, [order.id]: { type: 'err', msg: data.error ?? 'Não foi possível avisar a chegada.' } }))
+      }
+    } catch {
+      setFeedback((f) => ({ ...f, [order.id]: { type: 'err', msg: 'Erro de conexão ao avisar a chegada.' } }))
+    } finally {
+      setArriving(null)
+    }
+  }
 
   async function confirm(order: Delivery) {
     const code = (codes[order.id] ?? '').trim()
@@ -369,6 +409,34 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
                   )}
                 </div>
 
+                {/* Chegada ao endereço — o passo antes do código. Avisa o
+                    cliente para descer/atender, sem precisar de ligação. */}
+                <div className="border-t border-white/10 pt-3">
+                  <button
+                    onClick={() => announceArrival(order)}
+                    disabled={!!arrivals[order.id] || arriving === order.id}
+                    className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors ${
+                      arrivals[order.id]
+                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 cursor-default'
+                        : 'bg-white/8 text-white hover:bg-white/15 border border-white/10'
+                    }`}
+                  >
+                    {arriving === order.id ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : arrivals[order.id] ? (
+                      <CheckCircle2 size={15} />
+                    ) : (
+                      <MapPin size={15} className="text-[#EE5C13]" />
+                    )}
+                    {arrivals[order.id] ? 'Cliente avisado — você chegou' : 'Cheguei no endereço'}
+                  </button>
+                  {arrivals[order.id] && (
+                    <p className="mt-1.5 text-center text-[11px] text-emerald-400">
+                      Avisado às {new Date(arrivals[order.id]).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+
                 <div className="border-t border-white/10 pt-3">
                   <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest mb-2">Código do cliente</p>
                   <div className="flex gap-2">
@@ -380,7 +448,7 @@ function DeliveryDashboard({ onLogout }: { onLogout: () => void }) {
                         setCodes((c) => ({ ...c, [order.id]: e.target.value.replace(/\D/g, '').slice(0, 4) }))
                       }
                       placeholder="0000"
-                      className="flex-1 bg-white border border-white/10 rounded-xl px-4 py-3 text-black text-xl font-black tracking-[0.4em] text-center outline-none focus:border-[#EE5C13] transition-colors"
+                      className="min-w-0 flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white text-xl font-black tracking-[0.3em] text-center outline-none focus:border-[#EE5C13] transition-colors placeholder:text-white/25"
                     />
                     <button
                       onClick={() => confirm(order)}
