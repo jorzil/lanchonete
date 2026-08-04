@@ -14,6 +14,15 @@ const SIZES = [
   { key: '30cm', label: '30cm', price: 52.9, description: 'Ideal para quem tem mais fome' },
 ]
 
+const SAUCE_EMOJIS: Record<string, string> = {
+  'baconese':           '🥓',
+  'barbecue':           '🔥',
+  'ranch':              '🌿',
+  'maionese-temperada': '🫙',
+  'mostarda-mel':       '🍯',
+  'chipotle':           '🌶️',
+}
+
 const EXTRA_EMOJIS: Record<string, string> = {
   'bacon': '🥓',
   'peito-peru': '🍖',
@@ -32,6 +41,8 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
   const [size, setSize] = useState<string>('')
   const [bread, setBread] = useState<string>('')
   const [extras, setExtras] = useState<Record<string, number>>({})
+  // Molhos: no lanche pronto todo molho é adicional, cobrado por unidade
+  const [sauces, setSauces] = useState<string[]>([])
   const [notes, setNotes] = useState<string>('')
   const [disabled, setDisabled] = useState<Set<string>>(new Set())
   const { addItem } = useCart()
@@ -47,6 +58,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
 
   const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
   const availExtras = useMemo(() => MENU.extras.filter((e) => !disabled.has(ingKey('extra', e.key))), [disabled])
+  const availSauces = useMemo(() => MENU.sauces.filter((s) => !disabled.has(ingKey('sauce', s.key))), [disabled])
 
   if (!product) return null
 
@@ -58,7 +70,23 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
     if (!extra || qty === 0) return sum
     return sum + (size === '15cm' ? extra.price15cm : extra.price30cm) * qty
   }, 0)
-  const total = basePrice + extrasTotal
+  // O sub pronto já vem com o molho da receita: os escolhidos aqui são extras.
+  const saucesTotal = sauces.reduce(
+    (sum, key) => sum + (MENU.sauces.find((s) => s.key === key)?.price ?? MENU.saucePrice),
+    0,
+  )
+  const total = basePrice + extrasTotal + saucesTotal
+
+  function toggleSauce(key: string) {
+    setSauces((prev) => {
+      if (prev.includes(key)) return prev.filter((k) => k !== key)
+      if (prev.length >= MENU.maxSauces) {
+        toast.error(`Máximo de ${MENU.maxSauces} molhos.`)
+        return prev
+      }
+      return [...prev, key]
+    })
+  }
 
   function changeExtra(key: string, delta: number) {
     setExtras(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) + delta) }))
@@ -68,6 +96,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
     setSize('')
     setBread('')
     setExtras({})
+    setSauces([])
     setNotes('')
     onClose()
   }
@@ -86,13 +115,13 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
       quantity: 1,
       image: product!.image,
       notes: noteText,
-      customization: { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces: [], extras: activeExtras, notes: obs },
+      customization: { size: size as '15cm' | '30cm', bread, meat: '', cheeses: [], salads: [], sauces, extras: activeExtras, notes: obs },
     })
     toast.success(`${product!.name} ${size} adicionado!`)
     handleClose()
   }
 
-  const hasExtras = Object.values(extras).some(q => q > 0)
+  const hasExtras = Object.values(extras).some(q => q > 0) || sauces.length > 0
 
   return (
     <Dialog open={!!product} onOpenChange={() => handleClose()}>
@@ -189,6 +218,41 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           </div>
         </div>
 
+        {/* Molhos — cada um cobrado à parte, o sub já vem com o da receita */}
+        <div className="mt-4">
+          <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-1">🥫 Molhos adicionais</p>
+          <p className="text-[11px] text-white/30 mb-3">
+            {formatCurrency(MENU.saucePrice)} cada · seu sub já vem com o molho da receita
+          </p>
+          <div className="space-y-2">
+            {availSauces.map((sauce) => {
+              const selected = sauces.includes(sauce.key)
+              return (
+                <button
+                  key={sauce.key}
+                  onClick={() => toggleSauce(sauce.key)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                    selected ? 'border-brand bg-brand/10' : 'border-white/10 hover:border-white/25 bg-white/5'
+                  }`}
+                >
+                  <span className="text-xl shrink-0">{SAUCE_EMOJIS[sauce.key] || '🥫'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-white leading-tight">{sauce.name}</p>
+                    <p className="text-[11px] text-brand font-bold">
+                      +{formatCurrency(sauce.price ?? MENU.saucePrice)}
+                    </p>
+                  </div>
+                  <span className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    selected ? 'bg-brand border-brand' : 'border-white/25'
+                  }`}>
+                    {selected && <span className="text-white text-[9px] font-black">✓</span>}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Observação */}
         <div className="mt-4">
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-1">📝 Observação</p>
@@ -207,7 +271,7 @@ export function BreadPickerModal({ product, onClose }: BreadPickerModalProps) {
           <div>
             <p className="text-[10px] text-white/30 font-bold uppercase">Total</p>
             <p className="text-xl font-black text-white">{formatCurrency(total)}</p>
-            {hasExtras && <p className="text-[10px] text-brand">inclui extras</p>}
+            {hasExtras && <p className="text-[10px] text-brand">inclui adicionais</p>}
           </div>
           <Button
             onClick={handleAdd}
