@@ -69,7 +69,7 @@ function Section({ title, icon, children }: { title: string; icon?: React.ReactN
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee, applyCoupon, removeCoupon } = useCart()
+  const { items, subtotal, total, deliveryFee, coupon, clearCart, setDeliveryFee, applyCoupon, removeCoupon, removeItem } = useCart()
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', cpf: '', orderType: 'entrega', cep: '', street: '', number: '',
     complement: '', neighborhood: '', city: '', state: '', reference: '', paymentMethod: 'pix', notes: '', changeFor: ''
@@ -213,6 +213,19 @@ export default function CheckoutPage() {
         }
       } catch {}
     }
+
+    // Revalida os itens: o carrinho fica salvo no navegador do cliente e pode
+    // conter algo que saiu do cardapio ou ficou indisponivel desde entao.
+    try {
+      const { findUnavailableItems, unavailableMessage } = await import('@/lib/cart-validation')
+      const gone = await findUnavailableItems(items)
+      if (gone.length > 0) {
+        gone.forEach((u) => removeItem(u.item.id))
+        setSubmitting(false)
+        toast.error(unavailableMessage(gone))
+        return
+      }
+    } catch {}
 
     const orderNumber = generateOrderNumber()
     const address = form.orderType === 'entrega'

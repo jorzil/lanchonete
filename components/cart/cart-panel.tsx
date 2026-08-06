@@ -55,6 +55,25 @@ export function CartPanel() {
   // Puxa os cupons do banco ao abrir o carrinho (para validar cupons criados no admin)
   useEffect(() => { if (isOpen) pullCoupons() }, [isOpen])
 
+  // O carrinho fica salvo no navegador e sobrevive a dias. Ao abrir, confere
+  // se tudo ainda existe no cardápio — melhor avisar aqui do que o cliente
+  // descobrir na hora de finalizar (ou a cozinha receber o que não tem).
+  useEffect(() => {
+    if (!isOpen || items.length === 0) return
+    let alive = true
+    ;(async () => {
+      try {
+        const { findUnavailableItems, unavailableMessage } = await import('@/lib/cart-validation')
+        const gone = await findUnavailableItems(items)
+        if (!alive || gone.length === 0) return
+        gone.forEach((u) => removeItem(u.item.id))
+        toast.error(unavailableMessage(gone))
+      } catch {}
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   // Verifica se o site está configurado só para retirada
   useEffect(() => {
     if (!isOpen) return
