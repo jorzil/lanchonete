@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
 import { validateCouponFresh } from '@/lib/coupon-storage'
 import { fbTrack } from '@/components/analytics/meta-pixel'
@@ -62,15 +62,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = Math.max(0, subtotal - discount + deliveryFee)
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
+  // Date.now() sozinho colide: dois itens adicionados no mesmo milissegundo
+  // (toque duplo no botão) ganhavam o mesmo id, e aí remover um removia os
+  // dois — e o React ainda reclamava de chave duplicada.
+  const seqRef = useRef(0)
+  const newItemId = (productId: string) =>
+    `${productId}-${Date.now()}-${(seqRef.current = (seqRef.current + 1) % 1e6)}`
+
   const addItem = useCallback((newItem: Omit<CartItem, 'id'>) => {
     fbTrack('AddToCart', { content_name: newItem.name, value: newItem.price * newItem.quantity, currency: 'BRL' })
     setItems((prev) => {
       if (newItem.customization) {
-        return [...prev, { ...newItem, id: `${newItem.productId}-${Date.now()}` }]
+        return [...prev, { ...newItem, id: newItemId(newItem.productId) }]
       }
       const existing = prev.find((i) => i.productId === newItem.productId && !i.customization)
       if (existing) return prev.map((i) => i.id === existing.id ? { ...i, quantity: i.quantity + newItem.quantity } : i)
-      return [...prev, { ...newItem, id: `${newItem.productId}-${Date.now()}` }]
+      return [...prev, { ...newItem, id: newItemId(newItem.productId) }]
     })
   }, [])
 
