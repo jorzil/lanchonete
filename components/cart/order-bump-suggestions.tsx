@@ -62,7 +62,8 @@ export function OrderBumpSuggestions({ variant = 'light' }: { variant?: 'light' 
   // widget nativo (fundo branco), ignorando o bg-transparent — era o que
   // deixava o bloco com cara de fora do lugar no checkout escuro.
   const selectBase =
-    'w-full appearance-none text-[13px] font-bold rounded-md pl-1.5 pr-6 py-1 outline-none cursor-pointer transition-colors'
+    // 16px no celular: abaixo disso o iOS dá zoom ao tocar e não desfaz.
+    'w-full appearance-none text-[16px] md:text-[13px] font-bold rounded-md pl-1.5 pr-6 py-1 outline-none cursor-pointer transition-colors'
   const selectCls = dark
     ? `${selectBase} text-white bg-white/10 border border-white/15 hover:border-white/30 focus:border-brand [&>option]:bg-navy [&>option]:text-white`
     : `${selectBase} text-gray-900 bg-white border border-gray-200 hover:border-gray-300 focus:border-brand`

@@ -270,3 +270,18 @@ button, a, [role="button"], input, select, textarea {
   body { background-color: white !important; color: black !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   iOS: tocar num campo com fonte menor que 16px faz o Safari dar zoom
+   automatico — e ele NAO desfaz sozinho. O cliente fica preso, tendo que
+   beliscar a tela para voltar e continuar preenchendo o checkout.
+   Fica FORA de @layer para vencer as utilitarias do Tailwind (text-[13px] e
+   afins); no desktop cada campo mantem o tamanho do seu proprio design.
+--------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
