@@ -188,7 +188,7 @@ export function CartPanel() {
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-sm bg-white border-2 border-gray-300 text-gray-900 placeholder:text-gray-400 focus-visible:ring-brand focus-visible:border-brand" />
+                    <Input placeholder="Digite seu cupom" value={couponInput} onChange={(e) => setCouponInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()} className="flex-1 text-base md:text-sm bg-white border-2 border-gray-300 text-gray-900 placeholder:text-gray-400 focus-visible:ring-brand focus-visible:border-brand" />
                     <Button onClick={handleApplyCoupon} className="border-2 border-brand text-brand hover:bg-orange-50 text-sm bg-white font-bold transition-all">Aplicar</Button>
                   </div>
                 )}
