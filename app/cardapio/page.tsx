@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/cart-context'
 import { PRODUCTS, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { fetchDisabledProducts } from '@/lib/products-availability'
 import { fetchProductOverrides, materializeCustomProducts, type OverridesMap } from '@/lib/product-overrides'
+import { fetchPromotions, applyPromotions, activePromotions, formatHour, type Promotion } from '@/lib/promotions'
 import { toast } from 'sonner'
 import { IdentificationModal } from '@/components/cart/IdentificationModal'
 
@@ -143,6 +144,8 @@ export default function CardapioPage() {
   const [builderProduct, setBuilderProduct] = useState<Product | undefined>()
   const [builderOpen, setBuilderOpen] = useState(false)
   const [breadProduct, setBreadProduct] = useState<Product | null>(null)
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [agora, setAgora] = useState(() => new Date())
   const [comboProduct, setComboProduct] = useState<Product | null>(null)
   const [sticky, setSticky] = useState(false)
   const [idModalOpen, setIdModalOpen] = useState(false)
@@ -161,17 +164,28 @@ export default function CardapioPage() {
   useEffect(() => {
     fetchDisabledProducts().then(setDisabledProducts)
     fetchProductOverrides().then(setOverrides)
+    fetchPromotions().then(setPromotions)
   }, [])
 
-  // Aplica as edições do admin sobre os produtos base
+  // Relógio próprio: a promoção começa e termina sozinha, sem recarregar a
+  // página — sem isso o cliente ficaria vendo o preço velho até dar F5.
+  useEffect(() => {
+    const t = setInterval(() => setAgora(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Aplica as edições do admin sobre os produtos base e, por cima, as
+  // promoções que estiverem valendo neste horário.
   const effectiveProducts = useMemo(
-    () => [
+    () => applyPromotions([
       ...PRODUCTS.map(p => ({ ...p, ...(overrides[p.id] ?? {}) })),
       // produtos criados/duplicados no admin
       ...materializeCustomProducts(overrides, new Set(PRODUCTS.map(p => p.id))),
-    ],
-    [overrides]
+    ], promotions, agora),
+    [overrides, promotions, agora]
   )
+
+  const promosAtivas = useMemo(() => activePromotions(promotions, agora), [promotions, agora])
 
   // Pré-seleciona a categoria a partir do ?cat= da URL (ex: vindo da Home)
   useEffect(() => {
@@ -273,6 +287,36 @@ export default function CardapioPage() {
             </div>
           </div>
         </div>
+
+        {/* Promoção por horário valendo agora */}
+        {promosAtivas.length > 0 && (
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 pt-6">
+            {promosAtivas.map((promo) => {
+              const nomes = effectiveProducts
+                .filter((p) => promo.productIds.includes(p.id) && p.active !== false)
+                .map((p) => p.name.replace(/ 30cm$/, ''))
+              const unicos = [...new Set(nomes)]
+              return (
+                <div key={promo.id} className="rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/10 px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-xl">🕛</span>
+                    <p className="text-lg font-black text-emerald-400">{promo.name}</p>
+                    <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                      até {formatHour(promo.end)}
+                    </span>
+                  </div>
+                  {unicos.length > 0 && (
+                    <p className="mt-1.5 text-[13px] text-white/60">{unicos.join(' · ')}</p>
+                  )}
+                  <p className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] font-bold text-white">
+                    {promo.price15 > 0 && <span>15cm <span className="text-emerald-400">{formatCurrency(promo.price15)}</span></span>}
+                    {promo.price30 > 0 && <span>30cm <span className="text-emerald-400">{formatCurrency(promo.price30)}</span></span>}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Grid */}
         <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
