@@ -25,7 +25,17 @@ const PERIOD_LABELS: { key: Period; label: string }[] = [
 ]
 
 export default function RelatoriosPage() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([])
+  // Mesma lixeira da tela de Pedidos: pedido excluído não pode somar aqui.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetch("/api/deleted-orders", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { ids: [] }))
+      .then((d) => setDeletedIds(new Set(Array.isArray(d.ids) ? d.ids : [])))
+      .catch(() => {})
+  }, [])
+  const orders = useMemo(() => allOrders.filter((o) => !deletedIds.has(o.id)), [allOrders, deletedIds])
+
   const [period, setPeriod] = useState<Period>('30d')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -35,10 +45,10 @@ export default function RelatoriosPage() {
       if (supabaseConfigured) {
         try {
           const res = await fetch('/api/orders')
-          if (res.ok) { const { orders: rows } = await res.json(); setOrders(rows); return }
+          if (res.ok) { const { orders: rows } = await res.json(); setAllOrders(rows); return }
         } catch {}
       }
-      setOrders(loadOrders())
+      setAllOrders(loadOrders())
     }
     load()
   }, [])

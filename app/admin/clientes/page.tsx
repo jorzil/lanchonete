@@ -68,7 +68,17 @@ function buildCustomers(orders: Order[]): CustomerStat[] {
 }
 
 export default function ClientesPage() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([])
+  // Mesma lixeira da tela de Pedidos: pedido excluído não pode somar aqui.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    fetch("/api/deleted-orders", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { ids: [] }))
+      .then((d) => setDeletedIds(new Set(Array.isArray(d.ids) ? d.ids : [])))
+      .catch(() => {})
+  }, [])
+  const orders = useMemo(() => allOrders.filter((o) => !deletedIds.has(o.id)), [allOrders, deletedIds])
+
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<CustomerStat | null>(null)
 
@@ -79,12 +89,12 @@ export default function ClientesPage() {
           const res = await fetch('/api/orders')
           if (res.ok) {
             const { orders: rows } = await res.json()
-            setOrders(rows)
+            setAllOrders(rows)
             return
           }
         } catch {}
       }
-      setOrders(loadOrders())
+      setAllOrders(loadOrders())
     }
     load()
   }, [])

@@ -119,7 +119,8 @@ const PERIOD_LABELS: { key: Period; label: string }[] = [
 ]
 
 export default function AdminDashboard() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [allOrders, setAllOrders] = useState<Order[]>([])
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [period, setPeriod] = useState<Period>("hoje")
   const [customStart, setCustomStart] = useState("")
   const [customEnd, setCustomEnd] = useState("")
@@ -131,15 +132,28 @@ export default function AdminDashboard() {
           const res = await fetch("/api/orders")
           if (res.ok) {
             const { orders: rows } = await res.json()
-            setOrders(rows)
+            setAllOrders(rows)
             return
           }
         } catch {}
       }
-      setOrders(loadOrders())
+      setAllOrders(loadOrders())
     }
     load()
   }, [])
+
+  // A lixeira é a mesma da tela de Pedidos. Sem ela o painel contava pedido
+  // excluído: o aviso dizia "1 novo aguardando" sem ninguém para atender, e o
+  // pedido apagado ainda somava no faturamento.
+  useEffect(() => {
+    fetch("/api/deleted-orders", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { ids: [] }))
+      .then((d) => setDeletedIds(new Set(Array.isArray(d.ids) ? d.ids : [])))
+      .catch(() => {})
+  }, [])
+
+  // Tudo daqui para baixo enxerga só os pedidos vivos.
+  const orders = useMemo(() => allOrders.filter((o) => !deletedIds.has(o.id)), [allOrders, deletedIds])
 
   const hasOrders = orders.length > 0
   const newCount = useMemo(() => orders.filter((o) => o.status === "novo").length, [orders])
