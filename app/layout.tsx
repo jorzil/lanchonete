@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Bricolage_Grotesque, Poppins, Manrope } from 'next/font/google'
+import { Inter, Poppins, Manrope } from 'next/font/google'
 import { Toaster } from 'sonner'
 import { CartProvider } from '@/contexts/cart-context'
 import { CartPanelLazy } from '@/components/cart/cart-panel-lazy'
@@ -12,13 +12,6 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
-})
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-  weight: ['700', '800'],
 })
 
 // Fontes do hero (banner) — Poppins (títulos) e Manrope (texto)
@@ -58,7 +51,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${bricolage.variable} ${poppins.variable} ${manrope.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${poppins.variable} ${manrope.variable}`}>
       <head>
         <link rel="preconnect" href="https://images.unsplash.com" />
         <link rel="dns-prefetch" href="https://images.unsplash.com" />
