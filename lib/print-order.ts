@@ -201,20 +201,20 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   .item-qty { min-width: 24px; }
   .item-name { flex: 1; }
   .item-price { white-space: nowrap; }
-  /* Peso normal na receita base: e o que faz o negrito do adicional logo
-     abaixo significar alguma coisa. O resto do cupom segue em negrito. */
-  .item-opt { font-size: 13px; padding-left: 24px; font-weight: normal; }
+  .item-opt { font-size: 13px; padding-left: 24px; }
   /* Adicionais do item (molhos, extras, queijo em dobro): o que o cliente
      ACRESCENTOU. E o que mais se esquece na montagem, entao sai em caixa
      alta, maior que a receita base e com fundo invertido — como o cupom
      inteiro ja e negrito, so engrossar nao destacaria nada. */
   .item-add {
     font-size: 15px;
-    font-weight: bold;
-    margin: 3px 0 3px 24px;
-    padding: 1px 0 1px 6px;
-    border-left: 4px solid #000;
+    margin: 2px 0 2px 24px;
+    padding: 2px 5px;
+    background: #000;
+    color: #fff;
     text-transform: uppercase;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   /* Observacao do item: maior que os demais detalhes e com marcador proprio,
      senao se perde no meio de pao/carne/queijos/molhos. */
