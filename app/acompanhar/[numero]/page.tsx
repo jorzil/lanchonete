@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { PixPayment } from '@/components/checkout/pix-payment'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -255,6 +256,12 @@ export default function AcompanharPage() {
         )}
 
         {/* Mapa do entregador em tempo real */}
+        {/* PIX ainda não confirmado: mostra o QR para o cliente pagar sem
+            precisar pedir a chave. Some assim que o pedido é aceito. */}
+        {order.paymentMethod === 'pix' && order.status === 'novo' && (
+          <PixPayment amount={order.total} txid={order.orderNumber} />
+        )}
+
         {/* O entregador avisou que chegou — o aviso mais importante da tela,
             então vem antes do mapa e com destaque. */}
         {arrivedAt && order.status === 'saiu_entrega' && order.orderType === 'entrega' && (
