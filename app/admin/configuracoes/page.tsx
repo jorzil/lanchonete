@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, Printer, Store, Clock, RotateCcw } from "lucide-react"
+import { Check, Printer, Store, Clock, RotateCcw, QrCode, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { usePersistedState } from "@/lib/store"
+import { fetchPixConfig, patchPixConfig, buildPixPayload, DEFAULT_PIX_CONFIG, type PixConfig } from "@/lib/pix"
 import {
   fetchStoreStatus,
   patchStoreStatus,
@@ -105,6 +106,28 @@ export default function ConfiguracoesPage() {
     const next = await patchStoreStatus({ pickupOnly: value })
     setStoreStatus(next)
   }
+
+  // ── Chave PIX da loja ──
+  const [pix, setPix] = useState<PixConfig>(DEFAULT_PIX_CONFIG)
+  const [pixSaving, setPixSaving] = useState(false)
+  const [pixMsg, setPixMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  useEffect(() => { fetchPixConfig().then(setPix) }, [])
+
+  async function salvarPix() {
+    if (pix.enabled && !pix.key.trim()) {
+      setPixMsg({ ok: false, text: "Informe a chave PIX antes de ativar." })
+      return
+    }
+    setPixSaving(true); setPixMsg(null)
+    const ok = await patchPixConfig(pix)
+    setPixSaving(false)
+    setPixMsg(ok
+      ? { ok: true, text: "Chave salva. O QR aparece para o cliente no acompanhamento do pedido." }
+      : { ok: false, text: "Não foi possível salvar. Tente novamente." })
+  }
+
+  // Prévia: se o código não fecha, a chave está incompleta
+  const pixPreview = pix.key.trim() ? buildPixPayload(pix, 49.9, "MS-EXEMPLO") : ""
 
   // ── Diagnóstico do WhatsApp automático ──
   async function checkWa() {
@@ -315,6 +338,89 @@ export default function ConfiguracoesPage() {
                   🏪 O site está aceitando apenas retirada na loja.
                 </div>
               )}
+            </Card>
+
+            {/* PIX */}
+            <Card className="space-y-4 p-6">
+              <div className="mb-2 flex items-center gap-2">
+                <QrCode className="h-4 w-4 text-gray-500" />
+                <h3 className="font-semibold text-gray-800">Pagamento por PIX</h3>
+              </div>
+              <p className="text-sm text-gray-500">
+                Com a chave cadastrada, quem escolhe PIX vê o QR Code e o &quot;copia e cola&quot; na
+                tela de acompanhamento, já com o valor do pedido preenchido.
+              </p>
+
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 cursor-pointer accent-[#EE5C13]"
+                  checked={pix.enabled}
+                  onChange={(e) => setPix({ ...pix, enabled: e.target.checked })}
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-gray-900">Mostrar o QR Code para o cliente</span>
+                  <span className="block text-[11px] text-gray-500">
+                    Desligado, o pedido segue normal e o cliente combina o pagamento pelo WhatsApp.
+                  </span>
+                </span>
+              </label>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-gray-500">Chave PIX</Label>
+                <Input
+                  value={pix.key}
+                  onChange={(e) => setPix({ ...pix, key: e.target.value })}
+                  placeholder="CPF, CNPJ, telefone, e-mail ou chave aleatória"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Nome do recebedor</Label>
+                  <Input
+                    value={pix.receiverName}
+                    maxLength={25}
+                    onChange={(e) => setPix({ ...pix, receiverName: e.target.value })}
+                  />
+                  <p className="text-[11px] text-gray-400">Como aparece no app do cliente · máx. 25</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Cidade</Label>
+                  <Input
+                    value={pix.city}
+                    maxLength={15}
+                    onChange={(e) => setPix({ ...pix, city: e.target.value })}
+                  />
+                  <p className="text-[11px] text-gray-400">Máx. 15 caracteres</p>
+                </div>
+              </div>
+
+              {pixPreview && (
+                <details className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                  <summary className="cursor-pointer text-xs font-medium text-gray-500">
+                    Ver o código gerado (exemplo de R$ 49,90)
+                  </summary>
+                  <p className="mt-2 break-all font-mono text-[10px] leading-relaxed text-gray-600">
+                    {pixPreview}
+                  </p>
+                  <p className="mt-2 text-[11px] text-gray-400">
+                    Cole no app do seu banco para conferir se o recebedor está correto antes de ativar.
+                  </p>
+                </details>
+              )}
+
+              <div className="flex items-center gap-3">
+                <Button onClick={salvarPix} disabled={pixSaving} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
+                  {pixSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                  Salvar chave PIX
+                </Button>
+                {pixMsg && (
+                  <p className={`text-xs font-medium ${pixMsg.ok ? "text-emerald-600" : "text-red-500"}`}>
+                    {pixMsg.text}
+                  </p>
+                )}
+              </div>
             </Card>
           </div>
         </TabsContent>

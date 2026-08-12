@@ -5,7 +5,12 @@
 @layer base {
   :root {
     --font-inter: 'Inter', sans-serif;
-    --font-display: 'Bricolage Grotesque', 'Inter', sans-serif;
+    /* A fonte de exibição é a Inter. Havia aqui um 'Bricolage Grotesque'
+       que nunca chegou a ser aplicado: o next/font registra a família com um
+       nome gerado, então citar o nome original não casava com nada — e ainda
+       assim o download dela no build derrubou o deploy quando o Google trocou
+       os endereços dos arquivos. */
+    --font-display: 'Inter', sans-serif;
 
     /* Brand palette */
     --brand-navy: #0B2C5C;
@@ -269,4 +274,19 @@ button, a, [role="button"], input, select, textarea {
   .no-print { display: none !important; }
   body { background-color: white !important; color: black !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
+/* ---------------------------------------------------------------------------
+   iOS: tocar num campo com fonte menor que 16px faz o Safari dar zoom
+   automatico — e ele NAO desfaz sozinho. O cliente fica preso, tendo que
+   beliscar a tela para voltar e continuar preenchendo o checkout.
+   Fica FORA de @layer para vencer as utilitarias do Tailwind (text-[13px] e
+   afins); no desktop cada campo mantem o tamanho do seu proprio design.
+--------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

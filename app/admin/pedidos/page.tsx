@@ -306,6 +306,11 @@ export default function PedidosPage() {
   }
   useEffect(() => { refreshPrinted() }, [])
 
+  // Espelho da lixeira num ref: applyOrders roda fora do render e precisa do
+  // valor atual para não tocar a sirene por um pedido que está na lixeira.
+  const deletedIdsRef = useRef<Set<string>>(new Set())
+  useEffect(() => { deletedIdsRef.current = deletedIds }, [deletedIds])
+
   // Carrega a lixeira (IDs de pedidos excluídos)
   useEffect(() => {
     fetch('/api/deleted-orders', { cache: 'no-store' })
@@ -342,20 +347,30 @@ export default function PedidosPage() {
   // Seleção múltipla para ações em lote
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkAction, setBulkAction] = useState<"delete" | "purge" | null>(null)
-  const [newCount, setNewCount] = useState(0)
+  // Derivado, não estado: como estado ele era calculado uma vez em applyOrders
+  // e ficava contando pedido que já tinha ido para a lixeira — o selo dizia
+  // "1 novo" e a lista, que filtra a lixeira, não mostrava nada.
+  const newCount = useMemo(
+    () => orders.filter((o) => o.status === "novo" && !deletedIds.has(o.id)).length,
+    [orders, deletedIds],
+  )
   const [isRealtime, setIsRealtime] = useState(false)
   const prevOrderIds = useRef<Set<string>>(new Set())
   const firstLoadRef = useRef(true)
 
   // Processa a lista carregada: detecta pedidos NOVOS não vistos e dispara a sirene
   function applyOrders(list: Order[]) {
-    const newOnes = list.filter((o) => o.status === "novo" && !prevOrderIds.current.has(o.id))
+    const newOnes = list.filter(
+      (o) => o.status === "novo" && !prevOrderIds.current.has(o.id) && !deletedIdsRef.current.has(o.id),
+    )
     setOrders(list)
-    setNewCount(list.filter((o) => o.status === "novo").length)
     list.forEach((o) => prevOrderIds.current.add(o.id))
 
     // Não dispara no primeiro carregamento (pedidos já existentes)
     if (!firstLoadRef.current && newOnes.length > 0) {
+      // O pedido novo entra no topo da lista; se o operador estiver na página 2
+      // ele não apareceria — o selo contaria e a tela não mostraria.
+      setPage(1)
       startSiren()
       const settings = getPrintSettings()
       if (settings.autoPrintOnNew) newOnes.forEach((o) => printOrder(o))

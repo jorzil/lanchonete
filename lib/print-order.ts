@@ -110,31 +110,43 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   const couponCode = order.couponCode ?? order.coupon?.code ?? ''
 
   const itemsHTML = order.items.map(item => {
-    const opts: string[] = []
+    // A receita base (pao, carne, queijos, saladas) sai em corpo normal; o que
+    // o cliente ACRESCENTOU sai em destaque, porque e o que se esquece.
+    const base: string[] = []
+    const extrasLinhas: string[] = []
     let note = ''
     // Subs prontos: lista os ingredientes que vêm de fábrica (descrição do produto)
     const prod = PRODUCT_BY_ID.get(item.productId)
     if (prod && (prod.category === 'subs-15cm' || prod.category === 'subs-30cm') && prod.description) {
-      opts.push(`Ingredientes: ${prod.description}`)
+      base.push(`Ingredientes: ${prod.description}`)
     }
     if (item.customization) {
       const c = item.customization
-      if (c.bread) opts.push(`Pao: ${BREAD_NAMES.get(c.bread) ?? c.bread}`)
-      if (c.meat) opts.push(`Carne: ${MEAT_NAMES.get(c.meat) ?? c.meat}`)
-      if (c.cheeses?.length) opts.push(`Queijos: ${c.cheeses.map((k) => CHEESE_NAMES.get(k) ?? k).join(', ')}`)
+      if (c.bread) base.push(`Pao: ${BREAD_NAMES.get(c.bread) ?? c.bread}`)
+      if (c.meat) base.push(`Carne: ${MEAT_NAMES.get(c.meat) ?? c.meat}`)
+      if (c.cheeses?.length) {
+        const nomes = c.cheeses.map((k) => CHEESE_NAMES.get(k) ?? k)
+        // Do segundo queijo em diante e adicional pago — vai em destaque.
+        base.push(`Queijos: ${nomes[0]}`)
+        if (nomes.length > 1) extrasLinhas.push(`QUEIJO EXTRA: ${nomes.slice(1).join(', ')}`)
+      }
       if (c.salads?.length) {
         const salads = c.salads.filter((s) => s !== 'salada-completa')
-        if (c.salads.includes('salada-completa')) opts.push('Saladas: Salada Completa')
-        else if (salads.length) opts.push(`Saladas: ${salads.map((k) => SALAD_NAMES.get(k) ?? k).join(', ')}`)
+        if (c.salads.includes('salada-completa')) base.push('Saladas: Salada Completa')
+        else if (salads.length) base.push(`Saladas: ${salads.map((k) => SALAD_NAMES.get(k) ?? k).join(', ')}`)
       }
-      if (c.sauces?.length) opts.push(`Molhos: ${c.sauces.map((k) => SAUCE_NAMES.get(k) ?? k).join(', ')}`)
+      if (c.sauces?.length) {
+        extrasLinhas.push(`MOLHOS: ${c.sauces.map((k) => SAUCE_NAMES.get(k) ?? k).join(', ')}`)
+      }
       const extras = Object.entries(c.extras ?? {}).filter(([, q]) => q > 0)
-      if (extras.length) opts.push(`Adicionais: ${extras.map(([k, q]) => `${EXTRA_NAMES.get(k) ?? k} x${q}`).join(', ')}`)
+      if (extras.length) {
+        extrasLinhas.push(`ADICIONAIS: ${extras.map(([k, q]) => `${EXTRA_NAMES.get(k) ?? k} x${q}`).join(', ')}`)
+      }
       // A observacao sai da lista de detalhes e ganha linha propria em destaque
       if (c.notes) note = c.notes
     } else if (item.notes) {
       // Itens sem customizacao estruturada (ex: combos) trazem detalhes em notes
-      opts.push(item.notes)
+      base.push(item.notes)
     }
     return `
       <div class="item">
@@ -143,7 +155,8 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
           <span class="item-name">${item.name}</span>
           <span class="item-price">${formatCurrency(item.price * item.quantity)}</span>
         </div>
-        ${opts.map(o => `<div class="item-opt">  - ${o}</div>`).join('')}
+        ${base.map(o => `<div class="item-opt">  - ${o}</div>`).join('')}
+        ${extrasLinhas.map(o => `<div class="item-add">+ ${o}</div>`).join('')}
         ${note ? `<div class="item-note">&gt;&gt; OBS: ${note}</div>` : ''}
       </div>`
   }).join('')
@@ -189,6 +202,20 @@ export function generateReceiptHTML(order: Order, settings: PrintSettings): stri
   .item-name { flex: 1; }
   .item-price { white-space: nowrap; }
   .item-opt { font-size: 13px; padding-left: 24px; }
+  /* Adicionais do item (molhos, extras, queijo em dobro): o que o cliente
+     ACRESCENTOU. E o que mais se esquece na montagem, entao sai em caixa
+     alta, maior que a receita base e com fundo invertido — como o cupom
+     inteiro ja e negrito, so engrossar nao destacaria nada. */
+  .item-add {
+    font-size: 15px;
+    margin: 2px 0 2px 24px;
+    padding: 2px 5px;
+    background: #000;
+    color: #fff;
+    text-transform: uppercase;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   /* Observacao do item: maior que os demais detalhes e com marcador proprio,
      senao se perde no meio de pao/carne/queijos/molhos. */
   .item-note { font-size: 15px; padding-left: 24px; margin-top: 2px; text-transform: uppercase; }
