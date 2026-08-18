@@ -129,6 +129,47 @@ export default function ConfiguracoesPage() {
   // Prévia: se o código não fecha, a chave está incompleta
   const pixPreview = pix.key.trim() ? buildPixPayload(pix, 49.9, "MS-EXEMPLO") : ""
 
+  // ── Cobrança PIX pelo Sicoob ──
+  type Sicoob = {
+    enabled: boolean; environment: "sandbox" | "producao"; clientId: string; pixKey: string
+    tokenUrl: string; apiBaseUrl: string; expiracaoMinutos: number; autoConfirmar: boolean
+  }
+  const [sic, setSic] = useState<Sicoob | null>(null)
+  const [sicCert, setSicCert] = useState(false)
+  const [sicSaving, setSicSaving] = useState(false)
+  const [sicTesting, setSicTesting] = useState(false)
+  const [sicEtapas, setSicEtapas] = useState<Array<{ etapa: string; ok: boolean; detalhe: string }>>([])
+
+  useEffect(() => {
+    fetch("/api/pix/sicoob/config", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.sicoob) { setSic(d.sicoob); setSicCert(!!d.certificadoPresente) } })
+      .catch(() => {})
+  }, [])
+
+  async function salvarSicoob() {
+    if (!sic) return
+    setSicSaving(true)
+    const res = await fetch("/api/pix/sicoob/config", {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sicoob: sic }),
+    }).catch(() => null)
+    setSicSaving(false)
+    setSicEtapas([{ etapa: "Salvar", ok: !!res?.ok, detalhe: res?.ok ? "Configuração salva." : "Falha ao salvar." }])
+  }
+
+  async function testarSicoob(cadastrarWebhook: boolean) {
+    setSicTesting(true); setSicEtapas([])
+    try {
+      const res = await fetch("/api/pix/sicoob/test", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cadastrarWebhook }),
+      })
+      const d = await res.json().catch(() => ({}))
+      setSicEtapas(Array.isArray(d.etapas) ? d.etapas : [{ etapa: "Teste", ok: false, detalhe: "Sem resposta." }])
+    } catch {
+      setSicEtapas([{ etapa: "Teste", ok: false, detalhe: "Falha de conexão com o servidor." }])
+    } finally { setSicTesting(false) }
+  }
+
   // ── Diagnóstico do WhatsApp automático ──
   async function checkWa() {
     setWaChecking(true); setWaMsg(null)
@@ -422,6 +463,111 @@ export default function ConfiguracoesPage() {
                 )}
               </div>
             </Card>
+
+            {/* Cobrança PIX pelo Sicoob */}
+            {sic && (
+              <Card className="space-y-4 p-6">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
+                  <QrCode className="h-4 w-4 text-gray-500" />
+                  <h3 className="font-semibold text-gray-800">Cobrança PIX pelo Sicoob</h3>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                    sic.environment === "producao"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}>
+                    {sic.environment === "producao" ? "Produção" : "Sandbox (teste)"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Com isto ligado, o QR vem do banco e o pedido é confirmado sozinho quando o
+                  PIX cai. Sem isto, o cliente vê o QR da chave cadastrada acima e você confere
+                  o comprovante.
+                </p>
+
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input type="checkbox" className="h-4 w-4 cursor-pointer accent-[#EE5C13]"
+                      checked={sic.enabled} onChange={(e) => setSic({ ...sic, enabled: e.target.checked })} />
+                    <span className="font-medium text-gray-900">Ligada</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input type="checkbox" className="h-4 w-4 cursor-pointer accent-[#EE5C13]"
+                      checked={sic.autoConfirmar} onChange={(e) => setSic({ ...sic, autoConfirmar: e.target.checked })} />
+                    <span className="font-medium text-gray-900">Aceitar o pedido ao receber o PIX</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input type="checkbox" className="h-4 w-4 cursor-pointer accent-[#EE5C13]"
+                      checked={sic.environment === "producao"}
+                      onChange={(e) => setSic({ ...sic, environment: e.target.checked ? "producao" : "sandbox" })} />
+                    <span className="font-medium text-gray-900">Produção</span>
+                  </label>
+                </div>
+
+                <div className={`rounded-lg border p-3 text-[12px] ${
+                  sicCert ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"
+                }`}>
+                  {sicCert
+                    ? "Certificado ICP-Brasil carregado. Produção liberada."
+                    : "Sem certificado: dá para testar no sandbox. Para produção, cadastre SICOOB_CERT_PEM e SICOOB_KEY_PEM (o .pfx convertido para PEM, em base64) nas variáveis da Vercel."}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-500">Client ID</Label>
+                    <Input value={sic.clientId} onChange={(e) => setSic({ ...sic, clientId: e.target.value })}
+                      placeholder="do portal, em Meus Aplicativos" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-gray-500">Chave PIX que recebe</Label>
+                    <Input value={sic.pixKey} onChange={(e) => setSic({ ...sic, pixKey: e.target.value })}
+                      placeholder="a chave cadastrada no Sicoob" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Endereço do token (OAuth)</Label>
+                  <Input value={sic.tokenUrl} onChange={(e) => setSic({ ...sic, tokenUrl: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-gray-500">Endereço da API PIX</Label>
+                  <Input value={sic.apiBaseUrl} onChange={(e) => setSic({ ...sic, apiBaseUrl: e.target.value })} />
+                  <p className="text-[11px] text-gray-400">
+                    Copie os dois endereços do portal do Sicoob — eles mudam entre sandbox e produção.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 sm:max-w-[200px]">
+                  <Label className="text-xs text-gray-500">Validade da cobrança (min)</Label>
+                  <Input type="number" min="1" max="1440" value={sic.expiracaoMinutos}
+                    onChange={(e) => setSic({ ...sic, expiracaoMinutos: parseInt(e.target.value) || 30 })} />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                  <Button onClick={salvarSicoob} disabled={sicSaving} className="bg-[#EE5C13] text-white hover:bg-[#FF6B1A]">
+                    {sicSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                    Salvar
+                  </Button>
+                  <Button variant="outline" onClick={() => testarSicoob(false)} disabled={sicTesting}>
+                    {sicTesting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Testar conexão
+                  </Button>
+                  <Button variant="outline" onClick={() => testarSicoob(true)} disabled={sicTesting}>
+                    Testar e cadastrar webhook
+                  </Button>
+                </div>
+
+                {sicEtapas.length > 0 && (
+                  <div className="space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-3">
+                    {sicEtapas.map((e, i) => (
+                      <div key={i} className="flex gap-2 text-[12px]">
+                        <span className={e.ok ? "text-emerald-600" : "text-red-500"}>{e.ok ? "✓" : "✕"}</span>
+                        <span className="font-medium text-gray-700">{e.etapa}:</span>
+                        <span className="break-all text-gray-500">{e.detalhe}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
         </TabsContent>
 

@@ -18,12 +18,29 @@ export function PixPayment({ amount, txid, className = '' }: {
 }) {
   const [cfg, setCfg] = useState<PixConfig | null>(null)
   const [copied, setCopied] = useState(false)
+  // Cobrança do banco (Sicoob): quando existe, o pagamento é confirmado sozinho
+  const [cobranca, setCobranca] = useState<string | null>(null)
+  const [tentouBanco, setTentouBanco] = useState(false)
 
   useEffect(() => { fetchPixConfig().then(setCfg) }, [])
 
-  if (!isPixReady(cfg)) return null
+  // Tenta a cobrança no banco primeiro. Se não estiver ligada ou falhar, o QR
+  // estático continua valendo — o cliente nunca fica sem forma de pagar.
+  useEffect(() => {
+    if (!txid || tentouBanco) return
+    setTentouBanco(true)
+    fetch('/api/pix/sicoob/cobranca', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderNumber: txid, valor: amount }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.ok && d.cobranca?.pixCopiaECola) setCobranca(d.cobranca.pixCopiaECola) })
+      .catch(() => {})
+  }, [txid, amount, tentouBanco])
 
-  const payload = buildPixPayload(cfg, amount, txid)
+  const estatico = isPixReady(cfg) ? buildPixPayload(cfg, amount, txid) : ''
+  const payload = cobranca || estatico
   if (!payload) return null
 
   async function copiar() {
@@ -66,7 +83,9 @@ export function PixPayment({ amount, txid, className = '' }: {
       </button>
 
       <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
-        Após pagar, envie o comprovante no WhatsApp para agilizarmos seu pedido.
+        {cobranca
+          ? 'Assim que o pagamento cair, seu pedido é confirmado automaticamente.'
+          : 'Após pagar, envie o comprovante no WhatsApp para agilizarmos seu pedido.'}
       </p>
     </div>
   )
