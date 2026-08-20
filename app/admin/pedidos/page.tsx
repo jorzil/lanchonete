@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { formatCurrency, effectivePrice, MENU, PRODUCTS, ORDER_SOURCE_LABELS, type Order, type OrderStatus, type OrderSource, type CartItem } from "@/lib/store"
 import { PAYMENT_LABELS } from "@/lib/mock-orders"
-import { loadOrders, saveOrders } from "@/lib/orders-storage"
+import { loadOrders, saveOrders, setOrdersStorageFailureHandler } from "@/lib/orders-storage"
 import { supabase, supabaseConfigured } from "@/lib/supabase"
 import { setOrderStatus, setOrderPayment, setOrderItems, deleteDbOrder } from "@/lib/db-orders"
 import { toast } from "sonner"
@@ -306,6 +306,12 @@ export default function PedidosPage() {
   }
   useEffect(() => { refreshPrinted() }, [])
 
+  // A cópia local é só rede de segurança; se encher, o operador precisa saber.
+  useEffect(() => {
+    setOrdersStorageFailureHandler((motivo) => toast.warning(motivo))
+    return () => setOrdersStorageFailureHandler(null)
+  }, [])
+
   // Espelho da lixeira num ref: applyOrders roda fora do render e precisa do
   // valor atual para não tocar a sirene por um pedido que está na lixeira.
   const deletedIdsRef = useRef<Set<string>>(new Set())
@@ -379,7 +385,7 @@ export default function PedidosPage() {
     setLoaded(true)
   }
 
-  // Load orders — Supabase if configured, else localStorage
+  // Load orders — Supabase se configurado, senão a cópia local
   async function loadAll() {
     if (supabaseConfigured) {
       try {
@@ -390,6 +396,15 @@ export default function PedidosPage() {
           return
         }
       } catch {}
+      // A leitura do banco falhou. Não trocamos o que já está na tela pela
+      // cópia local: ela pode estar defasada e faria os status "voltarem",
+      // parecendo que a alteração não foi salva. Só usamos a cópia quando
+      // ainda não há nada carregado.
+      if (loaded) {
+        toast.error("Sem conexão com o banco. Mostrando os últimos dados carregados.")
+        return
+      }
+      toast.warning("Sem conexão com o banco. Mostrando a cópia local, que pode estar desatualizada.")
     }
     applyOrders(loadOrders())
   }
@@ -487,18 +502,60 @@ export default function PedidosPage() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
-  function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string, orderType?: string) {
+  function whatsappUrl(phone: string, status: string, orderNumber: string, deliveryCode?: string, orderType?: string) {
     const msg = buildStatusMessage(status, orderNumber, deliveryCode, orderType)
-    if (!msg) return
+    if (!msg) return ""
     const clean = phone.replace(/\D/g, "")
     const num = clean.startsWith("55") ? clean : `55${clean}`
-    const url = `https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
-    window.open(url, "_blank", "noopener")
+    return `https://api.whatsapp.com/send/?phone=${num}&text=${encodeURIComponent(msg)}&type=phone_number&app_absent=0`
+  }
+
+  /**
+   * Abre o WhatsApp DEPOIS de o status já estar gravado. Como a gravação é
+   * aguardada antes, o navegador pode ter perdido o "gesto do usuário" e
+   * bloquear a janela — nesse caso oferecemos um botão, que gera um gesto novo.
+   */
+  function openWhatsAppWeb(phone: string, status: string, orderNumber: string, deliveryCode?: string, orderType?: string) {
+    const url = whatsappUrl(phone, status, orderNumber, deliveryCode, orderType)
+    if (!url) return
+    const win = window.open(url, "_blank", "noopener")
+    if (!win) {
+      toast("Status salvo. Toque para avisar o cliente.", {
+        action: { label: "Abrir WhatsApp", onClick: () => window.open(url, "_blank", "noopener") },
+        duration: 10000,
+      })
+    }
   }
 
   async function advanceStatus(order: Order, nextStatus: string) {
     if (nextStatus === 'aceito') stopSiren()
-    // Pedidos do iFood: para o WhatsApp manual é dispensável; sincroniza com a API.
+    const id = order.id
+
+    // ── 1. GRAVA PRIMEIRO ──────────────────────────────────────────────────
+    // Avisar o cliente antes de gravar custava o status: no celular, abrir o
+    // WhatsApp troca de aplicativo e o navegador suspende o JavaScript — a
+    // gravação, que vinha depois, simplesmente não acontecia.
+    if (supabaseConfigured) {
+      const result = await setOrderStatus(order, nextStatus)
+      if (!result.ok) {
+        toast.error(
+          `Não foi possível ${nextStatus === 'cancelado' ? 'cancelar' : 'atualizar'} o pedido: ${result.error ?? 'erro'}`,
+        )
+        return // sem gravar, não avisa o cliente de um status que não existe
+      }
+    }
+
+    // Reflete na tela e no armazenamento local
+    setOrders((prev) => {
+      const next = prev.map((o) =>
+        o.id === id ? { ...o, status: nextStatus as OrderStatus, updatedAt: new Date().toISOString() } : o,
+      )
+      saveOrders(next)
+      return next
+    })
+    setSelected((prev) => (prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev))
+
+    // ── 2. SÓ ENTÃO AVISA ──────────────────────────────────────────────────
     if (order.source === 'ifood' && order.externalId) {
       // 'readyToPickup' só vale para retirada no iFood; em entrega o próximo
       // passo aceito pela API é o 'dispatch' (saiu para entrega).
@@ -511,44 +568,29 @@ export default function PedidosPage() {
         }).catch(() => {})
       }
     } else if (waAuto) {
-      // Evolution API configurada: envia a mensagem automaticamente.
       const msg = buildStatusMessage(nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
       fetch('/api/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: order.customer.phone, text: msg }),
-      }).then(async (r) => {
-        if (r.ok) toast.success('WhatsApp enviado ao cliente automaticamente')
-        else {
-          const data = await r.json().catch(() => ({}))
-          toast.error(`Falha no envio automático: ${data.error ?? `erro ${r.status}`} — abrindo WhatsApp Web`)
-          openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
-        }
-      }).catch(() => {
-        openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
       })
+        .then(async (r) => {
+          if (r.ok) toast.success('WhatsApp enviado ao cliente automaticamente')
+          else {
+            const data = await r.json().catch(() => ({}))
+            toast.error(`Falha no envio automático: ${data.error ?? `erro ${r.status}`} — abrindo WhatsApp Web`)
+            openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
+          }
+        })
+        .catch(() => {
+          openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
+        })
     } else {
-      // Open WhatsApp Web with the ready-to-send message (synchronous, keeps user
-      // gesture so the browser does not block the popup).
       openWhatsAppWeb(order.customer.phone, nextStatus, order.orderNumber, order.deliveryCode, order.orderType)
     }
-    const id = order.id
-    if (supabaseConfigured) {
-      const result = await setOrderStatus(order, nextStatus)
-      if (!result.ok) {
-        toast.error(`Não foi possível ${nextStatus === 'cancelado' ? 'cancelar' : 'atualizar'} o pedido: ${result.error ?? 'erro'}`)
-      }
-      await loadAll()
-    }
-    // localStorage fallback
-    setOrders((prev) => {
-      const next = prev.map((o) =>
-        o.id === id ? { ...o, status: nextStatus as OrderStatus, updatedAt: new Date().toISOString() } : o
-      )
-      saveOrders(next)
-      return next
-    })
-    setSelected((prev) => prev?.id === id ? { ...prev, status: nextStatus as OrderStatus } : prev)
+
+    // Recarrega por último: se o navegador for suspenso aqui, nada se perde.
+    if (supabaseConfigured) await loadAll()
   }
 
   async function changePayment(order: Order, paymentMethod: string) {

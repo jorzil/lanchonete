@@ -182,28 +182,47 @@ export async function updateOrderStatus(id: string, status: string): Promise<voi
   if (error) throw new Error(error.message)
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
- * Atualiza o status de forma robusta: tenta por id e, se nenhuma linha for
- * afetada (id não corresponde ao banco), tenta pelo número do pedido.
- * Retorna { ok, error } para o chamador poder avisar o usuário.
+ * Grava uma alteração no pedido, tentando por id e caindo para o número.
+ *
+ * Dois cuidados que faltavam antes:
+ * 1. Só busca por id quando ele É um UUID. A coluna é do tipo uuid, então um id
+ *    local (ex: "order-1712...") faz o Postgres devolver erro de sintaxe — e o
+ *    caminho alternativo, que existe justamente para esse caso, nunca rodava.
+ * 2. Erro na primeira tentativa não aborta mais: ainda tenta pelo número.
  */
+async function updateOrderRow(
+  order: { id: string; orderNumber: string },
+  patch: Record<string, unknown>,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
+  const comData = { ...patch, updated_at: new Date().toISOString() }
+  let primeiroErro: string | undefined
+
+  if (UUID_RE.test(order.id)) {
+    const byId = await supabase.from('orders').update(comData).eq('id', order.id).select('id')
+    if (byId.error) primeiroErro = byId.error.message
+    else if (byId.data && byId.data.length > 0) return { ok: true }
+  }
+
+  if (order.orderNumber) {
+    const byNumber = await supabase
+      .from('orders').update(comData).eq('order_number', order.orderNumber).select('id')
+    if (byNumber.error) return { ok: false, error: byNumber.error.message }
+    if (byNumber.data && byNumber.data.length > 0) return { ok: true }
+  }
+
+  return { ok: false, error: primeiroErro ?? 'Pedido não encontrado no banco' }
+}
+
+/** Atualiza o status do pedido. */
 export async function setOrderStatus(
   order: { id: string; orderNumber: string },
   status: string
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
-
-  // 1) tenta por id
-  const byId = await supabase.from('orders').update({ status }).eq('id', order.id).select('id')
-  if (byId.error) return { ok: false, error: byId.error.message }
-  if (byId.data && byId.data.length > 0) return { ok: true }
-
-  // 2) fallback: por número do pedido
-  const byNumber = await supabase.from('orders').update({ status }).eq('order_number', order.orderNumber).select('id')
-  if (byNumber.error) return { ok: false, error: byNumber.error.message }
-  if (byNumber.data && byNumber.data.length > 0) return { ok: true }
-
-  return { ok: false, error: 'Pedido não encontrado no banco' }
+  return updateOrderRow(order, { status })
 }
 
 /** Atualiza a forma de pagamento (por id, com fallback por número do pedido). */
@@ -211,14 +230,7 @@ export async function setOrderPayment(
   order: { id: string; orderNumber: string },
   paymentMethod: string
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
-  const byId = await supabase.from('orders').update({ payment_method: paymentMethod }).eq('id', order.id).select('id')
-  if (byId.error) return { ok: false, error: byId.error.message }
-  if (byId.data && byId.data.length > 0) return { ok: true }
-  const byNumber = await supabase.from('orders').update({ payment_method: paymentMethod }).eq('order_number', order.orderNumber).select('id')
-  if (byNumber.error) return { ok: false, error: byNumber.error.message }
-  if (byNumber.data && byNumber.data.length > 0) return { ok: true }
-  return { ok: false, error: 'Pedido não encontrado no banco' }
+  return updateOrderRow(order, { payment_method: paymentMethod })
 }
 
 /** Atualiza itens e totais do pedido (edição no admin). */
@@ -226,7 +238,6 @@ export async function setOrderItems(
   order: { id: string; orderNumber: string },
   data: { items: CartItem[]; subtotal: number; deliveryFee: number; discount: number; total: number }
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!supabaseConfigured) return { ok: false, error: 'Supabase não configurado' }
   const patch = {
     items: data.items,
     subtotal: data.subtotal,
@@ -234,13 +245,7 @@ export async function setOrderItems(
     discount: data.discount,
     total: data.total,
   }
-  const byId = await supabase.from('orders').update(patch).eq('id', order.id).select('id')
-  if (byId.error) return { ok: false, error: byId.error.message }
-  if (byId.data && byId.data.length > 0) return { ok: true }
-  const byNumber = await supabase.from('orders').update(patch).eq('order_number', order.orderNumber).select('id')
-  if (byNumber.error) return { ok: false, error: byNumber.error.message }
-  if (byNumber.data && byNumber.data.length > 0) return { ok: true }
-  return { ok: false, error: 'Pedido não encontrado no banco' }
+  return updateOrderRow(order, patch)
 }
 
 // ─── Delete order ───────────────────────────────────────────────────────────

@@ -254,7 +254,7 @@ export default function PdvPage() {
     // Salva no Supabase (Central de Pedidos + relatórios). Fallback: localStorage.
     if (supabaseConfigured) {
       try {
-        await fetch("/api/orders", {
+        const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -273,7 +273,15 @@ export default function PdvPage() {
             status: "entregue",
           }),
         })
-      } catch {}
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          toast.error(`Venda registrada no caixa, mas NÃO salvou no banco: ${body.error ?? `erro ${res.status}`}`)
+        }
+      } catch (err) {
+        // Antes o erro sumia num catch vazio: a venda entrava no caixa e dava
+        // baixa no estoque sem existir no banco, e ninguém ficava sabendo.
+        toast.error(`Venda registrada no caixa, mas NÃO salvou no banco: ${err instanceof Error ? err.message : "falha de conexão"}`)
+      }
     }
     addOrder(order)
     // Baixa automática de estoque (ficha técnica ou produto direto), origem PDV

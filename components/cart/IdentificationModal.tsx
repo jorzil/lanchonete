@@ -86,7 +86,7 @@ export function IdentificationModal({ open, onClose, items, subtotal, total, del
     // Try Supabase
     if (supabaseConfigured) {
       try {
-        await fetch('/api/orders', {
+        const res = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -103,8 +103,14 @@ export function IdentificationModal({ open, onClose, items, subtotal, total, del
             total,
           }),
         })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          console.error('Supabase save failed:', body)
+          toast.warning('Pedido enviado pelo WhatsApp, mas não salvou no banco. Avise a loja.')
+        }
       } catch (err) {
         console.error('Supabase save failed (saved locally):', err)
+        toast.warning('Pedido enviado pelo WhatsApp, mas não salvou no banco. Avise a loja.')
       }
     }
 
