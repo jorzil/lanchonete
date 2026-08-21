@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
+import { normalizePhone, formatPhone } from "@/lib/phone"
 import { Search, Star, Users, TrendingUp, ShoppingBag, Phone, MapPin, ChevronRight, X } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,9 +39,12 @@ const CLASS_CONFIG = {
 }
 
 function buildCustomers(orders: Order[]): CustomerStat[] {
+  // Agrupa pela forma canônica do telefone: o mesmo cliente digita "(33)
+  // 99999-1234" hoje e "33999991234" amanhã, e antes virava duas pessoas.
   const map = new Map<string, Order[]>()
   for (const o of orders) {
-    const key = o.customer.phone
+    const key = normalizePhone(o.customer.phone)
+    if (!key) continue
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(o)
   }
@@ -53,7 +57,7 @@ function buildCustomers(orders: Order[]): CustomerStat[] {
     const totalOrders = ords.length
     const stat = { totalOrders, totalSpent, daysSinceLast }
     return {
-      phone,
+      phone: formatPhone(phone),
       name: sorted[sorted.length - 1].customer.name,
       orders: sorted.reverse(),
       totalOrders,
@@ -103,7 +107,14 @@ export default function ClientesPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return q ? customers.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q)) : customers
+    if (!q) return customers
+    const qDigits = normalizePhone(q)
+    return customers.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        (qDigits.length >= 4 && normalizePhone(c.phone).includes(qDigits)),
+    )
   }, [customers, query])
 
   const stats = useMemo(() => ({

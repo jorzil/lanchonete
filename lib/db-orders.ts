@@ -2,6 +2,7 @@
 // Supabase CRUD for orders. All calls gated by supabaseConfigured.
 
 import { supabase, supabaseConfigured } from '@/lib/supabase'
+import { normalizePhone } from '@/lib/phone'
 import type { Order, OrderStatus, CartItem, Address, PaymentMethod } from '@/lib/data'
 
 // ─── DB Row type (snake_case from Supabase) ────────────────────────────────
@@ -87,12 +88,16 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
   if (!supabaseConfigured) throw new Error('Supabase not configured')
 
   // 1. Upsert customer by phone
+  // A coluna phone é a chave única do cliente. Gravar o que o cliente digitou
+  // criava uma pessoa nova a cada formato ("(33) 9…" vs "339…"), fragmentando
+  // o histórico. Guardamos a forma canônica e o texto original no whatsapp.
+  const phoneKey = normalizePhone(data.customerPhone) || data.customerPhone
   const { data: customer, error: custErr } = await supabase
     .from('customers')
     .upsert(
       {
         name: data.customerName,
-        phone: data.customerPhone,
+        phone: phoneKey,
         whatsapp: data.customerWhatsapp ?? data.customerPhone,
         cpf: data.customerCpf ?? null,
         address_cep: data.address?.cep ?? null,
@@ -122,7 +127,7 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
     order_number: data.orderNumber,
     customer_id: customer?.id ?? null,
     customer_name: data.customerName,
-    customer_phone: data.customerPhone,
+    customer_phone: phoneKey,
     order_type: data.orderType,
     items: data.items,
     address: addressWithCode,
