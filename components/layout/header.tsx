@@ -9,6 +9,7 @@ import { MaisSubMark, MBadge } from '@/components/brand/logo'
 const NAV = [
   { href: '/cardapio',            label: 'Cardápio'          },
   { href: '/cardapio?cat=combos', label: 'Combos'            },
+  { href: '/clube',               label: 'Clube'             },
   { href: '/#sobre',              label: 'Sobre'             },
   { href: '/acompanhar',          label: 'Acompanhar Pedido' },
 ]

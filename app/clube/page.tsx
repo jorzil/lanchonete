@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Loader2, Gift, Star, Truck, Cookie, Plus, Check, Copy } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
@@ -26,6 +26,14 @@ export default function ClubePage() {
   const [resgates, setResgates] = useState<Redemption[]>([])
   const [resgatando, setResgatando] = useState<string | null>(null)
   const [copiado, setCopiado] = useState('')
+
+  // Aceita /clube?tel=... para já consultar — é assim que o cliente chega da
+  // tela de acompanhamento, sem precisar digitar o número de novo.
+  useEffect(() => {
+    const tel = new URLSearchParams(window.location.search).get('tel')
+    if (tel) { setPhone(tel); consultar(tel) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function consultar(tel = phone) {
     const digits = tel.replace(/\D/g, '')

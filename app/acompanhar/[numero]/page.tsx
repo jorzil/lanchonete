@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
+import { isInternalPhone } from '@/lib/phone'
 import { PixPayment } from '@/components/checkout/pix-payment'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { MapPin, Phone, Package, CheckCircle2, ChefHat, Bike, PartyPopper, XCircle, Clock, RotateCcw, Sandwich } from 'lucide-react'
+import { MapPin, Phone, Package, CheckCircle2, ChefHat, Bike, PartyPopper, XCircle, Clock, RotateCcw, Sandwich, ChevronRight } from 'lucide-react'
 import { Logo } from '@/components/brand/logo'
 import { formatCurrency, type Order, type OrderStatus } from '@/lib/data'
 import { loadOrders } from '@/lib/orders-storage'
@@ -256,6 +257,24 @@ export default function AcompanharPage() {
         )}
 
         {/* Mapa do entregador em tempo real */}
+        {/* Convite ao clube — este é o melhor momento: o cliente acabou de
+            pedir e o número dele já está aqui, então nem precisa digitar. */}
+        {order.customer?.phone && !isInternalPhone(order.customer.phone) && (
+          <Link
+            href={`/clube?tel=${encodeURIComponent(order.customer.phone)}`}
+            className="flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand/5 px-5 py-4 transition-colors hover:border-brand/60"
+          >
+            <span className="text-2xl">🎁</span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold text-white">Este pedido rende pontos</span>
+              <span className="block text-[13px] text-white/50">
+                Veja seu saldo no Clube e troque por desconto, frete grátis ou cookie.
+              </span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-brand" />
+          </Link>
+        )}
+
         {/* PIX ainda não confirmado: mostra o QR para o cliente pagar sem
             precisar pedir a chave. Some assim que o pedido é aceito. */}
         {order.paymentMethod === 'pix' && order.status === 'novo' && (

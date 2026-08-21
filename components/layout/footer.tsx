@@ -43,6 +43,11 @@ export function Footer() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 mb-5">Empresa</p>
           <ul className="space-y-3">
             <li>
+              <Link href="/clube" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
+                Clube de Vantagens
+              </Link>
+            </li>
+            <li>
               <Link href="/#sobre" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
                 Nossa História
               </Link>
