@@ -25,6 +25,7 @@ import {
   Plug,
   Megaphone,
   Clock,
+  Gift,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -56,6 +57,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
   { href: "/admin/cupons", label: "Cupons", icon: Tag, module: "cupons" },
   { href: "/admin/ofertas", label: "Ofertas / Bump", icon: Megaphone, module: "produtos" },
   { href: "/admin/promocoes", label: "Promoções", icon: Clock, module: "produtos" },
+  { href: "/admin/fidelidade", label: "Clube / Fidelidade", icon: Gift, module: "clientes" },
   { href: "/admin/entrega", label: "Entrega", icon: Truck, module: "configuracoes" },
   { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, module: "relatorios" },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings, module: "configuracoes" },
@@ -65,6 +67,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; mo
 ]
 
 const BREADCRUMBS: Record<string, string> = {
+  "/admin/fidelidade": "Clube / Fidelidade",
   "/admin/promocoes": "Promoções",
   "/admin": "Dashboard",
   "/admin/pedidos": "Pedidos",
