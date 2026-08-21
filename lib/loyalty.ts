@@ -40,6 +40,25 @@ export interface Tier {
   descontoPercentual: number
 }
 
+/** Fatia da roleta. `peso` é relativo: peso 2 sai o dobro de um peso 1. */
+export interface WheelSlice {
+  id: string
+  nome: string
+  /** 'nada' é a fatia sem prêmio — precisa existir para a roleta ter graça. */
+  tipo: RewardKind | 'nada'
+  valor: number
+  peso: number
+  cor: string
+}
+
+export interface WheelConfig {
+  ativo: boolean
+  /** O que custa um giro. */
+  moeda: RewardCost
+  custo: number
+  fatias: WheelSlice[]
+}
+
 export interface LoyaltyConfig {
   ativo: boolean
   nomePrograma: string
@@ -49,6 +68,7 @@ export interface LoyaltyConfig {
   statusQueContam: string[]
   recompensas: Reward[]
   niveis: Tier[]
+  roleta: WheelConfig
 }
 
 export const LOYALTY_DEFAULTS: LoyaltyConfig = {
@@ -68,6 +88,53 @@ export const LOYALTY_DEFAULTS: LoyaltyConfig = {
     { id: 'prata', nome: 'Prata', minimoGasto: 300, cor: '#9CA3AF', freteGratis: false, descontoPercentual: 5 },
     { id: 'ouro', nome: 'Ouro', minimoGasto: 800, cor: '#F59E0B', freteGratis: true, descontoPercentual: 10 },
   ],
+  roleta: {
+    ativo: false,
+    moeda: 'selos',
+    custo: 3,
+    // Pesos pensados para a casa não perder dinheiro: o prêmio caro é raro e
+    // "não foi dessa vez" é a fatia mais provável.
+    fatias: [
+      { id: 'w-5off', nome: '5% OFF', tipo: 'desconto_percentual', valor: 5, peso: 25, cor: '#EE5C13' },
+      { id: 'w-nada', nome: 'Quase!', tipo: 'nada', valor: 0, peso: 30, cor: '#334155' },
+      { id: 'w-cookie', nome: 'Cookie grátis', tipo: 'cookie', valor: 0, peso: 12, cor: '#F59E0B' },
+      { id: 'w-adicional', nome: 'Adicional grátis', tipo: 'adicional', valor: 0, peso: 15, cor: '#10B981' },
+      { id: 'w-nada2', nome: 'Quase!', tipo: 'nada', valor: 0, peso: 25, cor: '#1E293B' },
+      { id: 'w-frete', nome: 'Frete grátis', tipo: 'frete_gratis', valor: 0, peso: 10, cor: '#3B82F6' },
+      { id: 'w-10off', nome: '10% OFF', tipo: 'desconto_percentual', valor: 10, peso: 8, cor: '#8B5CF6' },
+      { id: 'w-15reais', nome: 'R$ 15 OFF', tipo: 'desconto_fixo', valor: 15, peso: 3, cor: '#EC4899' },
+    ],
+  },
+}
+
+/**
+ * Sorteio ponderado. Recebe o aleatório de fora para poder ser testado com
+ * valores fixos — e para deixar explícito que quem sorteia é o servidor.
+ */
+export function drawSlice(fatias: WheelSlice[], aleatorio: number): number {
+  const validas = fatias.filter((f) => f.peso > 0)
+  if (validas.length === 0) return -1
+  const total = validas.reduce((s, f) => s + f.peso, 0)
+  let alvo = Math.min(Math.max(aleatorio, 0), 0.999999) * total
+  for (const f of validas) {
+    alvo -= f.peso
+    if (alvo < 0) return fatias.indexOf(f)
+  }
+  return fatias.indexOf(validas[validas.length - 1])
+}
+
+/** Chance de cada fatia, em %, para mostrar ao admin. */
+export function sliceOdds(fatias: WheelSlice[]): Record<string, number> {
+  const total = fatias.reduce((s, f) => s + Math.max(0, f.peso), 0)
+  const out: Record<string, number> = {}
+  for (const f of fatias) out[f.id] = total > 0 ? (Math.max(0, f.peso) / total) * 100 : 0
+  return out
+}
+
+/** O cliente pode girar? */
+export function canSpin(saldo: LoyaltyBalance, w: WheelConfig): boolean {
+  if (!w.ativo || w.custo <= 0) return false
+  return w.moeda === 'pontos' ? saldo.pontos >= w.custo : saldo.selos >= w.custo
 }
 
 /** Um resgate já feito — é o único estado gravado. */

@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatCurrency } from "@/lib/store"
 import {
-  fetchLoyaltyConfig, patchLoyaltyConfig, LOYALTY_DEFAULTS,
-  type LoyaltyConfig, type Reward, type Tier,
+  fetchLoyaltyConfig, patchLoyaltyConfig, LOYALTY_DEFAULTS, sliceOdds,
+  type LoyaltyConfig, type Reward, type Tier, type WheelSlice,
 } from "@/lib/loyalty"
 import { toast } from "sonner"
 
@@ -50,10 +50,19 @@ export default function FidelidadePage() {
   function upTier(id: string, patch: Partial<Tier>) {
     up({ niveis: (cfg?.niveis ?? []).map((n) => (n.id === id ? { ...n, ...patch } : n)) })
   }
+  function upFatia(id: string, patch: Partial<WheelSlice>) {
+    if (!cfg) return
+    up({ roleta: { ...cfg.roleta, fatias: cfg.roleta.fatias.map((f) => (f.id === id ? { ...f, ...patch } : f)) } })
+  }
 
   if (!cfg) {
     return <div className="flex items-center justify-center py-20 text-gray-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando…</div>
   }
+
+  const odds = sliceOdds(cfg.roleta.fatias)
+  const chanceDePremio = cfg.roleta.fatias
+    .filter((f) => f.tipo !== "nada")
+    .reduce((s, f) => s + (odds[f.id] ?? 0), 0)
 
   return (
     <div className="space-y-6">
@@ -137,6 +146,86 @@ export default function FidelidadePage() {
             </label>
           </div>
         ))}
+      </Card>
+
+      {/* Roleta */}
+      <Card className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="font-bold text-gray-800">🎡 Roleta da sorte</h2>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4 cursor-pointer accent-[#EE5C13]"
+              checked={cfg.roleta.ativo}
+              onChange={(e) => up({ roleta: { ...cfg.roleta, ativo: e.target.checked } })} />
+            <span className="font-medium text-gray-900">Ativa</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-500">Cada giro custa</Label>
+            <Input type="number" min="1" value={cfg.roleta.custo}
+              onChange={(e) => up({ roleta: { ...cfg.roleta, custo: parseInt(e.target.value) || 1 } })}
+              className="h-9 w-20" />
+            <select value={cfg.roleta.moeda}
+              onChange={(e) => up({ roleta: { ...cfg.roleta, moeda: e.target.value as "pontos" | "selos" } })}
+              className="h-9 rounded-md border border-gray-200 px-2 text-sm">
+              <option value="selos">selos</option>
+              <option value="pontos">pontos</option>
+            </select>
+          </div>
+        </div>
+        <p className="text-sm text-gray-500">
+          O <strong>peso</strong> é relativo: peso 2 sai o dobro de um peso 1. A chance ao lado é
+          calculada sobre o total — mexer em um peso muda a de todos.
+        </p>
+
+        <div className="space-y-2">
+          {cfg.roleta.fatias.map((f) => {
+            const chance = odds[f.id] ?? 0
+            return (
+              <div key={f.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 p-2">
+                <span className="h-6 w-6 shrink-0 rounded" style={{ backgroundColor: f.cor }} />
+                <Input value={f.nome} onChange={(e) => upFatia(f.id, { nome: e.target.value })}
+                  className="h-9 w-[150px]" />
+                <select value={f.tipo} onChange={(e) => upFatia(f.id, { tipo: e.target.value as WheelSlice["tipo"] })}
+                  className="h-9 rounded-md border border-gray-200 px-2 text-sm">
+                  <option value="nada">Sem prêmio</option>
+                  {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+                </select>
+                <Input type="number" min="0" value={f.valor}
+                  disabled={f.tipo !== "desconto_percentual" && f.tipo !== "desconto_fixo"}
+                  onChange={(e) => upFatia(f.id, { valor: parseFloat(e.target.value) || 0 })}
+                  className="h-9 w-20" placeholder="valor" />
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-gray-500">Peso</Label>
+                  <Input type="number" min="0" value={f.peso}
+                    onChange={(e) => upFatia(f.id, { peso: parseFloat(e.target.value) || 0 })}
+                    className="h-9 w-16" />
+                </div>
+                <span className={`ml-auto rounded-full px-2 py-1 text-xs font-bold ${
+                  chance >= 20 ? "bg-emerald-50 text-emerald-700" : chance >= 5 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {chance.toFixed(1)}%
+                </span>
+                <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-50 hover:text-red-600"
+                  onClick={() => up({ roleta: { ...cfg.roleta, fatias: cfg.roleta.fatias.filter((x) => x.id !== f.id) } })}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3">
+          <Button size="sm" variant="outline"
+            onClick={() => up({ roleta: { ...cfg.roleta, fatias: [...cfg.roleta.fatias, {
+              id: `w-${Date.now().toString(36)}`, nome: "Nova fatia", tipo: "nada",
+              valor: 0, peso: 10, cor: "#64748B",
+            }] } })}>
+            <Plus size={14} className="mr-1" /> Nova fatia
+          </Button>
+          <p className="text-[12px] text-gray-500">
+            Chance de sair algum prêmio: <strong>{chanceDePremio.toFixed(1)}%</strong>
+            {chanceDePremio > 70 && <span className="ml-2 font-bold text-amber-600">alta — confira sua margem</span>}
+          </p>
+        </div>
       </Card>
 
       {/* Recompensas */}

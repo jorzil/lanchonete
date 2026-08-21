@@ -53,6 +53,7 @@ export async function PATCH(req: NextRequest) {
       ...(Array.isArray(c.statusQueContam) ? { statusQueContam: c.statusQueContam.filter((s: unknown) => typeof s === 'string') } : {}),
       ...(Array.isArray(c.recompensas) ? { recompensas: c.recompensas } : {}),
       ...(Array.isArray(c.niveis) ? { niveis: c.niveis } : {}),
+      ...(c.roleta && typeof c.roleta === 'object' ? { roleta: { ...atual.config.roleta, ...c.roleta } } : {}),
     }
     const error = await writeLoyaltyRow({ config, redemptions: atual.redemptions })
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
