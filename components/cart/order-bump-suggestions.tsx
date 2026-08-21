@@ -3,43 +3,42 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, Plus } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
-import { formatCurrency, PRODUCTS } from '@/lib/store'
-import { fetchDisabledProducts } from '@/lib/products-availability'
+import { formatCurrency } from '@/lib/store'
+import { fetchEffectiveCatalog, availableByCategory, isAvailable, type EffectiveCatalog } from '@/lib/effective-products'
 import { fetchOrderBumps, logBumpAdd, type OrderBumpOffer } from '@/lib/order-bumps'
+import type { Product } from '@/lib/data'
 import { toast } from 'sonner'
-
-const PRODUCT_BY_ID = new Map(PRODUCTS.map((p) => [p.id, p]))
 
 /** Sugestões de order bump. variant 'light' (carrinho) ou 'dark' (checkout). */
 export function OrderBumpSuggestions({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
   const { items, addItem } = useCart()
-  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
+  const [catalog, setCatalog] = useState<EffectiveCatalog>({ products: [], disabled: new Set() })
   const [offers, setOffers] = useState<OrderBumpOffer[]>([])
   const [picks, setPicks] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetchDisabledProducts().then(setDisabledProducts)
+    // Catálogo vigente (edições do admin + indisponíveis do dia): sem isto a
+    // sugestão oferecia produto que já tinha saído do cardápio.
+    fetchEffectiveCatalog().then(setCatalog)
     fetchOrderBumps().then((c) => setOffers(c.offers))
   }, [])
 
   const suggestions = useMemo(() => {
     const inCart = new Set(items.map((i) => i.productId))
-    const avail = (p: typeof PRODUCTS[number]) => p.active && !disabledProducts.has(p.id) && !inCart.has(p.id)
-    const out: { offer: OrderBumpOffer; products: typeof PRODUCTS }[] = []
+    const out: { offer: OrderBumpOffer; products: Product[] }[] = []
     for (const o of offers.filter((x) => x.enabled)) {
       if (o.category) {
-        const allow = o.productIds && o.productIds.length > 0 ? new Set(o.productIds) : null
-        const list = PRODUCTS.filter((p) => p.category === o.category && (!allow || allow.has(p.id)) && avail(p))
+        const list = availableByCategory(catalog, o.category, o.productIds).filter((p) => !inCart.has(p.id))
         if (list.length > 0) out.push({ offer: o, products: list })
       } else if (o.productId) {
-        const p = PRODUCT_BY_ID.get(o.productId)
-        if (p && avail(p)) out.push({ offer: o, products: [p] })
+        const p = catalog.products.find((x) => x.id === o.productId)
+        if (p && isAvailable(p, catalog.disabled) && !inCart.has(p.id)) out.push({ offer: o, products: [p] })
       }
     }
     return out
-  }, [items, disabledProducts, offers])
+  }, [items, catalog, offers])
 
-  function addBump(offer: OrderBumpOffer, products: typeof PRODUCTS) {
+  function addBump(offer: OrderBumpOffer, products: Product[]) {
     const chosenId = offer.category ? (picks[offer.id] ?? products[0]?.id) : products[0]?.id
     const product = products.find((p) => p.id === chosenId) ?? products[0]
     if (!product) return

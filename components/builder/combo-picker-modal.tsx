@@ -3,15 +3,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { PRODUCTS, MENU, formatCurrency, effectivePrice, type Product } from '@/lib/data'
+import { MENU, formatCurrency, effectivePrice, type Product } from '@/lib/data'
 import { useCart } from '@/contexts/cart-context'
 import { fetchDisabledIngredients, ingKey } from '@/lib/ingredients-availability'
-import { fetchDisabledProducts } from '@/lib/products-availability'
+import { fetchEffectiveCatalog, availableByCategory, type EffectiveCatalog } from '@/lib/effective-products'
 import { toast } from 'sonner'
 
-const ALL_COOKIES = PRODUCTS.filter(p => p.active && p.category === 'cookies')
-// Bebidas do combo: latas 350ml + sucos
-const ALL_LATAS = PRODUCTS.filter(p => p.active && p.category === 'bebidas' && (p.id.includes('lata') || p.id.includes('suco')))
+/** Bebida que entra em combo: lata 350ml ou suco. */
+const ehBebidaDeCombo = (p: Product) => p.id.includes('lata') || p.id.includes('suco')
 
 interface ComboPickerModalProps {
   product: Product | null
@@ -23,13 +22,15 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
   const [cookie, setCookie] = useState<string>('')
   const [refri, setRefri] = useState<string>('')
   const [disabled, setDisabled] = useState<Set<string>>(new Set())
-  const [disabledProducts, setDisabledProducts] = useState<Set<string>>(new Set())
+  const [catalog, setCatalog] = useState<EffectiveCatalog>({ products: [], disabled: new Set() })
   const { addItem } = useCart()
 
   useEffect(() => {
     if (product) {
       fetchDisabledIngredients().then(setDisabled)
-      fetchDisabledProducts().then(setDisabledProducts)
+      // Catálogo vigente: sem isto o combo mostrava cookie que o admin já tinha
+      // desativado em Produtos, e escondia os cookies criados por ele.
+      fetchEffectiveCatalog().then(setCatalog)
     }
   }, [product])
 
@@ -39,13 +40,23 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
 
   const availBreads = useMemo(() => MENU.breads.filter((b) => !disabled.has(ingKey('bread', b.key))), [disabled])
   const COOKIES = useMemo(
-    () => (wantsCookie ? ALL_COOKIES.filter((c) => !disabledProducts.has(c.id)) : []),
-    [disabledProducts, wantsCookie]
+    () => (wantsCookie ? availableByCategory(catalog, 'cookies') : []),
+    [catalog, wantsCookie]
   )
   const LATAS = useMemo(
-    () => (wantsRefri ? ALL_LATAS.filter((r) => !disabledProducts.has(r.id)) : []),
-    [disabledProducts, wantsRefri]
+    () => (wantsRefri ? availableByCategory(catalog, 'bebidas').filter(ehBebidaDeCombo) : []),
+    [catalog, wantsRefri]
   )
+
+  // O catálogo chega depois da tela abrir. Se o item já escolhido não estiver
+  // mais na lista (desativado no admin ou em falta), limpa a seleção — senão o
+  // pedido sairia com um cookie que a loja não tem.
+  useEffect(() => {
+    if (cookie && !COOKIES.some((c) => c.id === cookie)) setCookie('')
+  }, [COOKIES, cookie])
+  useEffect(() => {
+    if (refri && !LATAS.some((r) => r.id === refri)) setRefri('')
+  }, [LATAS, refri])
 
   if (!product) return null
 
@@ -117,6 +128,15 @@ export function ComboPickerModal({ product, onClose }: ComboPickerModalProps) {
         </div>
 
         {/* Cookie (some quando não há cookie disponível) */}
+        {wantsCookie && COOKIES.length === 0 && catalog.products.length > 0 && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <p className="text-[13px] font-bold text-amber-300">Cookies esgotados hoje</p>
+            <p className="text-[11px] text-amber-200/70">
+              O combo sai sem o cookie. Fale com a loja se preferir trocar.
+            </p>
+          </div>
+        )}
+
         {COOKIES.length > 0 && (
         <div className="mt-4">
           <p className="text-[11px] font-bold text-brand uppercase tracking-[0.18em] mb-3">Escolha o cookie</p>
