@@ -52,15 +52,24 @@ import { Label } from "@/components/ui/label"
 import { DialogFooter } from "@/components/ui/dialog"
 import { toast } from "sonner"
 
-type Category = "subs-15cm" | "subs-30cm" | "combos" | "bebidas"
+type Category = Product["category"] | "todos"
 type DiscountType = "percentage" | "fixed"
 
-const CATEGORIES: { key: Category; label: string }[] = [
-  { key: "subs-15cm", label: "Subs 15cm" },
-  { key: "subs-30cm", label: "Subs 30cm" },
-  { key: "combos", label: "Combos" },
-  { key: "bebidas", label: "Bebidas" },
-]
+/**
+ * Rótulo de cada categoria. As abas NÃO são uma lista fixa: são derivadas dos
+ * produtos que existem — antes "cookies" ficava de fora da lista e nenhum
+ * cookie aparecia no PDV. Categoria nova passa a aparecer sozinha.
+ */
+const ROTULO_CATEGORIA: Record<string, string> = {
+  "subs-15cm": "Subs 15cm",
+  "subs-30cm": "Subs 30cm",
+  cookies: "Cookies",
+  combos: "Combos",
+  bebidas: "Bebidas",
+}
+
+/** Ordem preferida; o que não estiver aqui vai para o fim, em ordem alfabética. */
+const ORDEM_CATEGORIA = ["subs-15cm", "subs-30cm", "combos", "cookies", "bebidas"]
 
 const PAYMENTS: { key: PaymentMethod; label: string; icon: React.ElementType }[] = [
   { key: "dinheiro", label: "Dinheiro", icon: Banknote },
@@ -73,7 +82,7 @@ type SaleItem = CartItem
 
 export default function PdvPage() {
   const [now, setNow] = useState<Date | null>(null)
-  const [category, setCategory] = useState<Category>("subs-15cm")
+  const [category, setCategory] = useState<Category>("todos")
   const [query, setQuery] = useState("")
   const [items, setItems] = useState<SaleItem[]>([])
   const [notes, setNotes] = useState("")
@@ -151,16 +160,32 @@ export default function PdvPage() {
     ...materializeCustomProducts(overrides, new Set(PRODUCTS.map((p) => p.id))),
   ], [overrides])
 
+  // Abas montadas a partir do que existe de verdade no catálogo.
+  const CATEGORIES = useMemo(() => {
+    const presentes = [...new Set(allProducts.filter((p) => p.active !== false).map((p) => p.category))]
+    presentes.sort((a, b) => {
+      const ia = ORDEM_CATEGORIA.indexOf(a), ib = ORDEM_CATEGORIA.indexOf(b)
+      if (ia !== -1 && ib !== -1) return ia - ib
+      if (ia !== -1) return -1
+      if (ib !== -1) return 1
+      return a.localeCompare(b)
+    })
+    return [
+      { key: "todos" as Category, label: "Todos" },
+      ...presentes.map((c) => ({ key: c as Category, label: ROTULO_CATEGORIA[c] ?? c })),
+    ]
+  }, [allProducts])
+
   const products = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return allProducts.filter((p) => p.active).filter((p) => {
+    return allProducts.filter((p) => p.active !== false).filter((p) => {
       if (q) {
         return (
           p.name.toLowerCase().includes(q) ||
           p.id.toLowerCase().includes(q)
         )
       }
-      return p.category === category
+      return category === "todos" || p.category === category
     })
   }, [query, category, allProducts])
 
@@ -363,13 +388,17 @@ export default function PdvPage() {
 
             {!query && (
               <Tabs value={category} onValueChange={(v) => setCategory(v as Category)}>
-                <TabsList className="w-full">
-                  {CATEGORIES.map((c) => (
-                    <TabsTrigger key={c.key} value={c.key} className="flex-1 text-xs sm:text-sm">
-                      {c.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                {/* Rolagem lateral: com todas as categorias as abas não cabem
+                    na largura de um celular. */}
+                <div className="-mx-1 overflow-x-auto px-1">
+                  <TabsList className="w-max min-w-full">
+                    {CATEGORIES.map((c) => (
+                      <TabsTrigger key={c.key} value={c.key} className="whitespace-nowrap px-3 text-xs sm:text-sm">
+                        {c.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
               </Tabs>
             )}
           </div>
