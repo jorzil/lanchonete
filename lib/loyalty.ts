@@ -40,22 +40,24 @@ export interface Tier {
   descontoPercentual: number
 }
 
-/** Fatia da roleta. `peso` é relativo: peso 2 sai o dobro de um peso 1. */
+/** Fatia da roleta. A chance é digitada em % e normalizada na hora do sorteio. */
 export interface WheelSlice {
   id: string
   nome: string
   /** 'nada' é a fatia sem prêmio — precisa existir para a roleta ter graça. */
   tipo: RewardKind | 'nada'
   valor: number
-  peso: number
-  cor: string
+  /** Chance desejada, em %. Se a soma não fechar 100, tudo é normalizado. */
+  chance: number
+  /** Cor própria. Vazio = gerada a partir da posição, para a roleta nunca
+   *  repetir a mesma paleta quando o número de fatias muda. */
+  cor?: string
 }
 
 export interface WheelConfig {
   ativo: boolean
-  /** O que custa um giro. */
-  moeda: RewardCost
-  custo: number
+  /** A cada quantos pedidos concluídos o cliente ganha um giro. */
+  pedidosPorGiro: number
   fatias: WheelSlice[]
 }
 
@@ -90,21 +92,41 @@ export const LOYALTY_DEFAULTS: LoyaltyConfig = {
   ],
   roleta: {
     ativo: false,
-    moeda: 'selos',
-    custo: 3,
-    // Pesos pensados para a casa não perder dinheiro: o prêmio caro é raro e
-    // "não foi dessa vez" é a fatia mais provável.
+    pedidosPorGiro: 5,
+    // Percentuais pensados para a casa não perder: prêmio caro é raro e
+    // "não foi dessa vez" é o resultado mais provável.
     fatias: [
-      { id: 'w-5off', nome: '5% OFF', tipo: 'desconto_percentual', valor: 5, peso: 25, cor: '#EE5C13' },
-      { id: 'w-nada', nome: 'Quase!', tipo: 'nada', valor: 0, peso: 30, cor: '#334155' },
-      { id: 'w-cookie', nome: 'Cookie grátis', tipo: 'cookie', valor: 0, peso: 12, cor: '#F59E0B' },
-      { id: 'w-adicional', nome: 'Adicional grátis', tipo: 'adicional', valor: 0, peso: 15, cor: '#10B981' },
-      { id: 'w-nada2', nome: 'Quase!', tipo: 'nada', valor: 0, peso: 25, cor: '#1E293B' },
-      { id: 'w-frete', nome: 'Frete grátis', tipo: 'frete_gratis', valor: 0, peso: 10, cor: '#3B82F6' },
-      { id: 'w-10off', nome: '10% OFF', tipo: 'desconto_percentual', valor: 10, peso: 8, cor: '#8B5CF6' },
-      { id: 'w-15reais', nome: 'R$ 15 OFF', tipo: 'desconto_fixo', valor: 15, peso: 3, cor: '#EC4899' },
+      { id: 'w-5off', nome: '5% OFF', tipo: 'desconto_percentual', valor: 5, chance: 20 },
+      { id: 'w-nada', nome: 'Quase!', tipo: 'nada', valor: 0, chance: 23 },
+      { id: 'w-cookie', nome: 'Cookie grátis', tipo: 'cookie', valor: 0, chance: 10 },
+      { id: 'w-adicional', nome: 'Adicional grátis', tipo: 'adicional', valor: 0, chance: 12 },
+      { id: 'w-nada2', nome: 'Quase!', tipo: 'nada', valor: 0, chance: 20 },
+      { id: 'w-frete', nome: 'Frete grátis', tipo: 'frete_gratis', valor: 0, chance: 8 },
+      { id: 'w-10off', nome: '10% OFF', tipo: 'desconto_percentual', valor: 10, chance: 5 },
+      { id: 'w-15reais', nome: 'R$ 15 OFF', tipo: 'desconto_fixo', valor: 15, chance: 2 },
     ],
   },
+}
+
+/**
+ * Cor da fatia: a própria, quando definida, ou uma gerada pela posição.
+ * As geradas distribuem o matiz por todo o círculo cromático conforme o número
+ * de fatias — assim a roleta muda de paleta ao mudar de tamanho, em vez de
+ * repetir sempre as mesmas cores. Fatia sem prêmio sai acinzentada, para o
+ * cliente distinguir de relance o que vale prêmio.
+ */
+export function sliceColor(fatia: WheelSlice, indice: number, total: number): string {
+  if (fatia.cor) return fatia.cor
+  if (fatia.tipo === 'nada') return indice % 2 === 0 ? '#334155' : '#1E293B'
+  // Matiz distribuído por igual no círculo: com N fatias, nenhuma cor repete.
+  // O deslocamento inicial depende de N, então uma roleta de 8 fatias não usa a
+  // mesma paleta de uma de 4 — é isso que a torna dinâmica.
+  const n = Math.max(1, total)
+  const deslocamento = (n * 47) % 360
+  const matiz = (deslocamento + (indice * 360) / n) % 360
+  // Alterna a luminosidade para separar bem fatias vizinhas quando N é grande.
+  const luz = indice % 2 === 0 ? 52 : 42
+  return `hsl(${Math.round(matiz)}, 68%, ${luz}%)`
 }
 
 /**
@@ -112,29 +134,37 @@ export const LOYALTY_DEFAULTS: LoyaltyConfig = {
  * valores fixos — e para deixar explícito que quem sorteia é o servidor.
  */
 export function drawSlice(fatias: WheelSlice[], aleatorio: number): number {
-  const validas = fatias.filter((f) => f.peso > 0)
+  const validas = fatias.filter((f) => f.chance > 0)
   if (validas.length === 0) return -1
-  const total = validas.reduce((s, f) => s + f.peso, 0)
+  const total = validas.reduce((s, f) => s + f.chance, 0)
   let alvo = Math.min(Math.max(aleatorio, 0), 0.999999) * total
   for (const f of validas) {
-    alvo -= f.peso
+    alvo -= f.chance
     if (alvo < 0) return fatias.indexOf(f)
   }
   return fatias.indexOf(validas[validas.length - 1])
 }
 
-/** Chance de cada fatia, em %, para mostrar ao admin. */
+/**
+ * Chance real de cada fatia, em %. O admin digita o percentual desejado; se a
+ * soma não fechar 100, normalizamos — assim o número mostrado é o que de fato
+ * acontece, e não a intenção.
+ */
 export function sliceOdds(fatias: WheelSlice[]): Record<string, number> {
-  const total = fatias.reduce((s, f) => s + Math.max(0, f.peso), 0)
+  const total = fatias.reduce((s, f) => s + Math.max(0, f.chance), 0)
   const out: Record<string, number> = {}
-  for (const f of fatias) out[f.id] = total > 0 ? (Math.max(0, f.peso) / total) * 100 : 0
+  for (const f of fatias) out[f.id] = total > 0 ? (Math.max(0, f.chance) / total) * 100 : 0
   return out
 }
 
-/** O cliente pode girar? */
+/** Soma dos percentuais digitados — 100 significa que nada será normalizado. */
+export function chanceTotal(fatias: WheelSlice[]): number {
+  return fatias.reduce((s, f) => s + Math.max(0, f.chance), 0)
+}
+
+/** O cliente tem giro disponível? */
 export function canSpin(saldo: LoyaltyBalance, w: WheelConfig): boolean {
-  if (!w.ativo || w.custo <= 0) return false
-  return w.moeda === 'pontos' ? saldo.pontos >= w.custo : saldo.selos >= w.custo
+  return !!w.ativo && saldo.girosDisponiveis > 0
 }
 
 /** Um resgate já feito — é o único estado gravado. */
@@ -169,6 +199,12 @@ export interface LoyaltyBalance {
   /** Próximo nível e quanto falta em R$; null quando já está no topo. */
   proximoNivel: Tier | null
   faltaParaProximo: number
+  /** Giros da roleta ganhos pelos pedidos, usados e restantes. */
+  girosGanhos: number
+  girosUsados: number
+  girosDisponiveis: number
+  /** Pedidos que faltam para liberar o próximo giro. */
+  pedidosParaProximoGiro: number
 }
 
 /** Nível atual pelo total gasto. */
@@ -213,6 +249,12 @@ export function computeBalance(
   const nivel = tierFor(cfg, totalGasto)
   const proximo = nextTier(cfg, totalGasto)
 
+  // Giros: um a cada N pedidos concluídos, menos os já gastos.
+  const porGiro = Math.max(1, cfg.roleta?.pedidosPorGiro ?? 5)
+  const girosGanhos = Math.floor(meus.length / porGiro)
+  const girosUsados = meusResgates.filter((r) => r.rewardId.startsWith('roleta:')).length
+  const restoPedidos = meus.length % porGiro
+
   return {
     phone: chave,
     nome: meus[meus.length - 1]?.customer.name ?? '',
@@ -227,6 +269,10 @@ export function computeBalance(
     nivel,
     proximoNivel: proximo,
     faltaParaProximo: proximo ? Math.max(0, proximo.minimoGasto - totalGasto) : 0,
+    girosGanhos,
+    girosUsados,
+    girosDisponiveis: Math.max(0, girosGanhos - girosUsados),
+    pedidosParaProximoGiro: porGiro - restoPedidos,
   }
 }
 

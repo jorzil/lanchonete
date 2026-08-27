@@ -48,9 +48,13 @@ export async function POST(req: NextRequest) {
     const orders = await listOrders()
     const saldo = computeBalance(config, chave, orders, redemptions)
     if (!canSpin(saldo, roleta)) {
-      const tem = roleta.moeda === 'pontos' ? saldo.pontos : saldo.selos
       return NextResponse.json(
-        { ok: false, error: `Você tem ${tem} ${roleta.moeda} e o giro custa ${roleta.custo}.` },
+        {
+          ok: false,
+          error: saldo.girosDisponiveis > 0
+            ? 'A roleta está indisponível no momento.'
+            : `Você ainda não tem giros. Faltam ${saldo.pedidosParaProximoGiro} pedido(s) para o próximo.`,
+        },
         { status: 409 },
       )
     }
@@ -69,8 +73,9 @@ export async function POST(req: NextRequest) {
       rewardId: `roleta:${fatia.id}`,
       rewardNome: fatia.tipo === 'nada' ? 'Roleta (sem prêmio)' : `Roleta: ${fatia.nome}`,
       couponCode: '',
-      moeda: roleta.moeda,
-      custo: roleta.custo,
+      // Giro vem de pedidos, não de saldo; guardamos 1 giro como "custo".
+      moeda: 'selos',
+      custo: 0,
       at: hoje.toISOString(),
     }
 
@@ -114,6 +119,7 @@ export async function POST(req: NextRequest) {
       fatia,
       premio: fatia.tipo !== 'nada',
       couponCode: registro.couponCode || null,
+      girosRestantes: Math.max(0, saldo.girosDisponiveis - 1),
     })
   } catch {
     return NextResponse.json({ ok: false, error: 'Requisição inválida' }, { status: 400 })

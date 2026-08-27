@@ -182,7 +182,7 @@ export default function ClubePage() {
 
               {/* Roleta */}
               {cfg.roleta?.ativo && (
-                <Roleta config={cfg.roleta} phone={saldo.phone} onFim={() => consultar(saldo.phone)} />
+                <Roleta config={cfg.roleta} saldo={saldo} phone={saldo.phone} onFim={() => consultar(saldo.phone)} />
               )}
 
               {/* Recompensas */}

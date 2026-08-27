@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2, Copy, Check } from 'lucide-react'
-import type { WheelConfig, WheelSlice } from '@/lib/loyalty'
+import { sliceColor, type WheelConfig, type WheelSlice, type LoyaltyBalance } from '@/lib/loyalty'
 import { toast } from 'sonner'
 
 /** Ponto na circunferência, com 0° apontando para cima. */
@@ -19,8 +19,9 @@ function fatiaPath(inicio: number, fim: number) {
   return `M 100 100 L ${a.x} ${a.y} A 96 96 0 ${grande} 1 ${b.x} ${b.y} Z`
 }
 
-export function Roleta({ config, phone, onFim }: {
+export function Roleta({ config, saldo, phone, onFim }: {
   config: WheelConfig
+  saldo: LoyaltyBalance
   phone: string
   /** Chamado ao terminar, para a página recarregar o saldo. */
   onFim: () => void
@@ -83,7 +84,23 @@ export function Roleta({ config, phone, onFim }: {
         🎡 Roleta da sorte
       </p>
       <p className="mt-1 text-center text-sm text-white/50">
-        Cada giro custa <strong className="text-white">{config.custo} {config.moeda}</strong>
+        {saldo.girosDisponiveis > 0 ? (
+          <>
+            Você tem{' '}
+            <strong className="text-white">
+              {saldo.girosDisponiveis} giro{saldo.girosDisponiveis > 1 ? 's' : ''}
+            </strong>{' '}
+            {saldo.girosDisponiveis > 1 ? 'disponíveis' : 'disponível'}
+          </>
+        ) : (
+          <>
+            Faltam <strong className="text-white">{saldo.pedidosParaProximoGiro} pedido
+            {saldo.pedidosParaProximoGiro > 1 ? 's' : ''}</strong> para ganhar um giro
+          </>
+        )}
+      </p>
+      <p className="mt-0.5 text-center text-[11px] text-white/30">
+        A cada {config.pedidosPorGiro} pedidos você ganha um giro
       </p>
 
       <div className="relative mx-auto mt-5 w-fit">
@@ -110,10 +127,10 @@ export function Roleta({ config, phone, onFim }: {
             const giroTexto = inverte ? meio + 180 : meio
             return (
               <g key={f.id}>
-                <path d={fatiaPath(inicio, inicio + passo)} fill={f.cor} stroke="#0B1F3A" strokeWidth="1" />
+                <path d={fatiaPath(inicio, inicio + passo)} fill={sliceColor(f, i, fatias.length)} stroke="#0B1F3A" strokeWidth="1" />
                 <text
                   x={texto.x} y={texto.y}
-                  fill="#fff" fontSize="8" fontWeight="800"
+                  fill="#fff" fontSize={fatias.length > 10 ? 6 : fatias.length > 7 ? 7 : 8} fontWeight="800"
                   textAnchor="middle" dominantBaseline="middle"
                   transform={`rotate(${giroTexto}, ${texto.x}, ${texto.y})`}
                 >
@@ -128,11 +145,11 @@ export function Roleta({ config, phone, onFim }: {
 
       <button
         onClick={girar}
-        disabled={girando}
+        disabled={girando || saldo.girosDisponiveis === 0}
         className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 font-black text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
       >
         {girando ? <Loader2 size={16} className="animate-spin" /> : null}
-        {girando ? 'Girando…' : 'Girar a roleta'}
+        {girando ? 'Girando…' : saldo.girosDisponiveis === 0 ? 'Sem giros disponíveis' : 'Girar a roleta'}
       </button>
 
       {resultado && (
