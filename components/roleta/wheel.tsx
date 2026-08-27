@@ -93,16 +93,38 @@ export const RouletteWheel = forwardRef<WheelHandle, {
       const centro = indice * passo + passo / 2
       const de = anguloRef.current
       // Sempre para com o centro da fatia sob o ponteiro, que fica no topo.
-      const para = de + 360 * VOLTAS + (((360 - centro) - (de % 360)) % 360)
+      const voltas = typeof window !== 'undefined'
+        && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 2 : VOLTAS
+      const para = de + 360 * voltas + (((360 - centro) - (de % 360)) % 360)
       anguloRef.current = para
 
-      const suave = typeof window !== 'undefined'
-        && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      if (!el) return Promise.resolve()
 
-      // Sem animação disponível (ou pedida): posiciona e devolve na hora.
-      if (!el || !el.animate || !suave) {
-        if (el) el.style.transform = `rotate(${para}deg)`
-        return new Promise<void>((r) => setTimeout(r, suave ? 400 : 0))
+      // "Reduzir movimento" ligado no aparelho: gira MENOS, não deixa de
+      // girar. É a animação que mostra em que prêmio parou — cortá-la fora
+      // fazia o resultado simplesmente aparecer, sem roleta nenhuma.
+      const reduzido = typeof window !== 'undefined'
+        && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      const duracao = reduzido ? 2600 : DURACAO
+
+      // Navegador sem Web Animations API: giramos quadro a quadro, calculando
+      // o ângulo na mão. Nada de transição CSS aqui — ela depende de o
+      // navegador cooperar (e com "reduzir movimento" ligado ele encurta a
+      // transição para zero, deixando a roda parada). Assim a animação é
+      // nossa do começo ao fim.
+      if (!el.animate) {
+        return new Promise<void>((resolva) => {
+          const inicio = performance.now()
+          const quadroManual = (agora: number) => {
+            const t = Math.min(1, (agora - inicio) / duracao)
+            // Desaceleração cúbica: rápido no começo, arrastando no fim.
+            const suavizado = 1 - Math.pow(1 - t, 3)
+            el.style.transform = `rotate(${de + (para - de) * suavizado}deg)`
+            if (t < 1) requestAnimationFrame(quadroManual)
+            else resolva()
+          }
+          requestAnimationFrame(quadroManual)
+        })
       }
 
       // Três tempos, para o giro ter história em vez de só acabar:
@@ -110,15 +132,20 @@ export const RouletteWheel = forwardRef<WheelHandle, {
       //   2. dispara e chega perto do fim ainda rápido;
       //   3. arrasta os últimos 45° por quase um terço do tempo — é aqui que o
       //      cliente segura a respiração para ver em que fatia vai parar.
-      const anim = el.animate(
-        [
-          { offset: 0, transform: `rotate(${de}deg)`, easing: 'cubic-bezier(0.4, 0, 0.7, 0.4)' },
-          { offset: 0.05, transform: `rotate(${de - 13}deg)`, easing: 'cubic-bezier(0.16, 0.7, 0.4, 0.96)' },
-          { offset: 0.72, transform: `rotate(${para - 45}deg)`, easing: 'cubic-bezier(0.32, 0, 0.2, 1)' },
-          { offset: 1, transform: `rotate(${para}deg)` },
-        ],
-        { duration: DURACAO, fill: 'forwards' },
-      )
+      // No modo reduzido, um giro só, direto e sem sobressaltos.
+      const quadros = reduzido
+        ? [
+            { offset: 0, transform: `rotate(${de}deg)`, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' },
+            { offset: 1, transform: `rotate(${para}deg)` },
+          ]
+        : [
+            { offset: 0, transform: `rotate(${de}deg)`, easing: 'cubic-bezier(0.4, 0, 0.7, 0.4)' },
+            { offset: 0.05, transform: `rotate(${de - 13}deg)`, easing: 'cubic-bezier(0.16, 0.7, 0.4, 0.96)' },
+            { offset: 0.72, transform: `rotate(${para - 45}deg)`, easing: 'cubic-bezier(0.32, 0, 0.2, 1)' },
+            { offset: 1, transform: `rotate(${para}deg)` },
+          ]
+
+      const anim = el.animate(quadros, { duration: duracao, fill: 'forwards' })
 
       // Enquanto gira, avisa a cada troca de fatia sob o ponteiro. Lê o ângulo
       // que está valendo, então o ritmo acompanha a desaceleração sozinho.
@@ -139,8 +166,11 @@ export const RouletteWheel = forwardRef<WheelHandle, {
       }
       requestAnimationFrame(quadro)
 
-      return anim.finished
-        .catch(() => {})
+      // Corrida com um prazo: se finished não resolver (acontece quando a aba
+      // vai para segundo plano no meio do giro), o prêmio aparece do mesmo
+      // jeito, em vez de a tela ficar presa em "Girando…".
+      const prazo = new Promise<void>((r) => setTimeout(r, duracao + 700))
+      return Promise.race([anim.finished.catch(() => {}), prazo])
         .then(() => {
           vivo = false
           el.style.transform = `rotate(${para}deg)`
