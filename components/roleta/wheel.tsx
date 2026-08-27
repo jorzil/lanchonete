@@ -4,9 +4,48 @@ import { forwardRef, useImperativeHandle, useRef } from 'react'
 import { sliceColor, type WheelSlice } from '@/lib/loyalty'
 
 /** Voltas completas antes de parar na fatia sorteada. */
-const VOLTAS = 6
+const VOLTAS = 7
 /** Duração do giro, em milissegundos. Longa de propósito: a espera é a graça. */
-export const DURACAO = 5200
+export const DURACAO = 8600
+
+/**
+ * Onde o nome cabe, conforme quantas fatias a roleta tem.
+ *
+ * A fatia é uma cunha: estreita perto do eixo, larga perto da borda. Quanto
+ * mais fatias, mais fina ela fica — então o nome vai para fora e encurta, para
+ * ficar sempre na parte larga. É o que impede um nome de invadir o vizinho.
+ */
+function medidasDoTexto(n: number) {
+  if (n > 10) return { raioTexto: 64, larguraMax: 36, raioIcone: 32, fonte: 6 }
+  if (n > 8) return { raioTexto: 62, larguraMax: 40, raioIcone: 31, fonte: 6.8 }
+  return { raioTexto: 60, larguraMax: 44, raioIcone: 30, fonte: 7.8 }
+}
+
+/**
+ * Quebra o nome do prêmio em até duas linhas equilibradas.
+ *
+ * Numa fatia o texto corre do centro para a borda, e o espaço é curto:
+ * "Prêmio surpresa" numa linha só invade o eixo e a borda ao mesmo tempo.
+ * Em duas linhas cabe folgado e continua legível.
+ */
+function quebrarNome(nome: string): string[] {
+  const limpo = nome.trim()
+  if (limpo.length <= 10) return [limpo]
+
+  const palavras = limpo.split(/\s+/)
+  // Palavra única e comprida não tem onde quebrar: corta com reticências.
+  if (palavras.length === 1) return [limpo.length > 16 ? `${limpo.slice(0, 15)}…` : limpo]
+
+  // Divide no ponto que deixa as duas linhas mais parecidas.
+  let corte = 1
+  let menorDiferenca = Infinity
+  for (let i = 1; i < palavras.length; i++) {
+    const a = palavras.slice(0, i).join(' ').length
+    const b = palavras.slice(i).join(' ').length
+    if (Math.abs(a - b) < menorDiferenca) { menorDiferenca = Math.abs(a - b); corte = i }
+  }
+  return [palavras.slice(0, corte).join(' '), palavras.slice(corte).join(' ')]
+}
 
 /** Ponto na circunferência, com 0° apontando para cima. */
 function ponto(raio: number, grau: number) {
@@ -46,6 +85,7 @@ export const RouletteWheel = forwardRef<WheelHandle, {
   const anguloRef = useRef(0)
   const passo = 360 / Math.max(1, fatias.length)
   const fora = new Set(esgotadas)
+  const { raioTexto, larguraMax, raioIcone, fonte } = medidasDoTexto(fatias.length)
 
   useImperativeHandle(ref, () => ({
     girarAte(indice, aoPassarPino) {
@@ -65,9 +105,19 @@ export const RouletteWheel = forwardRef<WheelHandle, {
         return new Promise<void>((r) => setTimeout(r, suave ? 400 : 0))
       }
 
+      // Três tempos, para o giro ter história em vez de só acabar:
+      //   1. recua um tico, como quem toma impulso;
+      //   2. dispara e chega perto do fim ainda rápido;
+      //   3. arrasta os últimos 45° por quase um terço do tempo — é aqui que o
+      //      cliente segura a respiração para ver em que fatia vai parar.
       const anim = el.animate(
-        [{ transform: `rotate(${de}deg)` }, { transform: `rotate(${para}deg)` }],
-        { duration: DURACAO, easing: 'cubic-bezier(0.12, 0.66, 0.09, 1)', fill: 'forwards' },
+        [
+          { offset: 0, transform: `rotate(${de}deg)`, easing: 'cubic-bezier(0.4, 0, 0.7, 0.4)' },
+          { offset: 0.05, transform: `rotate(${de - 13}deg)`, easing: 'cubic-bezier(0.16, 0.7, 0.4, 0.96)' },
+          { offset: 0.72, transform: `rotate(${para - 45}deg)`, easing: 'cubic-bezier(0.32, 0, 0.2, 1)' },
+          { offset: 1, transform: `rotate(${para}deg)` },
+        ],
+        { duration: DURACAO, fill: 'forwards' },
       )
 
       // Enquanto gira, avisa a cada troca de fatia sob o ponteiro. Lê o ângulo
@@ -135,14 +185,16 @@ export const RouletteWheel = forwardRef<WheelHandle, {
             const inicio = i * passo
             const meio = inicio + passo / 2
             const apagada = fora.has(f.id)
-            // Ícone mais para fora, texto mais para dentro: os dois cabem sem
-            // se encavalar mesmo com 12 fatias.
-            const pIcone = ponto(72, meio)
-            const pTexto = ponto(52, meio)
+            // Ícone junto ao eixo, nome lá fora. Perto da borda as fatias são
+            // largas e o nome respira; perto do centro elas se estreitam, e ali
+            // só cabe o ícone — foi o que resolveu o texto se encavalando.
+            const pIcone = ponto(raioIcone, meio)
+            const pTexto = ponto(raioTexto, meio)
             // Metade de baixo teria o texto de cabeça para baixo.
             const inverte = meio > 90 && meio < 270
             const giro = inverte ? meio + 180 : meio
-            const tamanho = fatias.length > 10 ? 6.5 : fatias.length > 7 ? 7.5 : 8.5
+            const tamanho = fonte
+            const linhas = quebrarNome(f.nome)
             return (
               <g key={f.id} opacity={apagada ? 0.34 : 1}>
                 <path
@@ -154,7 +206,7 @@ export const RouletteWheel = forwardRef<WheelHandle, {
                 {f.icone && (
                   <text
                     x={pIcone.x} y={pIcone.y}
-                    fontSize={fatias.length > 10 ? 9 : 11}
+                    fontSize={fatias.length > 10 ? 8 : 10}
                     textAnchor="middle" dominantBaseline="central"
                     transform={`rotate(${giro}, ${pIcone.x}, ${pIcone.y})`}
                   >
@@ -165,10 +217,25 @@ export const RouletteWheel = forwardRef<WheelHandle, {
                   x={pTexto.x} y={pTexto.y}
                   fill="#fff" fontSize={tamanho} fontWeight="800"
                   textAnchor="middle" dominantBaseline="central"
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.45)' }}
                   transform={`rotate(${giro}, ${pTexto.x}, ${pTexto.y})`}
                 >
-                  {f.nome.length > 15 ? `${f.nome.slice(0, 14)}…` : f.nome}
+                  {linhas.map((linha, k) => {
+                    // Largura aproximada da linha. Passando do limite, o SVG
+                    // condensa até caber — nome nenhum vaza da fatia.
+                    const estimada = linha.length * tamanho * 0.58
+                    return (
+                      <tspan
+                        key={k}
+                        x={pTexto.x}
+                        dy={k === 0 ? -((linhas.length - 1) * tamanho * 0.58) : tamanho * 1.16}
+                        textLength={estimada > larguraMax ? larguraMax : undefined}
+                        lengthAdjust="spacingAndGlyphs"
+                      >
+                        {linha}
+                      </tspan>
+                    )
+                  })}
                 </text>
               </g>
             )

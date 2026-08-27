@@ -177,8 +177,8 @@ export const LOYALTY_DEFAULTS: LoyaltyConfig = {
  */
 const PALETA = [
   '#EE5C13', '#023E74', '#F59E0B', '#0359A2',
-  '#C2410C', '#01528F', '#FB923C', '#0B6BC0',
-  '#9A3412', '#013A6B', '#FDBA74', '#1177D1',
+  '#D9480F', '#01477F', '#FBBF24', '#0B6BC0',
+  '#B84508', '#013A6B', '#FCD34D', '#1580DE',
 ]
 
 export function sliceColor(fatia: WheelSlice, indice: number, total: number): string {
