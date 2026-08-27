@@ -7,7 +7,7 @@ import { Footer } from '@/components/layout/footer'
 import { formatCurrency } from '@/lib/data'
 import { formatPhone } from '@/lib/phone'
 import { canRedeem, missingFor, type LoyaltyConfig, type LoyaltyBalance, type Reward, type Redemption } from '@/lib/loyalty'
-import { Roleta } from '@/components/clube/roleta'
+import { Roulette } from '@/components/roleta/roulette'
 import { toast } from 'sonner'
 
 const ICONE: Record<Reward['tipo'], typeof Gift> = {
@@ -182,7 +182,19 @@ export default function ClubePage() {
 
               {/* Roleta */}
               {cfg.roleta?.ativo && (
-                <Roleta config={cfg.roleta} saldo={saldo} phone={saldo.phone} onFim={() => consultar(saldo.phone)} />
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <p className="text-center text-[11px] font-bold uppercase tracking-widest text-brand">
+                    🎡 Roleta da sorte
+                  </p>
+                  <div className="mt-4">
+                    <Roulette
+                      config={cfg.roleta}
+                      saldo={saldo}
+                      phone={saldo.phone}
+                      onFim={() => consultar(saldo.phone)}
+                    />
+                  </div>
+                </div>
               )}
 
               {/* Recompensas */}

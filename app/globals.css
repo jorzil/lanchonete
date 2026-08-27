@@ -293,66 +293,54 @@ button, a, [role="button"], input, select, textarea {
 
 /* ---------------------------------------------------------------------------
    ROLETA DA SORTE
-   Efeitos da roleta do clube. Ficam aqui, e nao em @layer, porque varios usam
-   keyframes proprias e sao aplicados via className direto no componente.
+   Efeitos da roleta do clube. Ficam fora de @layer porque usam keyframes
+   proprias e sao aplicados via className direto nos componentes.
 --------------------------------------------------------------------------- */
-
-/* Lampadas da borda piscando em revezamento, como letreiro de parque */
-@keyframes roleta-led {
-  0%, 100% { opacity: 1; r: 3.2; }
-  50%      { opacity: 0.25; r: 2.4; }
-}
-.roleta-led { animation: roleta-led 1s ease-in-out infinite; transform-box: fill-box; }
-/* Enquanto gira, as lampadas correm bem mais rapido */
-.roleta-girando .roleta-led { animation-duration: 0.28s; }
-
-/* Brilho pulsante em volta da roda */
-@keyframes roleta-halo {
-  0%, 100% { opacity: 0.35; transform: scale(0.97); }
-  50%      { opacity: 0.75; transform: scale(1.04); }
-}
-.roleta-halo { animation: roleta-halo 2.6s ease-in-out infinite; }
-.roleta-girando .roleta-halo { animation-duration: 0.9s; }
-
-/* Reflexo que varre a roda de um lado ao outro */
-@keyframes roleta-brilho {
-  0%   { transform: translateX(-120%) rotate(18deg); }
-  60%, 100% { transform: translateX(220%) rotate(18deg); }
-}
-.roleta-brilho { animation: roleta-brilho 3.2s ease-in-out infinite; }
 
 /* Batida do ponteiro ao passar por um pino */
 @keyframes roleta-batida {
-  0%   { transform: translate(-50%, 0) rotate(0deg); }
-  30%  { transform: translate(-50%, 0) rotate(-26deg); }
-  100% { transform: translate(-50%, 0) rotate(0deg); }
+  0%   { transform: translateX(-50%) rotate(0deg); }
+  30%  { transform: translateX(-50%) rotate(-24deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
 }
-.roleta-batida { animation: roleta-batida 0.16s ease-out; }
-
-/* Entrada do resultado */
-@keyframes roleta-premio {
-  0%   { opacity: 0; transform: scale(0.82) translateY(10px); }
-  60%  { opacity: 1; transform: scale(1.04) translateY(0); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-.roleta-premio { animation: roleta-premio 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.roleta-batida { animation: roleta-batida 0.15s ease-out; }
 
 /* Confete caindo apos a vitoria */
 @keyframes roleta-confete {
   0%   { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
-  100% { opacity: 0; transform: translate3d(var(--dx), 320px, 0) rotate(var(--giro)); }
+  100% { opacity: 0; transform: translate3d(var(--dx), 105vh, 0) rotate(var(--giro)); }
 }
-.roleta-confete { animation: roleta-confete var(--dur) ease-in forwards; animation-delay: var(--atraso); }
+.roleta-confete {
+  animation: roleta-confete var(--dur) ease-in forwards;
+  animation-delay: var(--atraso);
+  will-change: transform, opacity;
+}
+
+/* Entrada do modal de premio */
+@keyframes roleta-modal {
+  0%   { opacity: 0; transform: scale(0.9) translateY(14px); }
+  60%  { opacity: 1; transform: scale(1.02) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.roleta-modal { animation: roleta-modal 0.4s cubic-bezier(0.2, 1.25, 0.4, 1) both; }
 
 /* Botao chamando para o giro */
 @keyframes roleta-pulso {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(238, 92, 19, 0.55); }
-  70%      { box-shadow: 0 0 0 14px rgba(238, 92, 19, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(238, 92, 19, 0.5); }
+  70%      { box-shadow: 0 0 0 16px rgba(238, 92, 19, 0); }
 }
-.roleta-pulso { animation: roleta-pulso 2s ease-out infinite; }
+.roleta-pulso { animation: roleta-pulso 2.4s ease-out infinite; }
 
-/* Quem prefere menos movimento na tela nao leva nada disso */
+/* Balanco discreto do ponteiro com a roda parada, so para dar vida */
+@keyframes roleta-ponteiro-parado {
+  0%, 92%, 100% { transform: translateX(-50%) rotate(0deg); }
+  96%           { transform: translateX(-50%) rotate(-6deg); }
+}
+.roleta-ponteiro-parado { animation: roleta-ponteiro-parado 4s ease-in-out infinite; }
+
+/* Quem prefere menos movimento na tela nao leva nada disso. A roda tambem
+   nao gira: o resultado aparece direto, sem animacao. */
 @media (prefers-reduced-motion: reduce) {
-  .roleta-led, .roleta-halo, .roleta-brilho, .roleta-pulso,
-  .roleta-batida, .roleta-premio, .roleta-confete { animation: none !important; }
+  .roleta-batida, .roleta-confete, .roleta-modal,
+  .roleta-pulso, .roleta-ponteiro-parado { animation: none !important; }
 }

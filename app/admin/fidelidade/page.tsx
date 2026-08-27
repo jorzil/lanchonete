@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatCurrency } from "@/lib/store"
+import { normalizePhone, formatPhone } from "@/lib/phone"
 import {
   fetchLoyaltyConfig, patchLoyaltyConfig, LOYALTY_DEFAULTS, sliceOdds, chanceTotal, sliceColor, drawSlice,
+  normalizeWheel, sliceUsage, sliceStockLeft, blockedSlices, SPIN_RULE_LABEL,
+  type SpinRuleType, type Redemption,
   type LoyaltyConfig, type Reward, type Tier, type WheelSlice,
 } from "@/lib/loyalty"
-import { Roleta } from "@/components/clube/roleta"
+import { Roulette } from "@/components/roleta/roulette"
 import { toast } from "sonner"
 
 const TIPOS: Array<{ v: Reward["tipo"]; label: string }> = [
@@ -31,12 +34,30 @@ const STATUS = [
 
 export default function FidelidadePage() {
   const [cfg, setCfg] = useState<LoyaltyConfig | null>(null)
+  const [resgates, setResgates] = useState<Redemption[]>([])
+  const [telManual, setTelManual] = useState("")
+  const [qtdManual, setQtdManual] = useState(1)
   const [salvando, setSalvando] = useState(false)
   /** Contagem dos giros de teste, por fatia. */
   const [tally, setTally] = useState<Record<string, number>>({})
   const [simulando, setSimulando] = useState(false)
 
-  useEffect(() => { fetchLoyaltyConfig().then(setCfg) }, [])
+  useEffect(() => {
+    // A rota raiz traz configuração e resgates de uma vez — os resgates são a
+    // fonte dos números da roleta (quantos giros, o que já saiu, estoque).
+    ;(async () => {
+      try {
+        const res = await fetch("/api/loyalty", { cache: "no-store" })
+        const d = await res.json().catch(() => ({}))
+        if (d?.config) {
+          setCfg({ ...LOYALTY_DEFAULTS, ...d.config, roleta: normalizeWheel(d.config.roleta) })
+          setResgates(Array.isArray(d.redemptions) ? d.redemptions : [])
+          return
+        }
+      } catch {}
+      setCfg(await fetchLoyaltyConfig())
+    })()
+  }, [])
 
   async function salvar(next?: LoyaltyConfig) {
     const alvo = next ?? cfg
@@ -91,6 +112,16 @@ export default function FidelidadePage() {
 
   const totalGiros = Object.values(tally).reduce((a, b) => a + b, 0)
   const odds = sliceOdds(cfg.roleta.fatias)
+  const usos = sliceUsage(resgates)
+  const bloqueadas = blockedSlices(cfg.roleta.fatias, resgates)
+
+  // Números da roleta, tirados do próprio histórico de giros.
+  const giros = resgates.filter((r) => r.rewardId.startsWith("roleta:"))
+  const comCupom = giros.filter((r) => !!r.couponCode)
+  const utilizados = comCupom.filter((r) => r.status === "usado" || r.usado).length
+  const ranking = cfg.roleta.fatias
+    .map((f) => ({ nome: f.nome, icone: f.icone, vezes: usos[f.id] ?? 0 }))
+    .sort((a, b) => b.vezes - a.vezes)
   const somaChances = chanceTotal(cfg.roleta.fatias)
   const chanceDePremio = cfg.roleta.fatias
     .filter((f) => f.tipo !== "nada")
@@ -190,12 +221,37 @@ export default function FidelidadePage() {
               onChange={(e) => up({ roleta: { ...cfg.roleta, ativo: e.target.checked } })} />
             <span className="font-medium text-gray-900">Ativa</span>
           </label>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-500">Ganha 1 giro a cada</Label>
-            <Input type="number" min="1" value={cfg.roleta.pedidosPorGiro}
-              onChange={(e) => up({ roleta: { ...cfg.roleta, pedidosPorGiro: Math.max(1, parseInt(e.target.value) || 1) } })}
-              className="h-9 w-20" />
-            <span className="text-sm text-gray-600">pedidos</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label className="text-xs text-gray-500">Como ganha giro</Label>
+            <select
+              value={cfg.roleta.regra.tipo}
+              onChange={(e) => up({ roleta: { ...cfg.roleta, regra: { ...cfg.roleta.regra, tipo: e.target.value as SpinRuleType } } })}
+              className="h-9 rounded-md border border-gray-200 px-2 text-sm"
+            >
+              {(Object.keys(SPIN_RULE_LABEL) as SpinRuleType[]).map((t) => (
+                <option key={t} value={t}>{SPIN_RULE_LABEL[t]}</option>
+              ))}
+            </select>
+            {cfg.roleta.regra.tipo !== "MANUAL" && (
+              <>
+                <Input type="number" min="1" value={cfg.roleta.regra.valor}
+                  onChange={(e) => {
+                    const valor = Math.max(1, parseInt(e.target.value) || 1)
+                    up({ roleta: {
+                      ...cfg.roleta, regra: { ...cfg.roleta.regra, valor },
+                      // pedidosPorGiro segue a regra por pedidos: é o que as
+                      // telas antigas ainda leem.
+                      ...(cfg.roleta.regra.tipo === "AFTER_ORDER" ? { pedidosPorGiro: valor } : {}),
+                    } })
+                  }}
+                  className="h-9 w-24" />
+                <span className="text-sm text-gray-600">
+                  {cfg.roleta.regra.tipo === "AFTER_ORDER" ? "pedidos"
+                    : cfg.roleta.regra.tipo === "AFTER_AMOUNT" ? "reais"
+                    : "giro(s)"}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <p className="text-sm text-gray-500">
@@ -219,8 +275,10 @@ export default function FidelidadePage() {
                 <span className="h-6 w-6 shrink-0 rounded border border-gray-200"
                   style={{ backgroundColor: sliceColor(f, i, cfg.roleta.fatias.length) }}
                   title={f.cor ? "cor própria" : "cor gerada pela posição"} />
+                <Input value={f.icone ?? ""} onChange={(e) => upFatia(f.id, { icone: e.target.value.slice(0, 2) })}
+                  className="h-9 w-12 text-center" placeholder="🎁" aria-label="Ícone" />
                 <Input value={f.nome} onChange={(e) => upFatia(f.id, { nome: e.target.value })}
-                  className="h-9 w-[150px]" />
+                  className="h-9 w-[140px]" />
                 <select value={f.tipo} onChange={(e) => upFatia(f.id, { tipo: e.target.value as WheelSlice["tipo"] })}
                   className="h-9 rounded-md border border-gray-200 px-2 text-sm">
                   <option value="nada">Sem prêmio</option>
@@ -237,10 +295,35 @@ export default function FidelidadePage() {
                     className="h-9 w-20" />
                   <span className="text-xs text-gray-500">%</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-gray-500">Estoque</Label>
+                  <Input type="number" min="0" value={f.estoque ?? ""} placeholder="∞"
+                    onChange={(e) => upFatia(f.id, { estoque: e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0) })}
+                    className="h-9 w-20" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-gray-500">Vale</Label>
+                  <Input type="number" min="1" value={f.validadeDias ?? 30}
+                    onChange={(e) => upFatia(f.id, { validadeDias: Math.max(1, parseInt(e.target.value) || 30) })}
+                    className="h-9 w-16" />
+                  <span className="text-xs text-gray-500">dias</span>
+                </div>
+                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" className="h-4 w-4 cursor-pointer accent-[#EE5C13]"
+                    checked={f.ativo !== false}
+                    onChange={(e) => upFatia(f.id, { ativo: e.target.checked })} />
+                  Ativa
+                </label>
                 <span className={`ml-auto rounded-full px-2 py-1 text-xs font-bold ${
-                  chance >= 20 ? "bg-emerald-50 text-emerald-700" : chance >= 5 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
+                  bloqueadas.has(f.id) ? "bg-red-50 text-red-600"
+                  : chance >= 20 ? "bg-emerald-50 text-emerald-700"
+                  : chance >= 5 ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"
                 }`}>
-                  {chance.toFixed(1)}%
+                  {bloqueadas.has(f.id) ? "não sai" : `${chance.toFixed(1)}%`}
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  saiu {usos[f.id] ?? 0}×
+                  {sliceStockLeft(f, usos) !== null && ` · restam ${sliceStockLeft(f, usos)}`}
                 </span>
                 <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-50 hover:text-red-600"
                   onClick={() => up({ roleta: { ...cfg.roleta, fatias: cfg.roleta.fatias.filter((x) => x.id !== f.id) } })}>
@@ -255,7 +338,7 @@ export default function FidelidadePage() {
           <Button size="sm" variant="outline"
             onClick={() => up({ roleta: { ...cfg.roleta, fatias: [...cfg.roleta.fatias, {
               id: `w-${Date.now().toString(36)}`, nome: "Nova fatia", tipo: "nada",
-              valor: 0, chance: 10,
+              valor: 0, chance: 10, icone: "🎁", ativo: true, validadeDias: 30, estoque: null,
             }] } })}>
             <Plus size={14} className="mr-1" /> Nova fatia
           </Button>
@@ -263,6 +346,82 @@ export default function FidelidadePage() {
             Chance de sair algum prêmio: <strong>{chanceDePremio.toFixed(1)}%</strong>
             {chanceDePremio > 70 && <span className="ml-2 font-bold text-amber-600">alta — confira sua margem</span>}
           </p>
+        </div>
+      </Card>
+
+      {/* Números da roleta */}
+      <Card className="space-y-4 p-5">
+        <h2 className="font-bold text-gray-800">Números da roleta</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { rotulo: "Giros realizados", valor: String(giros.length) },
+            { rotulo: "Prêmios distribuídos", valor: String(comCupom.length) },
+            { rotulo: "Cupons utilizados", valor: String(utilizados) },
+            {
+              rotulo: "Taxa de utilização",
+              valor: comCupom.length ? `${Math.round((utilizados / comCupom.length) * 100)}%` : "—",
+            },
+          ].map((m) => (
+            <div key={m.rotulo} className="rounded-xl bg-gray-50 p-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-gray-400">{m.rotulo}</p>
+              <p className="text-2xl font-black text-gray-800">{m.valor}</p>
+            </div>
+          ))}
+        </div>
+
+        {giros.length > 0 && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
+              Mais distribuído: <strong>{ranking[0].icone} {ranking[0].nome}</strong> ({ranking[0].vezes}×)
+            </p>
+            <p className="rounded-lg bg-gray-50 px-3 py-2 text-[12px] text-gray-600">
+              Menos distribuído: <strong>{ranking[ranking.length - 1].icone} {ranking[ranking.length - 1].nome}</strong> ({ranking[ranking.length - 1].vezes}×)
+            </p>
+          </div>
+        )}
+
+        {/* Giro dado a mão: para resolver reclamação e para campanha pontual */}
+        <div className="border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-bold text-gray-700">Dar giros a um cliente</h3>
+          <p className="text-[12px] text-gray-500">
+            Somam por cima da regra. Úteis para compensar um problema no pedido ou
+            premiar alguém numa ação pontual.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Input value={telManual} onChange={(e) => setTelManual(e.target.value)}
+              placeholder="WhatsApp do cliente" className="h-9 w-52" />
+            <Input type="number" min="1" value={qtdManual}
+              onChange={(e) => setQtdManual(Math.max(1, parseInt(e.target.value) || 1))}
+              className="h-9 w-20" />
+            <Button size="sm" variant="outline" onClick={() => {
+              const chave = normalizePhone(telManual)
+              if (chave.length < 10) { toast.error("Telefone inválido."); return }
+              const atuais = cfg.roleta.girosManuais ?? {}
+              up({ roleta: { ...cfg.roleta, girosManuais: { ...atuais, [chave]: (atuais[chave] ?? 0) + qtdManual } } })
+              setTelManual("")
+              toast.success(`${qtdManual} giro(s) para ${formatPhone(chave)}. Não esqueça de salvar.`)
+            }}>
+              <Plus size={14} className="mr-1" /> Dar giros
+            </Button>
+          </div>
+          {Object.keys(cfg.roleta.girosManuais ?? {}).length > 0 && (
+            <div className="mt-3 space-y-1">
+              {Object.entries(cfg.roleta.girosManuais).map(([tel, qtd]) => (
+                <div key={tel} className="flex items-center gap-2 text-[12px] text-gray-600">
+                  <span className="font-mono">{formatPhone(tel)}</span>
+                  <span className="font-bold">+{qtd} giro(s)</span>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-red-400 hover:text-red-600"
+                    onClick={() => {
+                      const copia = { ...cfg.roleta.girosManuais }
+                      delete copia[tel]
+                      up({ roleta: { ...cfg.roleta, girosManuais: copia } })
+                    }}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -292,12 +451,12 @@ export default function FidelidadePage() {
         <div className="grid gap-5 lg:grid-cols-2">
           {/* A roleta como o cliente vê, sobre o fundo escuro do site */}
           <div className="rounded-2xl bg-[#0B1F3A] p-4">
-            <Roleta
+            <Roulette
               config={cfg.roleta}
               saldo={{ girosDisponiveis: 999, pedidosParaProximoGiro: 0 } as never}
               phone=""
               girarLocal={girarTeste}
-              ocultarCabecalho
+              compacto
               onFim={() => {}}
             />
           </div>

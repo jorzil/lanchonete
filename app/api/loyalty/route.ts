@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, supabaseConfigured } from '@/lib/supabase'
-import { LOYALTY_DEFAULTS, type LoyaltyConfig, type Redemption } from '@/lib/loyalty'
+import { LOYALTY_DEFAULTS, normalizeWheel, type LoyaltyConfig, type Redemption } from '@/lib/loyalty'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +13,12 @@ export async function readLoyaltyRow(): Promise<{ config: LoyaltyConfig; redempt
   if (data?.address_reference) {
     try {
       const p = JSON.parse(data.address_reference)
+      const config = { ...LOYALTY_DEFAULTS, ...(p.config ?? {}) }
+      // Roleta gravada antes das regras de giro não tem regra nem estoque:
+      // completar aqui evita espalhar checagem de campo ausente pelo código.
+      config.roleta = normalizeWheel(config.roleta)
       return {
-        config: { ...LOYALTY_DEFAULTS, ...(p.config ?? {}) },
+        config,
         redemptions: Array.isArray(p.redemptions) ? p.redemptions : [],
       }
     } catch {}
