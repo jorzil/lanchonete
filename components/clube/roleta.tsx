@@ -19,12 +19,19 @@ function fatiaPath(inicio: number, fim: number) {
   return `M 100 100 L ${a.x} ${a.y} A 96 96 0 ${grande} 1 ${b.x} ${b.y} Z`
 }
 
-export function Roleta({ config, saldo, phone, onFim }: {
+export function Roleta({ config, saldo, phone, onFim, girarLocal, ocultarCabecalho }: {
   config: WheelConfig
   saldo: LoyaltyBalance
   phone: string
   /** Chamado ao terminar, para a página recarregar o saldo. */
   onFim: () => void
+  /**
+   * Modo teste (painel): sorteia aqui mesmo, sem chamar o servidor, sem gastar
+   * giro e sem gerar cupom. Recebe o índice sorteado — usando a MESMA função de
+   * sorteio do servidor, para o teste refletir a realidade.
+   */
+  girarLocal?: () => number
+  ocultarCabecalho?: boolean
 }) {
   const [girando, setGirando] = useState(false)
   const [angulo, setAngulo] = useState(0)
@@ -34,10 +41,30 @@ export function Roleta({ config, saldo, phone, onFim }: {
   const fatias = config.fatias
   const passo = 360 / Math.max(1, fatias.length)
 
+  /** Anima até o centro da fatia e revela o resultado. */
+  function animarAte(indice: number, aoRevelar: () => void) {
+    const centro = indice * passo + passo / 2
+    const destino = 360 * 5 + (360 - centro)
+    setAngulo((a) => a + destino - (a % 360))
+    setTimeout(() => { setGirando(false); aoRevelar() }, 4200)
+  }
+
   async function girar() {
     if (girando) return
     setGirando(true)
     setResultado(null)
+
+    // Modo teste: sorteia local, sem tocar no servidor.
+    if (girarLocal) {
+      const i = girarLocal()
+      if (i < 0) { toast.error('Roleta sem fatias com chance maior que zero.'); setGirando(false); return }
+      animarAte(i, () => {
+        setResultado({ fatia: fatias[i], couponCode: null })
+        onFim()
+      })
+      return
+    }
+
     try {
       const res = await fetch('/api/loyalty/roleta', {
         method: 'POST',
@@ -52,18 +79,11 @@ export function Roleta({ config, saldo, phone, onFim }: {
       }
 
       // O servidor já decidiu; aqui só giramos até o centro da fatia sorteada.
-      // 5 voltas completas antes, para a animação ter peso.
-      const centro = d.indice * passo + passo / 2
-      const destino = 360 * 5 + (360 - centro)
-      setAngulo((a) => a + destino - (a % 360))
-
-      // Espera a animação terminar antes de revelar o texto
-      setTimeout(() => {
+      animarAte(d.indice, () => {
         setResultado({ fatia: d.fatia, couponCode: d.couponCode })
-        setGirando(false)
         onFim()
         if (d.premio) toast.success(`Você ganhou: ${d.fatia.nome}!`)
-      }, 4200)
+      })
     } catch {
       toast.error('Falha de conexão.')
       setGirando(false)
@@ -80,9 +100,12 @@ export function Roleta({ config, saldo, phone, onFim }: {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      {!ocultarCabecalho && (
       <p className="text-center text-[11px] font-bold uppercase tracking-widest text-brand">
         🎡 Roleta da sorte
       </p>
+      )}
+      {!ocultarCabecalho && (
       <p className="mt-1 text-center text-sm text-white/50">
         {saldo.girosDisponiveis > 0 ? (
           <>
@@ -99,9 +122,12 @@ export function Roleta({ config, saldo, phone, onFim }: {
           </>
         )}
       </p>
+      )}
+      {!ocultarCabecalho && (
       <p className="mt-0.5 text-center text-[11px] text-white/30">
         A cada {config.pedidosPorGiro} pedidos você ganha um giro
       </p>
+      )}
 
       <div className="relative mx-auto mt-5 w-fit">
         {/* Ponteiro fixo no topo */}
@@ -145,11 +171,11 @@ export function Roleta({ config, saldo, phone, onFim }: {
 
       <button
         onClick={girar}
-        disabled={girando || saldo.girosDisponiveis === 0}
+        disabled={girando || (!girarLocal && saldo.girosDisponiveis === 0)}
         className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3.5 font-black text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
       >
         {girando ? <Loader2 size={16} className="animate-spin" /> : null}
-        {girando ? 'Girando…' : saldo.girosDisponiveis === 0 ? 'Sem giros disponíveis' : 'Girar a roleta'}
+        {girando ? 'Girando…' : !girarLocal && saldo.girosDisponiveis === 0 ? 'Sem giros disponíveis' : 'Girar a roleta'}
       </button>
 
       {resultado && (

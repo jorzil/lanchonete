@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatCurrency } from "@/lib/store"
 import {
-  fetchLoyaltyConfig, patchLoyaltyConfig, LOYALTY_DEFAULTS, sliceOdds, chanceTotal, sliceColor,
+  fetchLoyaltyConfig, patchLoyaltyConfig, LOYALTY_DEFAULTS, sliceOdds, chanceTotal, sliceColor, drawSlice,
   type LoyaltyConfig, type Reward, type Tier, type WheelSlice,
 } from "@/lib/loyalty"
+import { Roleta } from "@/components/clube/roleta"
 import { toast } from "sonner"
 
 const TIPOS: Array<{ v: Reward["tipo"]; label: string }> = [
@@ -31,6 +32,9 @@ const STATUS = [
 export default function FidelidadePage() {
   const [cfg, setCfg] = useState<LoyaltyConfig | null>(null)
   const [salvando, setSalvando] = useState(false)
+  /** Contagem dos giros de teste, por fatia. */
+  const [tally, setTally] = useState<Record<string, number>>({})
+  const [simulando, setSimulando] = useState(false)
 
   useEffect(() => { fetchLoyaltyConfig().then(setCfg) }, [])
 
@@ -59,6 +63,33 @@ export default function FidelidadePage() {
     return <div className="flex items-center justify-center py-20 text-gray-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando…</div>
   }
 
+  /** Sorteia uma vez e contabiliza — usa a MESMA função do servidor. */
+  function girarTeste(): number {
+    const i = drawSlice(cfg!.roleta.fatias, Math.random())
+    if (i >= 0) {
+      const id = cfg!.roleta.fatias[i].id
+      setTally((t) => ({ ...t, [id]: (t[id] ?? 0) + 1 }))
+    }
+    return i
+  }
+
+  /** Muitos giros de uma vez: é assim que se confere se a chance bate. */
+  function simular(vezes: number) {
+    if (!cfg) return
+    setSimulando(true)
+    const conta: Record<string, number> = { ...tally }
+    for (let n = 0; n < vezes; n++) {
+      const i = drawSlice(cfg.roleta.fatias, Math.random())
+      if (i >= 0) {
+        const id = cfg.roleta.fatias[i].id
+        conta[id] = (conta[id] ?? 0) + 1
+      }
+    }
+    setTally(conta)
+    setSimulando(false)
+  }
+
+  const totalGiros = Object.values(tally).reduce((a, b) => a + b, 0)
   const odds = sliceOdds(cfg.roleta.fatias)
   const somaChances = chanceTotal(cfg.roleta.fatias)
   const chanceDePremio = cfg.roleta.fatias
@@ -232,6 +263,89 @@ export default function FidelidadePage() {
             Chance de sair algum prêmio: <strong>{chanceDePremio.toFixed(1)}%</strong>
             {chanceDePremio > 70 && <span className="ml-2 font-bold text-amber-600">alta — confira sua margem</span>}
           </p>
+        </div>
+      </Card>
+
+      {/* Prévia e teste da roleta */}
+      <Card className="space-y-4 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-gray-800">Testar a roleta</h2>
+            <p className="text-sm text-gray-500">
+              Gire à vontade: aqui nada é gasto e nenhum cupom é gerado. O sorteio usa
+              exatamente a mesma regra do site.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={simulando} onClick={() => simular(100)}>
+              Simular 100 giros
+            </Button>
+            <Button size="sm" variant="outline" disabled={simulando} onClick={() => simular(1000)}>
+              Simular 1.000
+            </Button>
+            {totalGiros > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => setTally({})}>Zerar</Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* A roleta como o cliente vê, sobre o fundo escuro do site */}
+          <div className="rounded-2xl bg-[#0B1F3A] p-4">
+            <Roleta
+              config={cfg.roleta}
+              saldo={{ girosDisponiveis: 999, pedidosParaProximoGiro: 0 } as never}
+              phone=""
+              girarLocal={girarTeste}
+              ocultarCabecalho
+              onFim={() => {}}
+            />
+          </div>
+
+          {/* Resultado acumulado */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Resultado dos testes</p>
+              <span className="text-xs font-bold text-gray-600">{totalGiros} giro(s)</span>
+            </div>
+            {totalGiros === 0 ? (
+              <p className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
+                Gire a roleta ou use &quot;Simular&quot; para comparar a chance configurada com a obtida.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {cfg.roleta.fatias.map((f, i) => {
+                  const vezes = tally[f.id] ?? 0
+                  const obtido = (vezes / totalGiros) * 100
+                  const esperado = odds[f.id] ?? 0
+                  const desvio = Math.abs(obtido - esperado)
+                  return (
+                    <div key={f.id} className="flex items-center gap-2 text-[12px]">
+                      <span className="h-3 w-3 shrink-0 rounded"
+                        style={{ backgroundColor: sliceColor(f, i, cfg.roleta.fatias.length) }} />
+                      <span className="w-32 shrink-0 truncate text-gray-700">{f.nome}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                        <div className="h-full rounded-full bg-gray-400"
+                          style={{ width: `${Math.min(100, obtido)}%` }} />
+                      </div>
+                      <span className="w-24 shrink-0 text-right tabular-nums text-gray-500">
+                        {obtido.toFixed(1)}% <span className="text-gray-300">/</span> {esperado.toFixed(1)}%
+                      </span>
+                      <span className={`w-10 shrink-0 text-right tabular-nums ${
+                        totalGiros < 100 ? "text-gray-300" : desvio < 3 ? "text-emerald-600" : "text-amber-600"
+                      }`}>
+                        {vezes}
+                      </span>
+                    </div>
+                  )
+                })}
+                <p className="pt-1 text-[11px] text-gray-400">
+                  Coluna: obtido / configurado. Com poucos giros a diferença é normal — simule
+                  1.000 para os números convergirem.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
