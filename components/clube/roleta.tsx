@@ -143,13 +143,24 @@ export function Roleta({ config, saldo, phone, onFim, girarLocal, ocultarCabecal
     requestAnimationFrame(quadro)
   }
 
-  /** Anima até o centro da fatia e revela o resultado. */
+  /**
+   * Anima até o centro da fatia e revela o resultado.
+   *
+   * O ângulo só entra dois quadros depois de ligar a transição. Se os dois
+   * forem para a mesma pintura — que é o que acontece no modo teste, onde não
+   * há espera de rede no meio — o navegador não vê mudança de valor com
+   * transição já ativa, e a roda salta direto para o fim sem girar.
+   */
   function animarAte(indice: number, aoRevelar: () => void) {
     const centro = indice * passo + passo / 2
     const destino = 360 * VOLTAS + (360 - centro)
-    setAngulo((a) => a + destino - (a % 360))
-    acompanharPinos()
-    setTimeout(() => { setGirando(false); aoRevelar() }, DURACAO)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setAngulo((a) => a + destino - (a % 360))
+        acompanharPinos()
+        setTimeout(() => { setGirando(false); aoRevelar() }, DURACAO)
+      })
+    })
   }
 
   async function girar() {
