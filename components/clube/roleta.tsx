@@ -325,7 +325,9 @@ export function Roleta({ config, saldo, phone, onFim, girarLocal, ocultarCabecal
           style={{
             transform: `rotate(${angulo}deg)`,
             // Arranca rápido e passa quase metade do tempo desacelerando no fim.
-            transition: girando ? `transform ${DURACAO}ms cubic-bezier(0.11, 0.72, 0.09, 1)` : 'none',
+            // A transição fica SEMPRE ligada: ligá-la junto com a troca de
+            // ângulo faz o navegador pular direto para o fim, sem girar.
+            transition: `transform ${DURACAO}ms cubic-bezier(0.11, 0.72, 0.09, 1)`,
           }}
         >
           <defs>
@@ -432,18 +434,26 @@ export function Roleta({ config, saldo, phone, onFim, girarLocal, ocultarCabecal
             <>
               <p className="text-3xl">🎉</p>
               <p className="mt-1 text-xl font-black text-emerald-400">{resultado.fatia.nome}</p>
-              {resultado.couponCode && (
-                <button
-                  onClick={() => copiar(resultado.couponCode!)}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-mono text-sm font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
-                >
-                  {copiado ? <Check size={14} /> : <Copy size={14} />}
-                  {resultado.couponCode}
-                </button>
+              {/* Sem cupom é demonstração ou teste do painel: nada foi ganho de
+                  verdade, e prometer um código que não existe só confunde. */}
+              {resultado.couponCode ? (
+                <>
+                  <button
+                    onClick={() => copiar(resultado.couponCode!)}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-mono text-sm font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                  >
+                    {copiado ? <Check size={14} /> : <Copy size={14} />}
+                    {resultado.couponCode}
+                  </button>
+                  <p className="mt-2 text-[11px] text-white/35">
+                    Use no campo de cupom do checkout. Vale uma vez, por 30 dias.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-[11px] text-white/35">
+                  Demonstração — nenhum cupom foi gerado.
+                </p>
               )}
-              <p className="mt-2 text-[11px] text-white/35">
-                Use no campo de cupom do checkout. Vale uma vez, por 30 dias.
-              </p>
             </>
           )}
         </div>

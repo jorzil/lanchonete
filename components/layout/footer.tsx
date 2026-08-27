@@ -48,6 +48,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/roleta" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
+                Roleta da Sorte
+              </Link>
+            </li>
+            <li>
               <Link href="/#sobre" className="text-white/45 hover:text-white text-[13px] font-medium transition-colors">
                 Nossa História
               </Link>

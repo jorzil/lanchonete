@@ -10,6 +10,7 @@ const NAV = [
   { href: '/cardapio',            label: 'Cardápio'          },
   { href: '/cardapio?cat=combos', label: 'Combos'            },
   { href: '/clube',               label: 'Clube'             },
+  { href: '/roleta',              label: 'Roleta'            },
   { href: '/#sobre',              label: 'Sobre'             },
   { href: '/acompanhar',          label: 'Acompanhar Pedido' },
 ]
