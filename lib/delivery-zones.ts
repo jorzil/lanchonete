@@ -28,6 +28,15 @@ export interface DeliveryConfig {
    */
   routeFactor?: number
   /**
+   * Taxa fixa por bairro. Quando o bairro do CEP está aqui, é ELA que vale.
+   *
+   * Entregando numa cidade só, o bairro é o dado mais confiável que existe:
+   * vem do próprio CEP, não depende de mapa e é o critério que a loja já usa
+   * de cabeça. A distância continua servindo para os bairros que não estiverem
+   * na tabela.
+   */
+  neighborhoodFees?: { bairro: string; fee: number }[]
+  /**
    * Taxa usada quando não dá para localizar o endereço no mapa.
    *
    * Antes caía na primeira faixa — a mais barata, de até 1km. Endereço de
@@ -35,6 +44,24 @@ export interface DeliveryConfig {
    * morava longe pagava R$ 5,00.
    */
   feeWhenUnknown?: number
+}
+
+/** Compara bairros ignorando acento, caixa e "Vila/Bairro" na frente. */
+export function normalizeNeighborhood(nome: string): string {
+  return (nome ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^(bairro|vila|vl\.?|jardim|jd\.?|parque|pq\.?|conjunto|residencial)\s+/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+/** Taxa cadastrada para este bairro, se houver. */
+export function neighborhoodFee(bairro: string, cfg: DeliveryConfig): number | null {
+  const alvo = normalizeNeighborhood(bairro)
+  if (!alvo) return null
+  const achado = (cfg.neighborhoodFees ?? []).find((n) => normalizeNeighborhood(n.bairro) === alvo)
+  return achado ? achado.fee : null
 }
 
 /** Fator de rota válido, com um teto para ninguém errar a mão na configuração. */
@@ -219,5 +246,78 @@ export async function pushDeliveryConfig(config: DeliveryConfig): Promise<boolea
     return !!(res.ok && data.ok)
   } catch {
     return false
+  }
+}
+
+// ─── Decisão da taxa ─────────────────────────────────────────────────────────
+
+export type FeeSource = 'bairro' | 'distancia' | 'indefinido' | 'fora_area' | 'gratis'
+
+export interface FeeDecision {
+  fee: number
+  /** Antes de aplicar frete grátis — útil para o simulador do painel. */
+  feeBruta: number
+  fonte: FeeSource
+  /** Frase curta explicando de onde saiu o valor. */
+  explicacao: string
+  distanceKm: number | null
+  straightKm: number | null
+  zone: DeliveryZone | null
+  outsideArea: boolean
+  /** true quando a taxa é um chute e a loja precisa confirmar. */
+  estimada: boolean
+}
+
+/**
+ * Onde a taxa de entrega é decidida — um lugar só, usado pelo checkout, pelo
+ * PDV e pelo simulador do painel, para os três nunca discordarem.
+ *
+ * A ordem importa:
+ *   1. bairro cadastrado  — o dado mais confiável, vem do próprio CEP;
+ *   2. distância          — só com coordenada de verdade do endereço;
+ *   3. taxa de indefinição — quando nada acima deu certo, avisando o cliente.
+ */
+export function resolveDeliveryFee(entrada: {
+  bairro?: string
+  lat?: number | null
+  lng?: number | null
+  subtotal: number
+  cfg: DeliveryConfig
+}): FeeDecision {
+  const { bairro = '', lat, lng, subtotal, cfg } = entrada
+  const base = (fee: number, fonte: FeeSource, explicacao: string, extra: Partial<FeeDecision> = {}): FeeDecision => {
+    const comGratis = applyFreeDelivery(fee, subtotal, cfg)
+    return {
+      fee: comGratis,
+      feeBruta: fee,
+      fonte: comGratis === 0 && fee > 0 ? 'gratis' : fonte,
+      explicacao: comGratis === 0 && fee > 0 ? `${explicacao} — zerada pelo frete grátis` : explicacao,
+      distanceKm: null, straightKm: null, zone: null, outsideArea: false, estimada: false,
+      ...extra,
+    }
+  }
+
+  const doBairro = neighborhoodFee(bairro, cfg)
+  if (doBairro !== null) {
+    return base(doBairro, 'bairro', `Taxa cadastrada para o bairro ${bairro}`)
+  }
+
+  if (typeof lat === 'number' && typeof lng === 'number') {
+    const r = calcDeliveryFee(lat, lng, cfg)
+    if (r.outsideArea) {
+      return {
+        ...base(r.fee, 'fora_area', `${r.distanceKm}km de percurso — fora da área de entrega`),
+        distanceKm: r.distanceKm, straightKm: r.straightKm, zone: null, outsideArea: true,
+      }
+    }
+    return {
+      ...base(r.fee, 'distancia', `${r.distanceKm}km de percurso (${r.straightKm}km em linha reta) — faixa "${r.zone?.label}"`),
+      distanceKm: r.distanceKm, straightKm: r.straightKm, zone: r.zone,
+    }
+  }
+
+  return {
+    ...base(unknownFee(cfg), 'indefinido', 'Endereço sem bairro cadastrado e sem coordenada — taxa a confirmar'),
+    estimada: true,
   }
 }

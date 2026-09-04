@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, MapPin, Save, RotateCcw } from 'lucide-react'
-import { saveDeliveryConfig, pullDeliveryConfig, pushDeliveryConfig, routeFactorOf, unknownFee, feeForDistance, type DeliveryConfig, type DeliveryZone } from '@/lib/delivery-zones'
+import { saveDeliveryConfig, pullDeliveryConfig, pushDeliveryConfig, routeFactorOf, unknownFee, feeForDistance, resolveDeliveryFee, normalizeNeighborhood, type DeliveryConfig, type DeliveryZone, type FeeDecision } from '@/lib/delivery-zones'
 import { formatCurrency } from '@/lib/data'
 import { toast } from 'sonner'
 
@@ -35,9 +35,50 @@ export default function EntregaPage() {
 
   useEffect(() => { pullDeliveryConfig().then(setConfig) }, [])
 
+  // ── Simulador de CEP ──────────────────────────────────────────────────────
+  const [cepTeste, setCepTeste] = useState('')
+  const [subtotalTeste, setSubtotalTeste] = useState(40)
+  const [simulando, setSimulando] = useState(false)
+  const [erroTeste, setErroTeste] = useState('')
+  const [resultado, setResultado] = useState<{
+    endereco: { logradouro: string; bairro: string; cidade: string; uf: string
+      lat: number | null; lng: number | null; fonte: string; origemCoordenada: string | null }
+    decisao: FeeDecision
+  } | null>(null)
+
+  // Daqui para baixo não pode haver hook: o React exige que a quantidade e a
+  // ordem deles sejam sempre as mesmas, e este return corta a renderização.
   if (!config) return null
 
   const setZones = (zones: DeliveryZone[]) => setConfig(c => c ? { ...c, zones } : c)
+  const setBairros = (neighborhoodFees: { bairro: string; fee: number }[]) =>
+    setConfig(c => c ? { ...c, neighborhoodFees } : c)
+
+  async function simular() {
+    const limpo = cepTeste.replace(/\D/g, '')
+    if (limpo.length !== 8) { setErroTeste('Digite os 8 dígitos do CEP.'); return }
+    if (!config) return
+    setSimulando(true); setErroTeste(''); setResultado(null)
+    try {
+      const res = await fetch(`/api/cep?cep=${limpo}`, { cache: 'no-store' })
+      if (!res.ok) {
+        setErroTeste(res.status === 404
+          ? 'Nenhum provedor encontrou este CEP.'
+          : 'Não foi possível consultar agora. Tente de novo.')
+        return
+      }
+      const endereco = await res.json()
+      const decisao = resolveDeliveryFee({
+        bairro: endereco.bairro, lat: endereco.lat, lng: endereco.lng,
+        subtotal: subtotalTeste, cfg: config,
+      })
+      setResultado({ endereco, decisao })
+    } catch {
+      setErroTeste('Falha de conexão.')
+    } finally {
+      setSimulando(false)
+    }
+  }
 
   function addZone() {
     const last = config!.zones.at(-1)
@@ -168,6 +209,156 @@ export default function EntregaPage() {
               : `Frete grátis em pedidos a partir de ${formatCurrency(config.freeDeliveryMinOrder ?? 0)}.`}
           </div>
         )}
+      </div>
+
+      {/* Simulador — testar CEP por CEP antes de valer para o cliente */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-bold text-gray-800">Testar um CEP</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Digite um CEP e veja exatamente o que o cliente pagaria e por quê. Usa a
+            configuração que está na tela, mesmo sem salvar.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={cepTeste}
+            onChange={e => setCepTeste(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && simular()}
+            placeholder="00000-000"
+            className={`${inputCls} max-w-[180px]`}
+          />
+          <input
+            type="number" min={0} step={1}
+            value={subtotalTeste}
+            onChange={e => setSubtotalTeste(parseFloat(e.target.value) || 0)}
+            placeholder="Subtotal"
+            className={`${inputCls} max-w-[140px]`}
+          />
+          <button
+            onClick={simular}
+            disabled={simulando}
+            className="rounded-xl bg-orange-500 px-5 py-2 text-sm font-bold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            {simulando ? 'Consultando…' : 'Simular'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 -mt-2">
+          O segundo campo é o valor do pedido, para conferir a regra de frete grátis.
+        </p>
+
+        {erroTeste && (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {erroTeste}
+          </div>
+        )}
+
+        {resultado && (
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold text-gray-700">
+                {resultado.endereco.logradouro || '(CEP sem logradouro)'}
+                {resultado.endereco.bairro && <span className="text-gray-500"> · {resultado.endereco.bairro}</span>}
+              </span>
+              <span className="text-2xl font-black text-gray-900">{formatCurrency(resultado.decisao.fee)}</span>
+            </div>
+            <dl className="divide-y divide-gray-100 text-sm">
+              {[
+                ['Cidade', `${resultado.endereco.cidade} / ${resultado.endereco.uf}`],
+                ['Quem respondeu', resultado.endereco.fonte],
+                ['Coordenada', resultado.endereco.lat
+                  ? `${resultado.endereco.lat.toFixed(5)}, ${resultado.endereco.lng?.toFixed(5)} (${resultado.endereco.origemCoordenada === 'cep' ? 'do próprio CEP' : 'do nome da rua'})`
+                  : '— nenhum provedor devolveu coordenada'],
+                ['Distância', resultado.decisao.distanceKm !== null
+                  ? `${resultado.decisao.distanceKm} km de percurso · ${resultado.decisao.straightKm} km em linha reta`
+                  : '— não calculada'],
+                ['Como foi decidido', resultado.decisao.explicacao],
+              ].map(([k, v]) => (
+                <div key={k} className="flex flex-wrap gap-x-3 px-4 py-2">
+                  <dt className="w-40 shrink-0 text-gray-400">{k}</dt>
+                  <dd className="flex-1 text-gray-700">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {resultado.decisao.estimada && (
+              <p className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+                Nenhum provedor localizou este endereço. O cliente veria um aviso de que a taxa
+                será confirmada. Cadastre o bairro abaixo para resolver de vez.
+              </p>
+            )}
+            {resultado.endereco.bairro && (
+              <div className="border-t border-gray-100 px-4 py-3">
+                <button
+                  onClick={() => {
+                    const bairro = resultado.endereco.bairro
+                    const atuais = config.neighborhoodFees ?? []
+                    if (atuais.some(n => normalizeNeighborhood(n.bairro) === normalizeNeighborhood(bairro))) {
+                      toast.info('Esse bairro já está na tabela.')
+                      return
+                    }
+                    setConfig(c => c ? { ...c, neighborhoodFees: [...atuais, { bairro, fee: resultado.decisao.feeBruta }] } : c)
+                    toast.success(`${bairro} adicionado. Ajuste o valor e salve.`)
+                  }}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  + Fixar taxa para o bairro {resultado.endereco.bairro}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Taxa por bairro */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-bold text-gray-800">Taxa por bairro</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Tem prioridade sobre a distância. Entregando numa cidade só, o bairro é o dado
+            mais confiável: vem do próprio CEP e não depende de mapa nenhum. Os bairros que
+            não estiverem aqui continuam sendo cobrados por distância.
+          </p>
+        </div>
+
+        {(config.neighborhoodFees ?? []).length === 0 && (
+          <p className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">
+            Nenhum bairro cadastrado. Use o simulador acima para adicionar conforme testa.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {(config.neighborhoodFees ?? []).map((n, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <input
+                value={n.bairro}
+                onChange={e => setBairros((config.neighborhoodFees ?? []).map((x, j) => j === i ? { ...x, bairro: e.target.value } : x))}
+                className={`${inputCls} max-w-[260px]`}
+                placeholder="Nome do bairro"
+              />
+              <span className="text-sm text-gray-400">R$</span>
+              <input
+                type="number" min={0} step={0.5}
+                value={n.fee}
+                onChange={e => setBairros((config.neighborhoodFees ?? []).map((x, j) => j === i ? { ...x, fee: parseFloat(e.target.value) || 0 } : x))}
+                className={`${inputCls} max-w-[110px]`}
+              />
+              <button
+                onClick={() => setBairros((config.neighborhoodFees ?? []).filter((_, j) => j !== i))}
+                className="rounded-lg px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-50 hover:text-red-600"
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setBairros([...(config.neighborhoodFees ?? []), { bairro: '', fee: 0 }])}
+          className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          + Adicionar bairro
+        </button>
       </div>
 
       {/* Precisão da cobrança */}

@@ -19,7 +19,7 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
-import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, unknownFee, type FeeResult, type DeliveryConfig } from '@/lib/delivery-zones'
+import { pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, unknownFee, resolveDeliveryFee, type FeeDecision, type DeliveryConfig } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -76,7 +76,7 @@ export default function CheckoutPage() {
   })
   const [loadingCep, setLoadingCep] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
+  const [feeResult, setFeeResult] = useState<FeeDecision | null>(null)
   /** Endereço não localizado: a taxa é um chute e o cliente precisa saber. */
   const [taxaEstimada, setTaxaEstimada] = useState(false)
   const [couponInput, setCouponInput] = useState('')
@@ -135,53 +135,43 @@ export default function CheckoutPage() {
     if (clean.length !== 8) return
     setLoadingCep(true)
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`)
+      // A busca acontece no servidor, encadeando provedores: se um falha o
+      // próximo tenta, e os dois primeiros já trazem a coordenada do CEP.
+      const res = await fetch(`/api/cep?cep=${clean}`, { cache: 'no-store' })
+      if (!res.ok) {
+        toast.error(res.status === 404 ? 'CEP não encontrado.' : 'Não conseguimos consultar o CEP agora. Preencha o endereço à mão.')
+        return
+      }
       const data = await res.json()
-      if (!data.erro) {
-        const street     = data.logradouro || ''
-        const neighborhood = data.bairro || ''
-        const city       = data.localidade || ''
-        const state      = data.uf || ''
-        setForm((prev) => ({ ...prev, street, neighborhood, city, state }))
-        if (!isAllowedCity(city)) {
-          toast.error('Entregamos apenas em Governador Valadares. Você pode escolher "Retirada".')
-        } else {
-          toast.success('Endereço encontrado!')
-        }
+      const street = data.logradouro || ''
+      const neighborhood = data.bairro || ''
+      const city = data.cidade || ''
+      const state = data.uf || ''
+      setForm((prev) => ({ ...prev, street, neighborhood, city, state }))
+      if (!isAllowedCity(city)) {
+        toast.error('Entregamos apenas em Governador Valadares. Você pode escolher "Retirada".')
+      } else {
+        toast.success('Endereço encontrado!')
+      }
 
-        // Calcula a taxa pela distância até a loja (config vem do Supabase)
-        const config = await pullDeliveryConfig()
-        setDeliveryCfg(config)
-        const coords = await geocodeStructured({ street: `${street}, ${neighborhood}`, city, state, cep: clean })
-        // Ponto aproximado (o mapa achou só o bairro ou a cidade) não serve
-        // para cobrar por distância: daria a taxa de quem mora no centro.
-        const localizado = coords && coords.precisao !== 'aproximada'
+      const config = await pullDeliveryConfig()
+      setDeliveryCfg(config)
 
-        if (localizado) {
-          const result = calcDeliveryFee(coords!.lat, coords!.lng, config)
-          setFeeResult(result)
-          setTaxaEstimada(false)
-          if (result.outsideArea) {
-            toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
-            setDeliveryFee(0)
-          } else {
-            const fee = applyFreeDelivery(result.fee, subtotal, config)
-            setDeliveryFee(fee)
-            if (fee === 0) toast.success(`🎉 Frete grátis! (${result.distanceKm}km)`)
-            else toast.info(`Taxa de entrega: ${fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${result.distanceKm}km)`)
-          }
-        } else {
-          // Endereço não localizado no mapa: taxa de indefinição, avisando o
-          // cliente de que ela ainda vai ser conferida.
-          setFeeResult(null)
-          setTaxaEstimada(true)
-          const fee = applyFreeDelivery(unknownFee(config), subtotal, config)
-          setDeliveryFee(fee)
-          if (fee > 0) {
-            toast.warning('Não localizamos seu endereço no mapa. A taxa mostrada é uma estimativa e será confirmada pela loja.')
-          }
-        }
-      } else toast.error('CEP não encontrado.')
+      const decisao = resolveDeliveryFee({
+        bairro: neighborhood, lat: data.lat, lng: data.lng, subtotal, cfg: config,
+      })
+      setFeeResult(decisao)
+      setTaxaEstimada(decisao.estimada)
+
+      if (decisao.outsideArea) {
+        toast.error(`Fora da área de entrega (${decisao.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
+        setDeliveryFee(0)
+      } else {
+        setDeliveryFee(decisao.fee)
+        if (decisao.fee === 0) toast.success('🎉 Frete grátis!')
+        else if (decisao.estimada) toast.warning('Não localizamos seu endereço com precisão. A taxa é uma estimativa e será confirmada pela loja.')
+        else toast.info(`Taxa de entrega: ${decisao.fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`)
+      }
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
   }
@@ -538,7 +528,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-white/50"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {discount > 0 && <div className="flex justify-between text-emerald-400"><span>Desconto ({coupon?.code})</span><span>-{formatCurrency(discount)}</span></div>}
                   <div className="flex justify-between text-white/50">
-                    <span>Entrega{feeResult && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
+                    <span>Entrega{feeResult?.distanceKm && !feeResult.outsideArea ? <span className="ml-1 text-[10px] text-white/30">({feeResult.distanceKm}km)</span> : null}</span>
                     <span className={feeResult?.outsideArea ? 'text-red-400 text-xs' : ''}>
                       {feeResult?.outsideArea ? 'Fora da área'
                         : form.orderType === 'retirada' ? 'Grátis'
