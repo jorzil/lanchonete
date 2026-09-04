@@ -442,7 +442,25 @@ export default function EntregaPage() {
           </p>
         </div>
 
-        <div>
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Cobrar por distância</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Desligue se a distância vier errada na sua cidade. Aí valem só a tabela de bairros
+              e a taxa de indefinição — que não dependem de mapa nenhum.
+            </p>
+          </div>
+          <button
+            type="button" role="switch"
+            aria-checked={config.distanceEnabled !== false}
+            onClick={() => setConfig(c => c ? { ...c, distanceEnabled: c.distanceEnabled === false } : c)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${config.distanceEnabled !== false ? 'bg-orange-500' : 'bg-gray-300'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.distanceEnabled !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+
+        <div className={config.distanceEnabled === false ? 'opacity-40 pointer-events-none' : ''}>
           <label className="text-sm font-semibold text-gray-600">Fator de rota</label>
           <input
             type="number" min={1} max={3} step={0.05}

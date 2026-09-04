@@ -43,6 +43,16 @@ export interface DeliveryConfig {
    */
   neighborhoodFees?: { bairro: string; fee: number }[]
   /**
+   * Cobrar por distância. Desligado, só valem a tabela de bairros e a taxa de
+   * indefinição.
+   *
+   * Existe porque a distância depende de a base de CEP saber onde o endereço
+   * fica — e em cidade mal mapeada ela não sabe, devolve o centro do município
+   * e o endereço distante sai pela faixa mais barata. Melhor desligar do que
+   * cobrar errado.
+   */
+  distanceEnabled?: boolean
+  /**
    * Taxa usada quando não dá para localizar o endereço no mapa.
    *
    * Antes caía na primeira faixa — a mais barata, de até 1km. Endereço de
@@ -308,7 +318,7 @@ export function resolveDeliveryFee(entrada: {
     return base(doBairro, 'bairro', `Taxa cadastrada para o bairro ${bairro}`)
   }
 
-  if (typeof lat === 'number' && typeof lng === 'number') {
+  if (cfg.distanceEnabled !== false && typeof lat === 'number' && typeof lng === 'number') {
     const r = calcDeliveryFee(lat, lng, cfg)
     if (r.outsideArea) {
       return {
@@ -322,8 +332,8 @@ export function resolveDeliveryFee(entrada: {
     }
   }
 
-  return {
-    ...base(unknownFee(cfg), 'indefinido', 'Endereço sem bairro cadastrado e sem coordenada — taxa a confirmar'),
-    estimada: true,
-  }
+  const porque = cfg.distanceEnabled === false
+    ? 'Cobrança por distância desligada e bairro não cadastrado — taxa a confirmar'
+    : 'Endereço sem bairro cadastrado e sem coordenada confiável — taxa a confirmar'
+  return { ...base(unknownFee(cfg), 'indefinido', porque), estimada: true }
 }

@@ -52,6 +52,17 @@ export async function GET(req: NextRequest) {
   // parece bom e não é.
   const temRua = street.replace(/[\s,]/g, '').length > 0
 
+  // Modo "só a cidade": pedido de propósito por quem PRECISA do centro do
+  // município — é o gabarito usado para flagrar provedor de CEP que devolve
+  // o centro da cidade no lugar da posição do endereço.
+  if (sp.get('cidade') === '1' && city) {
+    try {
+      const hit = await nominatim(new URLSearchParams({ q: [city, state, 'Brasil'].filter(Boolean).join(', ') }))
+      if (hit) return NextResponse.json({ ...hit, precisao: 'aproximada' as Precisao })
+    } catch {}
+    return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  }
+
   try {
     // 1ª tentativa: busca estruturada (mais precisa)
     if (temRua && city) {

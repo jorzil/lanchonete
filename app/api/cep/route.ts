@@ -68,6 +68,35 @@ const DIVERGENCIA_MAXIMA_KM = 1.5
  */
 const MESMO_PONTO_KM = 0.15
 
+/**
+ * Raio em torno do centro do município dentro do qual a coordenada de um CEP
+ * é considerada suspeita.
+ *
+ * Comparar o CEP do cliente com o da loja não basta: se a loja fica perto do
+ * centro e tem coordenada boa, os dois pontos ficam a algumas centenas de
+ * metros e o teste não acusa. Comparar com o centro do município em si acusa,
+ * porque é exatamente ali que o provedor deposita todo CEP que não conhece.
+ */
+const RAIO_CENTRO_KM = 0.4
+
+/** Centro do município, para o teste acima. Vem do nosso /api/geocode. */
+async function centroDaCidade(cidade: string, uf: string, origem: string) {
+  if (!cidade) return null
+  try {
+    const url = new URL('/api/geocode', origem)
+    url.searchParams.set('cidade', '1')
+    url.searchParams.set('city', cidade)
+    url.searchParams.set('state', uf)
+    const res = await fetch(url.toString())
+    if (!res.ok) return null
+    const d = await res.json()
+    const lat = num(d.lat), lng = num(d.lng)
+    return lat !== null && lng !== null ? { lat, lng } : null
+  } catch {
+    return null
+  }
+}
+
 const TEMPO_LIMITE = 6000
 
 async function buscar(url: string, opcoes?: RequestInit) {
@@ -193,11 +222,23 @@ export async function GET(req: NextRequest) {
   for (const r of [refB, refA]) {
     if (r && r.lat !== null && r.lng !== null) referencias.set(r.fonte, { lat: r.lat, lng: r.lng })
   }
+  // Segundo teste, e o que de fato pega o caso comum: a coordenada caiu em
+  // cima do centro do município.
+  const centro = todas.length > 0
+    ? await centroDaCidade(info.cidade, info.uf, req.nextUrl.origin)
+    : null
+
   const suspeitas: string[] = []
   const coordenadas = todas.filter((c) => {
     const daLoja = referencias.get(c.fonte)
-    if (!daLoja) return true
-    if (distanciaKm(c, daLoja) < MESMO_PONTO_KM) { suspeitas.push(c.fonte); return false }
+    if (daLoja && distanciaKm(c, daLoja) < MESMO_PONTO_KM) {
+      suspeitas.push(`${c.fonte} (mesmo ponto do CEP da loja)`)
+      return false
+    }
+    if (centro && distanciaKm(c, centro) < RAIO_CENTRO_KM) {
+      suspeitas.push(`${c.fonte} (em cima do centro da cidade)`)
+      return false
+    }
     return true
   })
 
@@ -206,7 +247,7 @@ export async function GET(req: NextRequest) {
       ...info, lat: null, lng: null, origemCoordenada: null, coordenadas: todas,
       centroide: {
         fontes: suspeitas,
-        motivo: `${suspeitas.join(' e ')} devolveu o mesmo ponto para este CEP e para o da loja — é o centro da cidade, não o CEP`,
+        motivo: `${suspeitas.join(' e ')} — não é a posição do endereço, e cobrar distância a partir dali faria um CEP distante sair pela faixa mais barata`,
       },
     })
   }
@@ -244,7 +285,7 @@ export async function GET(req: NextRequest) {
     ...(suspeitas.length > 0 ? {
       centroide: {
         fontes: suspeitas,
-        motivo: `${suspeitas.join(' e ')} devolveu o centro da cidade; a coordenada usada veio dos demais`,
+        motivo: `${suspeitas.join(' e ')} — descartado; a coordenada usada veio dos demais`,
       },
     } : {}),
   })
