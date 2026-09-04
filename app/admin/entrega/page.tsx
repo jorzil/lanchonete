@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, MapPin, Save, RotateCcw } from 'lucide-react'
-import { saveDeliveryConfig, pullDeliveryConfig, pushDeliveryConfig, type DeliveryConfig, type DeliveryZone } from '@/lib/delivery-zones'
+import { saveDeliveryConfig, pullDeliveryConfig, pushDeliveryConfig, routeFactorOf, unknownFee, feeForDistance, type DeliveryConfig, type DeliveryZone } from '@/lib/delivery-zones'
 import { formatCurrency } from '@/lib/data'
 import { toast } from 'sonner'
 
@@ -168,6 +168,61 @@ export default function EntregaPage() {
               : `Frete grátis em pedidos a partir de ${formatCurrency(config.freeDeliveryMinOrder ?? 0)}.`}
           </div>
         )}
+      </div>
+
+      {/* Precisão da cobrança */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-bold text-gray-800">Precisão da cobrança</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Dois ajustes que decidem quanto os endereços mais distantes pagam.
+          </p>
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold text-gray-600">Fator de rota</label>
+          <input
+            type="number" min={1} max={3} step={0.05}
+            value={routeFactorOf(config)}
+            onChange={e => setConfig(c => c ? { ...c, routeFactor: parseFloat(e.target.value) || 1.35 } : c)}
+            className={`${inputCls} mt-2`}
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            A distância é medida em linha reta, mas o entregador contorna quarteirão e mão
+            única. Este número converte uma na outra — <strong>1,35</strong> quer dizer que o
+            percurso real dá 35% a mais. O erro cresce com a distância, então é isto que
+            corrige a cobrança curta nos bairros afastados.
+          </p>
+          <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            Exemplo: cliente a <strong>6 km</strong> em linha reta vira{' '}
+            <strong>{(6 * routeFactorOf(config)).toFixed(1)} km</strong> de percurso →{' '}
+            {(() => {
+              const z = feeForDistance(6 * routeFactorOf(config), config.zones)
+              const antes = feeForDistance(6, config.zones)
+              return z
+                ? <>cobra <strong>{formatCurrency(z.fee)}</strong>
+                    {antes && antes.fee !== z.fee && <> em vez de {formatCurrency(antes.fee)}</>}</>
+                : <>fora da área</>
+            })()}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold text-gray-600">
+            Taxa quando o endereço não é localizado (R$)
+          </label>
+          <input
+            type="number" min={0} step={0.5}
+            value={config.feeWhenUnknown ?? unknownFee(config)}
+            onChange={e => setConfig(c => c ? { ...c, feeWhenUnknown: parseFloat(e.target.value) || 0 } : c)}
+            className={`${inputCls} mt-2`}
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Nem todo endereço existe no mapa — justamente os de bairro novo ou afastado. Antes
+            esses caíam na faixa mais barata da tabela. O cliente vê um aviso de que o valor
+            será confirmado pela loja.
+          </p>
+        </div>
       </div>
 
       {/* Zones */}

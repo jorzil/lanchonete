@@ -17,6 +17,50 @@ export interface DeliveryConfig {
   freeDelivery?: boolean
   /** Frete grátis a partir deste valor de pedido (0 = desativado) */
   freeDeliveryMinOrder?: number
+  /**
+   * Quanto a rota real é mais longa que a linha reta.
+   *
+   * A distância que sabemos calcular é em linha reta, e o entregador não voa:
+   * ele contorna quarteirão, rio e mão única. Em cidade o percurso costuma dar
+   * de 1,3 a 1,4 vez a linha reta, e o erro CRESCE com a distância — a 1km são
+   * 300m a mais, a 10km são 3,5km a mais, o que já vale várias faixas de taxa.
+   * Era daí que vinha a cobrança curta nos endereços mais afastados.
+   */
+  routeFactor?: number
+  /**
+   * Taxa usada quando não dá para localizar o endereço no mapa.
+   *
+   * Antes caía na primeira faixa — a mais barata, de até 1km. Endereço de
+   * bairro afastado é justamente o que o mapa costuma não achar, então quem
+   * morava longe pagava R$ 5,00.
+   */
+  feeWhenUnknown?: number
+}
+
+/** Fator de rota válido, com um teto para ninguém errar a mão na configuração. */
+export function routeFactorOf(cfg: DeliveryConfig): number {
+  const f = cfg.routeFactor
+  if (typeof f !== 'number' || !isFinite(f) || f < 1) return 1.35
+  return Math.min(3, f)
+}
+
+/** Taxa da faixa que cobre esta distância. null = fora de toda faixa. */
+export function feeForDistance(km: number, zones: DeliveryZone[]): DeliveryZone | null {
+  return [...zones].sort((a, b) => a.maxKm - b.maxKm).find((z) => km <= z.maxKm) ?? null
+}
+
+/**
+ * Taxa a cobrar quando o endereço não pôde ser localizado.
+ *
+ * Sem configuração própria, usa a faixa do meio da tabela em vez da primeira:
+ * errar para cima incomoda um cliente, errar para baixo custa dinheiro em toda
+ * entrega longa.
+ */
+export function unknownFee(cfg: DeliveryConfig): number {
+  if (typeof cfg.feeWhenUnknown === 'number' && cfg.feeWhenUnknown >= 0) return cfg.feeWhenUnknown
+  const ordenadas = [...cfg.zones].sort((a, b) => a.maxKm - b.maxKm)
+  if (ordenadas.length === 0) return 0
+  return ordenadas[Math.floor(ordenadas.length / 2)].fee
 }
 
 /** Taxa final considerando as regras de frete grátis. */
@@ -55,6 +99,7 @@ const DEFAULT_CONFIG: DeliveryConfig = {
   outsideAreaMessage: 'Fora da área de entrega (máx. 15km)',
   freeDelivery: false,
   freeDeliveryMinOrder: 0,
+  routeFactor: 1.35,
 }
 
 const STORAGE_KEY = 'mais_sub_delivery_zones'
@@ -87,23 +132,34 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 
 export interface FeeResult {
   fee: number
+  /** Distância estimada de percurso — é ela que define a faixa. */
   distanceKm: number
+  /** Distância em linha reta, para conferência. */
+  straightKm: number
   zone: DeliveryZone | null
   outsideArea: boolean
 }
 
 export function calcDeliveryFee(customerLat: number, customerLng: number, cfg?: DeliveryConfig): FeeResult {
   const config = cfg ?? getDeliveryConfig()
-  const distanceKm = haversineKm(config.storeLat, config.storeLng, customerLat, customerLng)
-  const sorted = [...config.zones].sort((a, b) => a.maxKm - b.maxKm)
-  const zone = sorted.find(z => distanceKm <= z.maxKm) ?? null
+  const straightKm = haversineKm(config.storeLat, config.storeLng, customerLat, customerLng)
+  // A faixa é escolhida pela distância de PERCURSO, não pela linha reta.
+  const distanceKm = straightKm * routeFactorOf(config)
+  const zone = feeForDistance(distanceKm, config.zones)
+  const ordenadas = [...config.zones].sort((a, b) => a.maxKm - b.maxKm)
   return {
-    fee: zone?.fee ?? 0,
+    // Fora da área a taxa não é zero: é a da faixa mais cara. Quem chamar sem
+    // olhar o outsideArea cobra a mais, nunca de graça.
+    fee: zone?.fee ?? ordenadas.at(-1)?.fee ?? 0,
     distanceKm: Math.round(distanceKm * 10) / 10,
+    straightKm: Math.round(straightKm * 10) / 10,
     zone,
     outsideArea: !zone,
   }
 }
+
+/** Resultado da geocodificação, com o aviso de o quanto dá para confiar. */
+export interface GeoHit { lat: number; lng: number; precisao?: 'exata' | 'aproximada' }
 
 // Geocodifica via nossa API (server-side, com cache) — mais confiável que
 // chamar o Nominatim direto do navegador do cliente.
@@ -119,7 +175,7 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
 }
 
 // Geocodificação estruturada (rua/cidade/UF/CEP) — usa as 3 estratégias do servidor.
-export async function geocodeStructured(parts: { street?: string; city?: string; state?: string; cep?: string }): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeStructured(parts: { street?: string; city?: string; state?: string; cep?: string }): Promise<GeoHit | null> {
   try {
     const p = new URLSearchParams()
     if (parts.street) p.set('street', parts.street)
@@ -129,7 +185,7 @@ export async function geocodeStructured(parts: { street?: string; city?: string;
     const res = await fetch(`/api/geocode?${p.toString()}`)
     if (!res.ok) return null
     const data = await res.json()
-    if (typeof data.lat === 'number' && typeof data.lng === 'number') return data
+    if (typeof data.lat === 'number' && typeof data.lng === 'number') return data as GeoHit
   } catch {}
   return null
 }

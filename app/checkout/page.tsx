@@ -19,7 +19,7 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
-import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, type FeeResult, type DeliveryConfig } from '@/lib/delivery-zones'
+import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, unknownFee, type FeeResult, type DeliveryConfig } from '@/lib/delivery-zones'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -77,6 +77,8 @@ export default function CheckoutPage() {
   const [loadingCep, setLoadingCep] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [feeResult, setFeeResult] = useState<FeeResult | null>(null)
+  /** Endereço não localizado: a taxa é um chute e o cliente precisa saber. */
+  const [taxaEstimada, setTaxaEstimada] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
@@ -89,10 +91,12 @@ export default function CheckoutPage() {
     pullDeliveryConfig().then(setDeliveryCfg).catch(() => {})
   }, [])
 
-  // Reaplica a regra de frete grátis quando a config chega ou o carrinho muda
+  // Reaplica a regra de frete grátis quando a config chega ou o carrinho muda.
+  // Sem endereço localizado usamos a taxa de indefinição — nunca a primeira
+  // faixa, que é a mais barata e não tem nada a ver com quem mora longe.
   useEffect(() => {
     if (!deliveryCfg || form.orderType !== 'entrega') return
-    const base = feeResult && !feeResult.outsideArea ? feeResult.fee : (deliveryCfg.zones[0]?.fee ?? 5)
+    const base = feeResult && !feeResult.outsideArea ? feeResult.fee : unknownFee(deliveryCfg)
     setDeliveryFee(applyFreeDelivery(base, subtotal, deliveryCfg))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryCfg, subtotal, form.orderType, feeResult])
@@ -121,7 +125,7 @@ export default function CheckoutPage() {
     if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
     else {
       const cfg = deliveryCfg ?? getDeliveryConfig()
-      const base = feeResult && !feeResult.outsideArea ? feeResult.fee : (cfg.zones[0]?.fee ?? 5)
+      const base = feeResult && !feeResult.outsideArea ? feeResult.fee : unknownFee(cfg)
       setDeliveryFee(applyFreeDelivery(base, subtotal, cfg))
     }
   }
@@ -149,9 +153,14 @@ export default function CheckoutPage() {
         const config = await pullDeliveryConfig()
         setDeliveryCfg(config)
         const coords = await geocodeStructured({ street: `${street}, ${neighborhood}`, city, state, cep: clean })
-        if (coords) {
-          const result = calcDeliveryFee(coords.lat, coords.lng, config)
+        // Ponto aproximado (o mapa achou só o bairro ou a cidade) não serve
+        // para cobrar por distância: daria a taxa de quem mora no centro.
+        const localizado = coords && coords.precisao !== 'aproximada'
+
+        if (localizado) {
+          const result = calcDeliveryFee(coords!.lat, coords!.lng, config)
           setFeeResult(result)
+          setTaxaEstimada(false)
           if (result.outsideArea) {
             toast.error(`Fora da área de entrega (${result.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
             setDeliveryFee(0)
@@ -162,9 +171,15 @@ export default function CheckoutPage() {
             else toast.info(`Taxa de entrega: ${fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${result.distanceKm}km)`)
           }
         } else {
-          // Sem geocodificação: cobra a taxa da primeira zona
+          // Endereço não localizado no mapa: taxa de indefinição, avisando o
+          // cliente de que ela ainda vai ser conferida.
           setFeeResult(null)
-          setDeliveryFee(applyFreeDelivery(config.zones[0]?.fee ?? 5, subtotal, config))
+          setTaxaEstimada(true)
+          const fee = applyFreeDelivery(unknownFee(config), subtotal, config)
+          setDeliveryFee(fee)
+          if (fee > 0) {
+            toast.warning('Não localizamos seu endereço no mapa. A taxa mostrada é uma estimativa e será confirmada pela loja.')
+          }
         }
       } else toast.error('CEP não encontrado.')
     } catch { toast.error('Erro ao buscar CEP.') }
@@ -531,6 +546,12 @@ export default function CheckoutPage() {
                         : formatCurrency(deliveryFee)}
                     </span>
                   </div>
+                  {taxaEstimada && form.orderType === 'entrega' && deliveryFee > 0 && (
+                    <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+                      Não conseguimos localizar seu endereço no mapa, então esta taxa é uma
+                      estimativa. A loja confirma o valor no WhatsApp antes de sair para entrega.
+                    </p>
+                  )}
                   <div className="h-px bg-white/8 my-1" />
                   <div className="flex justify-between font-black text-lg text-white"><span>Total</span><span className="text-brand">{formatCurrency(total)}</span></div>
                 </div>
