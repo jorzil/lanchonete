@@ -11,6 +11,12 @@ export interface DeliveryConfig {
   storeAddress: string
   storeLat: number
   storeLng: number
+  /**
+   * CEP da loja. Serve de referência para flagrar provedor que devolve o
+   * centro do município em vez da coordenada do CEP: se o CEP do cliente e o
+   * da loja voltam no mesmo ponto, aquele ponto não é de CEP nenhum.
+   */
+  storeCep?: string
   zones: DeliveryZone[]
   outsideAreaMessage: string
   /** Frete grátis para todos os pedidos (ignora as zonas) */

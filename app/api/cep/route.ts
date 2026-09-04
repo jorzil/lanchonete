@@ -36,6 +36,8 @@ export interface CepInfo {
   coordenadas?: { fonte: string; lat: number; lng: number }[]
   /** Provedores discordaram muito: a coordenada não é confiável. */
   divergencia?: { km: number; motivo: string }
+  /** Provedores flagrados devolvendo o centro do município. */
+  centroide?: { fontes: string[]; motivo: string }
 }
 
 /** Distância em linha reta entre dois pontos, em km. */
@@ -56,6 +58,15 @@ function distanciaKm(a: { lat: number; lng: number }, b: { lat: number; lng: num
  * devolvendo o centro do município — e aí é melhor não cobrar por distância.
  */
 const DIVERGENCIA_MAXIMA_KM = 1.5
+
+/**
+ * Abaixo disso, dois CEPs diferentes estão no MESMO ponto — o que não existe
+ * na vida real. Quando um provedor devolve o mesmo ponto para o CEP do cliente
+ * e para o da loja, ele não está dando a posição do CEP: está dando o centro
+ * do município, e cobrar distância a partir dali faz endereço de 11km sair
+ * pela faixa mais barata.
+ */
+const MESMO_PONTO_KM = 0.15
 
 const TEMPO_LIMITE = 6000
 
@@ -144,12 +155,20 @@ async function coordenadaPelaRua(info: CepInfo, origem: string): Promise<CepInfo
 
 export async function GET(req: NextRequest) {
   const cep = (req.nextUrl.searchParams.get('cep') ?? '').replace(/\D/g, '')
+  // CEP da loja, para flagrar provedor que devolve o centro do município.
+  const ref = (req.nextUrl.searchParams.get('ref') ?? '').replace(/\D/g, '')
   if (cep.length !== 8) {
     return NextResponse.json({ error: 'CEP inválido' }, { status: 400 })
   }
 
-  // Os dois que dão coordenada vão juntos, para poderem ser comparados.
-  const [b, a] = await Promise.all([brasilApi(cep), awesomeApi(cep)])
+  // Os dois que dão coordenada vão juntos, para poderem ser comparados. O CEP
+  // da loja vai na mesma leva: é o gabarito do teste de centro de cidade.
+  const usarRef = ref.length === 8 && ref !== cep
+  const [b, a, refB, refA] = await Promise.all([
+    brasilApi(cep), awesomeApi(cep),
+    usarRef ? brasilApi(ref) : Promise.resolve(null),
+    usarRef ? awesomeApi(ref) : Promise.resolve(null),
+  ])
   let info: CepInfo | null = b ?? a ?? (await viaCep(cep))
   if (!info) {
     return NextResponse.json({ error: 'CEP não encontrado' }, { status: 404 })
@@ -164,9 +183,33 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const coordenadas = [b, a]
+  const todas = [b, a]
     .filter((x): x is CepInfo => !!x && x.lat !== null && x.lng !== null)
     .map((x) => ({ fonte: x.fonte, lat: x.lat as number, lng: x.lng as number }))
+
+  // Provedor que devolve o MESMO ponto para dois CEPs diferentes está dando o
+  // centro do município. A coordenada dele não serve para medir distância.
+  const referencias = new Map<string, { lat: number; lng: number }>()
+  for (const r of [refB, refA]) {
+    if (r && r.lat !== null && r.lng !== null) referencias.set(r.fonte, { lat: r.lat, lng: r.lng })
+  }
+  const suspeitas: string[] = []
+  const coordenadas = todas.filter((c) => {
+    const daLoja = referencias.get(c.fonte)
+    if (!daLoja) return true
+    if (distanciaKm(c, daLoja) < MESMO_PONTO_KM) { suspeitas.push(c.fonte); return false }
+    return true
+  })
+
+  if (coordenadas.length === 0 && suspeitas.length > 0) {
+    return NextResponse.json({
+      ...info, lat: null, lng: null, origemCoordenada: null, coordenadas: todas,
+      centroide: {
+        fontes: suspeitas,
+        motivo: `${suspeitas.join(' e ')} devolveu o mesmo ponto para este CEP e para o da loja — é o centro da cidade, não o CEP`,
+      },
+    })
+  }
 
   if (coordenadas.length === 2) {
     const afastamento = distanciaKm(coordenadas[0], coordenadas[1])
@@ -195,5 +238,14 @@ export async function GET(req: NextRequest) {
 
   if (info.lat === null) info = await coordenadaPelaRua(info, req.nextUrl.origin)
 
-  return NextResponse.json({ ...info, coordenadas })
+  return NextResponse.json({
+    ...info,
+    coordenadas: todas,
+    ...(suspeitas.length > 0 ? {
+      centroide: {
+        fontes: suspeitas,
+        motivo: `${suspeitas.join(' e ')} devolveu o centro da cidade; a coordenada usada veio dos demais`,
+      },
+    } : {}),
+  })
 }

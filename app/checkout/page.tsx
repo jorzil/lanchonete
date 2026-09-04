@@ -137,7 +137,14 @@ export default function CheckoutPage() {
     try {
       // A busca acontece no servidor, encadeando provedores: se um falha o
       // próximo tenta, e os dois primeiros já trazem a coordenada do CEP.
-      const res = await fetch(`/api/cep?cep=${clean}`, { cache: 'no-store' })
+      // O CEP da loja vai junto: serve de gabarito para descartar provedor
+      // que devolve o centro da cidade em vez da posição do CEP.
+      const cfgAtual = deliveryCfg ?? getDeliveryConfig()
+      const refLoja = (cfgAtual.storeCep ?? '').replace(/\D/g, '')
+      const res = await fetch(
+        `/api/cep?cep=${clean}${refLoja.length === 8 ? `&ref=${refLoja}` : ''}`,
+        { cache: 'no-store' },
+      )
       if (!res.ok) {
         toast.error(res.status === 404 ? 'CEP não encontrado.' : 'Não conseguimos consultar o CEP agora. Preencha o endereço à mão.')
         return

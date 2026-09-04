@@ -44,7 +44,8 @@ export default function EntregaPage() {
     endereco: { logradouro: string; bairro: string; cidade: string; uf: string
       lat: number | null; lng: number | null; fonte: string; origemCoordenada: string | null
       coordenadas?: { fonte: string; lat: number; lng: number }[]
-      divergencia?: { km: number; motivo: string } }
+      divergencia?: { km: number; motivo: string }
+      centroide?: { fontes: string[]; motivo: string } }
     decisao: FeeDecision
   } | null>(null)
 
@@ -73,7 +74,11 @@ export default function EntregaPage() {
     if (!config) return
     setSimulando(true); setErroTeste(''); setResultado(null)
     try {
-      const res = await fetch(`/api/cep?cep=${limpo}`, { cache: 'no-store' })
+      const refLoja = (config.storeCep ?? '').replace(/\D/g, '')
+      const res = await fetch(
+        `/api/cep?cep=${limpo}${refLoja.length === 8 && refLoja !== limpo ? `&ref=${refLoja}` : ''}`,
+        { cache: 'no-store' },
+      )
       if (!res.ok) {
         setErroTeste(res.status === 404
           ? 'Nenhum provedor encontrou este CEP.'
@@ -177,6 +182,22 @@ export default function EntregaPage() {
           </div>
         </div>
         <p className="text-xs text-gray-400">Acesse <a href="https://www.google.com.br/maps" target="_blank" rel="noopener noreferrer" className="text-orange-500 underline">Google Maps</a>, clique no endereço da loja e copie as coordenadas.</p>
+
+        <div>
+          <label className="text-sm font-semibold text-gray-600">CEP da loja</label>
+          <input
+            value={config.storeCep ?? ''}
+            onChange={e => setConfig(c => c ? { ...c, storeCep: e.target.value } : c)}
+            placeholder="00000-000"
+            className={`${inputCls} mt-2 max-w-[200px]`}
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            Serve de gabarito: se um provedor devolve o <strong>mesmo ponto</strong> para o CEP do
+            cliente e para este, ele está dando o centro da cidade, não a posição do CEP — e a
+            coordenada é descartada. É o que impede um endereço distante de cair na faixa mais
+            barata.
+          </p>
+        </div>
       </div>
 
       {/* Frete grátis */}
@@ -314,6 +335,14 @@ export default function EntregaPage() {
                   })}
                 </div>
               </div>
+            )}
+
+            {resultado.endereco.centroide && (
+              <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-800">
+                <strong>Centro da cidade detectado.</strong> {resultado.endereco.centroide.motivo}.
+                Cobrar por distância a partir desse ponto faria um endereço distante cair na faixa
+                mais barata — por isso a coordenada foi descartada.
+              </p>
             )}
 
             {resultado.endereco.divergencia && (
