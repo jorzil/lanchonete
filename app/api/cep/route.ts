@@ -28,7 +28,34 @@ export interface CepInfo {
   fonte: string
   /** 'cep' = coordenada do próprio CEP. 'rua' = geocodificada. null = sem coordenada. */
   origemCoordenada: 'cep' | 'rua' | null
+  /**
+   * O que cada provedor respondeu de coordenada. Aparece no simulador do
+   * painel: é aqui que se enxerga um provedor devolvendo o centro da cidade
+   * em vez do CEP, que é o defeito que faz endereço longe sair barato.
+   */
+  coordenadas?: { fonte: string; lat: number; lng: number }[]
+  /** Provedores discordaram muito: a coordenada não é confiável. */
+  divergencia?: { km: number; motivo: string }
 }
+
+/** Distância em linha reta entre dois pontos, em km. */
+function distanciaKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180
+  const h = Math.sin(dLat / 2) ** 2
+    + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.asin(Math.sqrt(h))
+}
+
+/**
+ * Quanto os provedores podem discordar antes de a coordenada virar suspeita.
+ *
+ * Dentro de uma cidade, dois cadastros do mesmo CEP não deveriam ficar a mais
+ * de um quilômetro e meio um do outro. Quando ficam, quase sempre é um deles
+ * devolvendo o centro do município — e aí é melhor não cobrar por distância.
+ */
+const DIVERGENCIA_MAXIMA_KM = 1.5
 
 const TEMPO_LIMITE = 6000
 
@@ -121,17 +148,52 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'CEP inválido' }, { status: 400 })
   }
 
-  // Em ordem: quem dá coordenada primeiro, quem só dá endereço depois.
-  let info: CepInfo | null = null
-  for (const provedor of [brasilApi, awesomeApi, viaCep]) {
-    info = await provedor(cep)
-    if (info) break
-  }
+  // Os dois que dão coordenada vão juntos, para poderem ser comparados.
+  const [b, a] = await Promise.all([brasilApi(cep), awesomeApi(cep)])
+  let info: CepInfo | null = b ?? a ?? (await viaCep(cep))
   if (!info) {
     return NextResponse.json({ error: 'CEP não encontrado' }, { status: 404 })
   }
 
+  // Endereço: fica o mais completo, venha de quem vier.
+  if (b && a) {
+    info = {
+      ...info,
+      logradouro: b.logradouro || a.logradouro,
+      bairro: b.bairro || a.bairro,
+    }
+  }
+
+  const coordenadas = [b, a]
+    .filter((x): x is CepInfo => !!x && x.lat !== null && x.lng !== null)
+    .map((x) => ({ fonte: x.fonte, lat: x.lat as number, lng: x.lng as number }))
+
+  if (coordenadas.length === 2) {
+    const afastamento = distanciaKm(coordenadas[0], coordenadas[1])
+    if (afastamento > DIVERGENCIA_MAXIMA_KM) {
+      // Um dos dois está errado e não há como saber qual. Cobrar por distância
+      // aqui é apostar — melhor cair na taxa do bairro ou na de indefinição.
+      return NextResponse.json({
+        ...info, lat: null, lng: null, origemCoordenada: null, coordenadas,
+        divergencia: {
+          km: Math.round(afastamento * 10) / 10,
+          motivo: `${coordenadas[0].fonte} e ${coordenadas[1].fonte} apontam lugares a ${afastamento.toFixed(1)}km um do outro`,
+        },
+      })
+    }
+    // Concordaram: fica a média, mais estável que qualquer uma das duas.
+    info = {
+      ...info,
+      lat: (coordenadas[0].lat + coordenadas[1].lat) / 2,
+      lng: (coordenadas[0].lng + coordenadas[1].lng) / 2,
+      origemCoordenada: 'cep',
+      fonte: `${coordenadas[0].fonte} + ${coordenadas[1].fonte}`,
+    }
+  } else if (coordenadas.length === 1) {
+    info = { ...info, lat: coordenadas[0].lat, lng: coordenadas[0].lng, origemCoordenada: 'cep', fonte: coordenadas[0].fonte }
+  }
+
   if (info.lat === null) info = await coordenadaPelaRua(info, req.nextUrl.origin)
 
-  return NextResponse.json(info)
+  return NextResponse.json({ ...info, coordenadas })
 }

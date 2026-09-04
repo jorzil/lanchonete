@@ -510,7 +510,7 @@ export default function CardapioPage() {
         items={items}
         subtotal={subtotal}
         total={total}
-        deliveryFee={deliveryFee}
+        deliveryFee={deliveryFee ?? 0}
         onSuccess={clearCart}
       />
     </>

@@ -42,7 +42,9 @@ export default function EntregaPage() {
   const [erroTeste, setErroTeste] = useState('')
   const [resultado, setResultado] = useState<{
     endereco: { logradouro: string; bairro: string; cidade: string; uf: string
-      lat: number | null; lng: number | null; fonte: string; origemCoordenada: string | null }
+      lat: number | null; lng: number | null; fonte: string; origemCoordenada: string | null
+      coordenadas?: { fonte: string; lat: number; lng: number }[]
+      divergencia?: { km: number; motivo: string } }
     decisao: FeeDecision
   } | null>(null)
 
@@ -53,6 +55,17 @@ export default function EntregaPage() {
   const setZones = (zones: DeliveryZone[]) => setConfig(c => c ? { ...c, zones } : c)
   const setBairros = (neighborhoodFees: { bairro: string; fee: number }[]) =>
     setConfig(c => c ? { ...c, neighborhoodFees } : c)
+
+  /** Linha reta da loja até um ponto — usada só para exibir no simulador. */
+  function distanciaAteLoja(lat: number, lng: number): number {
+    if (!config) return 0
+    const R = 6371
+    const dLat = ((lat - config.storeLat) * Math.PI) / 180
+    const dLng = ((lng - config.storeLng) * Math.PI) / 180
+    const h = Math.sin(dLat / 2) ** 2
+      + Math.cos((config.storeLat * Math.PI) / 180) * Math.cos((lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+    return R * 2 * Math.asin(Math.sqrt(h))
+  }
 
   async function simular() {
     const limpo = cepTeste.replace(/\D/g, '')
@@ -281,6 +294,36 @@ export default function EntregaPage() {
                 </div>
               ))}
             </dl>
+            {/* O que cada provedor respondeu — é aqui que se vê um deles
+                devolvendo o centro da cidade em vez do CEP. */}
+            {(resultado.endereco.coordenadas?.length ?? 0) > 0 && (
+              <div className="border-t border-gray-100 px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                  Resposta de cada provedor
+                </p>
+                <div className="mt-2 space-y-1">
+                  {resultado.endereco.coordenadas!.map(c => {
+                    const km = distanciaAteLoja(c.lat, c.lng)
+                    return (
+                      <div key={c.fonte} className="flex flex-wrap items-baseline gap-x-3 text-[12px]">
+                        <span className="w-28 shrink-0 font-semibold text-gray-600">{c.fonte}</span>
+                        <span className="font-mono text-gray-500">{c.lat.toFixed(5)}, {c.lng.toFixed(5)}</span>
+                        <span className="text-gray-400">{km.toFixed(2)} km da loja em linha reta</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {resultado.endereco.divergencia && (
+              <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs text-red-800">
+                <strong>Provedores discordaram.</strong> {resultado.endereco.divergencia.motivo}.
+                Quando isso acontece, um dos dois está devolvendo o centro da cidade em vez do CEP —
+                cobrar por distância seria chute, então a taxa vem do bairro ou da estimativa.
+              </p>
+            )}
+
             {resultado.decisao.estimada && (
               <p className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">
                 Nenhum provedor localizou este endereço. O cliente veria um aviso de que a taxa

@@ -9,7 +9,8 @@ interface CartContextValue {
   items: CartItem[]
   isOpen: boolean
   coupon: Coupon | null
-  deliveryFee: number
+  /** null = ainda não sabemos (falta o CEP). Nunca um valor inventado. */
+  deliveryFee: number | null
   subtotal: number
   total: number
   itemCount: number
@@ -22,7 +23,7 @@ interface CartContextValue {
   closeCart: () => void
   applyCoupon: (code: string) => Promise<boolean>
   removeCoupon: () => void
-  setDeliveryFee: (fee: number) => void
+  setDeliveryFee: (fee: number | null) => void
 }
 
 const CartContext = createContext<CartContextValue | null>(null)
@@ -31,7 +32,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [coupon, setCoupon] = useState<Coupon | null>(null)
-  const [deliveryFee, setDeliveryFeeState] = useState(5.0)
+  // Começa em null, e não num valor de fachada: antes do CEP o sistema não
+  // tem como saber a taxa, e mostrar R$ 5,00 "só para preencher" fazia o
+  // cliente de bairro afastado ver o preço de quem mora ao lado da loja.
+  const [deliveryFee, setDeliveryFeeState] = useState<number | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
@@ -59,7 +63,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
-  const total = Math.max(0, subtotal - discount + deliveryFee)
+  const total = Math.max(0, subtotal - discount + (deliveryFee ?? 0))
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   // Date.now() sozinho colide: dois itens adicionados no mesmo milissegundo
@@ -102,7 +106,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return false
   }, [subtotal])
   const removeCoupon = useCallback(() => setCoupon(null), [])
-  const setDeliveryFee = useCallback((fee: number) => setDeliveryFeeState(fee), [])
+  const setDeliveryFee = useCallback((fee: number | null) => setDeliveryFeeState(fee), [])
 
   const value = useMemo(() => ({
     items, isOpen, coupon, deliveryFee, subtotal, total, itemCount,

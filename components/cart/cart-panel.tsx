@@ -99,9 +99,11 @@ export function CartPanel() {
 
   const handleOrderType = (type: 'entrega' | 'retirada') => {
     setOrderType(type)
-    // Estimativa: a taxa exata é calculada no checkout, pelo CEP
+    // Aqui ainda não há CEP, então não há taxa: deixamos em aberto e o
+    // checkout calcula. Antes gravávamos R$ 5,00 fixo, que era o valor de
+    // quem mora ao lado da loja — e o cliente distante via esse preço.
     const free = alwaysFree || (freeFrom > 0 && subtotal >= freeFrom)
-    setDeliveryFee(type === 'entrega' && !free ? 5.0 : 0)
+    setDeliveryFee(type === 'entrega' && !free ? null : 0)
   }
 
   return (
@@ -197,7 +199,14 @@ export function CartPanel() {
               <div className="space-y-2 bg-white rounded-lg border-2 border-gray-200 p-4">
                 <div className="flex justify-between text-sm text-gray-700"><span>Subtotal</span><span className="font-semibold">{formatCurrency(subtotal)}</span></div>
                 {discount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Desconto</span><span className="font-bold">-{formatCurrency(discount)}</span></div>}
-                <div className="flex justify-between text-sm text-gray-700"><span>Taxa de entrega</span><span className="font-semibold">{deliveryFee === 0 ? '✓ Grátis' : formatCurrency(deliveryFee)}</span></div>
+                <div className="flex justify-between text-sm text-gray-700">
+                  <span>Taxa de entrega</span>
+                  <span className="font-semibold">
+                    {deliveryFee === null
+                      ? <span className="text-gray-400 font-medium">calculada pelo CEP</span>
+                      : deliveryFee === 0 ? '✓ Grátis' : formatCurrency(deliveryFee)}
+                  </span>
+                </div>
                 {freeFrom > 0 && orderType === 'entrega' && subtotal < freeFrom && (
                   <p className="text-xs font-semibold text-emerald-600">
                     Faltam {formatCurrency(freeFrom - subtotal)} para <strong>frete grátis</strong>! 🎉

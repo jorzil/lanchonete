@@ -252,7 +252,7 @@ export default function CheckoutPage() {
       orderType: form.orderType,
       address,
       paymentMethod: form.paymentMethod,
-      subtotal, deliveryFee, discount, total,
+      subtotal, deliveryFee: deliveryFee ?? 0, discount, total,
       status: 'novo',
       notes: finalNotes,
       coupon: coupon ?? undefined,
@@ -533,10 +533,11 @@ export default function CheckoutPage() {
                       {feeResult?.outsideArea ? 'Fora da área'
                         : form.orderType === 'retirada' ? 'Grátis'
                         : deliveryFee === 0 ? <span className="text-emerald-400 font-bold">🎉 Grátis</span>
+                        : deliveryFee === null ? <span className="text-white/35">informe o CEP</span>
                         : formatCurrency(deliveryFee)}
                     </span>
                   </div>
-                  {taxaEstimada && form.orderType === 'entrega' && deliveryFee > 0 && (
+                  {taxaEstimada && form.orderType === 'entrega' && (deliveryFee ?? 0) > 0 && (
                     <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
                       Não conseguimos localizar seu endereço no mapa, então esta taxa é uma
                       estimativa. A loja confirma o valor no WhatsApp antes de sair para entrega.
