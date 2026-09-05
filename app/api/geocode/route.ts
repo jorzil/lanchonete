@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { geocodificar, googleDisponivel } from '@/lib/google-maps'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,6 +68,23 @@ export async function GET(req: NextRequest) {
   // O Nominatim espera o número JUNTO da rua, no mesmo campo. Com o número a
   // busca cai na casa; sem ele, no meio da rua.
   const ruaComNumero = numero ? `${numero} ${street}` : street
+
+  // Com a chave do Google, ele vem primeiro: conhece o endereço brasileiro
+  // muito melhor que o OpenStreetMap, que é onde a conta vinha errando.
+  if (googleDisponivel && temRua) {
+    const g = await geocodificar(
+      [ruaComNumero, city, state].filter(Boolean).join(', '), city, state,
+    )
+    if (g) {
+      return NextResponse.json({
+        lat: g.lat, lng: g.lng,
+        tipo: g.precisao,
+        precisao: g.confiavel ? ('exata' as Precisao) : ('aproximada' as Precisao),
+        endereco: g.endereco,
+        fonte: 'Google',
+      })
+    }
+  }
 
   try {
     // 1ª tentativa: rua com número — a mais precisa que existe.

@@ -20,6 +20,7 @@ import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
 import dynamic from 'next/dynamic'
+import { AddressSearch, type EnderecoEscolhido } from '@/components/delivery/address-search'
 import { pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, unknownFee, resolveDeliveryFee, type FeeDecision, type DeliveryConfig } from '@/lib/delivery-zones'
 
 // Leaflet só funciona no navegador: importado no servidor quebra com
@@ -28,6 +29,19 @@ const AddressPickerMap = dynamic(() => import('@/components/delivery/address-pic
   ssr: false,
   loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-white/5" />,
 })
+const GooglePickerMap = dynamic(() => import('@/components/delivery/google-picker-map'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-white/5" />,
+})
+
+/**
+ * Com chave do Google usamos o mapa dele; sem chave, o Leaflet.
+ *
+ * Não é preferência de gosto: os termos do Google proíbem mostrar dados dele
+ * num mapa de terceiro, então os dois andam juntos ou nenhum dos dois.
+ */
+const TEM_GOOGLE = !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+const MapaDoEndereco = TEM_GOOGLE ? GooglePickerMap : AddressPickerMap
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -292,6 +306,29 @@ export default function CheckoutPage() {
     setTaxaEstimada(false)
     setDeliveryFee(null)
     setRecentrar((n) => n + 1)
+  }
+
+  /**
+   * Cliente escolheu um endereço na busca: preenche tudo e crava o pino.
+   *
+   * Este é o melhor caminho que existe — a coordenada vem do próprio endereço
+   * escolhido, sem chute de CEP e sem geocodificação por nome de rua.
+   */
+  const usarEnderecoDaBusca = (e: EnderecoEscolhido) => {
+    setForm((prev) => ({
+      ...prev,
+      cep: e.cep || prev.cep,
+      street: e.logradouro || prev.street,
+      number: e.numero || prev.number,
+      neighborhood: e.bairro || prev.neighborhood,
+      city: e.cidade || prev.city,
+      state: e.uf || prev.state,
+    }))
+    aplicarPino({ lat: e.lat, lng: e.lng })
+    setOrigemPino(`${e.enderecoCompleto}. Confira se o pino está na sua casa.`)
+    if (e.cidade && !isAllowedCity(e.cidade)) {
+      toast.error('Entregamos apenas em Governador Valadares. Você pode escolher "Retirada".')
+    }
   }
 
   /**
@@ -563,6 +600,17 @@ export default function CheckoutPage() {
                 {form.orderType === 'entrega' && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-sm text-white/35 mb-2"><MapPin size={15} className="text-brand" />Endereço de entrega</div>
+
+                    {TEM_GOOGLE && (
+                      <div className="space-y-2">
+                        <Label className="text-white/50">Buscar meu endereço</Label>
+                        <AddressSearch onEscolher={usarEnderecoDaBusca} />
+                        <p className="text-[11px] text-white/30">
+                          Digite a rua e o número e escolha na lista — é o jeito mais rápido e preenche
+                          tudo sozinho. Prefere pelo CEP? Use o campo abaixo.
+                        </p>
+                      </div>
+                    )}
                     <div className="flex-1 space-y-2">
                       <Label htmlFor="cep" className="text-white/50">CEP *</Label>
                       <div className="flex gap-2">
@@ -628,7 +676,7 @@ export default function CheckoutPage() {
 
                       {pino ? (
                         <>
-                          <AddressPickerMap
+                          <MapaDoEndereco
                             lat={pino.lat}
                             lng={pino.lng}
                             storeLat={deliveryCfg?.storeLat}

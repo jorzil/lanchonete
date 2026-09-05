@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createOrder, listOrders } from '@/lib/db-orders'
 import { supabaseConfigured } from '@/lib/supabase'
-import { resolveDeliveryFee, type DeliveryConfig } from '@/lib/delivery-zones'
+import { resolveDeliveryFee, feeForDistance, applyFreeDelivery, type DeliveryConfig } from '@/lib/delivery-zones'
+import { distanciaDeRotaKm } from '@/lib/google-maps'
 import { readDeliveryConfig } from './delivery-config'
 
 // Simple origin check: only allow same-origin or admin requests
@@ -108,14 +109,29 @@ async function conferirTaxa(body: Record<string, unknown>): Promise<string | nul
   // Sem configuração para conferir, não dá para acusar ninguém: deixa passar.
   if (!cfg) return null
 
-  const esperada = resolveDeliveryFee({
-    bairro: endereco?.neighborhood ?? '',
-    lat, lng, subtotal, cfg,
-    confirmadoNoMapa: typeof lat === 'number' && typeof lng === 'number',
-  })
+  // Confere pela MESMA régua que o checkout usou: se ele mediu a rota real,
+  // comparar com a estimativa por linha reta acusaria diferença que não existe.
+  const temPonto = typeof lat === 'number' && typeof lng === 'number'
+  let devida: number | null = null
 
-  if (enviada + 0.011 < esperada.fee) {
-    return `Taxa de entrega inválida. O valor correto para este endereço é ${esperada.fee.toFixed(2)}.`
+  if (temPonto && cfg.distanceEnabled !== false) {
+    const rotaKm = await distanciaDeRotaKm({ lat: cfg.storeLat, lng: cfg.storeLng }, { lat, lng })
+    if (rotaKm !== null) {
+      const zona = feeForDistance(rotaKm, cfg.zones)
+      const maisCara = [...cfg.zones].sort((a, b) => a.maxKm - b.maxKm).at(-1)?.fee ?? 0
+      devida = applyFreeDelivery(zona?.fee ?? maisCara, subtotal, cfg)
+    }
+  }
+
+  if (devida === null) {
+    devida = resolveDeliveryFee({
+      bairro: endereco?.neighborhood ?? '',
+      lat, lng, subtotal, cfg, confirmadoNoMapa: temPonto,
+    }).fee
+  }
+
+  if (enviada + 0.011 < devida) {
+    return `Taxa de entrega inválida. O valor correto para este endereço é ${devida.toFixed(2)}.`
   }
   return null
 }
