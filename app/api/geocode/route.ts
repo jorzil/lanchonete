@@ -43,6 +43,7 @@ async function nominatim(params: URLSearchParams): Promise<Achado | null> {
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams
   const street = sp.get('street') ?? ''
+  const numero = (sp.get('number') ?? '').trim()
   const city = sp.get('city') ?? ''
   const state = sp.get('state') ?? ''
   const cep = sp.get('cep') ?? ''
@@ -63,8 +64,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 })
   }
 
+  // O Nominatim espera o número JUNTO da rua, no mesmo campo. Com o número a
+  // busca cai na casa; sem ele, no meio da rua.
+  const ruaComNumero = numero ? `${numero} ${street}` : street
+
   try {
-    // 1ª tentativa: busca estruturada (mais precisa)
+    // 1ª tentativa: rua com número — a mais precisa que existe.
+    if (temRua && city && numero) {
+      const hit = await nominatim(new URLSearchParams({ street: ruaComNumero, city, state }))
+      if (hit?.precisao === 'exata') return NextResponse.json(hit)
+    }
+    // 2ª tentativa: a rua, sem número.
     if (temRua && city) {
       const hit = await nominatim(new URLSearchParams({ street, city, state }))
       if (hit?.precisao === 'exata') return NextResponse.json(hit)
@@ -77,7 +87,7 @@ export async function GET(req: NextRequest) {
     }
     // 3ª tentativa: texto livre, só se houver rua.
     if (temRua) {
-      const q = [street, city, state].filter(Boolean).join(', ')
+      const q = [ruaComNumero, city, state].filter(Boolean).join(', ')
       const hit = await nominatim(new URLSearchParams({ q }))
       if (hit) return NextResponse.json(hit)
     }

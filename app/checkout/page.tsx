@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, User, Phone, CreditCard, Banknote, QrCode, Loader2, Truck, Store } from 'lucide-react'
@@ -93,6 +93,11 @@ export default function CheckoutPage() {
   /** Muda quando um CEP novo chega, para o mapa reposicionar. */
   const [recentrar, setRecentrar] = useState(0)
   const [buscandoGps, setBuscandoGps] = useState(false)
+  /** Frase contando de onde veio a posição do pino. */
+  const [origemPino, setOrigemPino] = useState('')
+  const [posicionando, setPosicionando] = useState(false)
+  /** Sequência das buscas de endereço, para descartar resposta atrasada. */
+  const buscaRef = useRef(0)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
@@ -187,20 +192,106 @@ export default function CheckoutPage() {
       const config = await pullDeliveryConfig()
       setDeliveryCfg(config)
 
-      // O CEP não decide mais a taxa: ele só dá um bom chute de ONDE abrir o
-      // mapa. Quem decide é o ponto que o cliente confirma. Sem coordenada
-      // confiável, o mapa abre na loja e o cliente arrasta até em casa.
-      const abrirEm = typeof data.lat === 'number' && typeof data.lng === 'number'
-        ? { lat: data.lat, lng: data.lng }
-        : { lat: config.storeLat, lng: config.storeLng }
-      setPino(abrirEm)
-      setPinoConfirmado(false)
-      setFeeResult(null)
-      setTaxaEstimada(false)
-      setDeliveryFee(null)
-      setRecentrar((n) => n + 1)
+      // O CEP não decide mais a taxa: ele diz ONDE abrir o mapa. Quem decide
+      // é o ponto que o cliente confirma.
+      setPosicionando(true)
+      await posicionarPino(data, form.number, config)
+      setPosicionando(false)
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
+  }
+
+  /**
+   * Joga o pino no endereço, do palpite mais preciso para o mais grosseiro.
+   *
+   * Aqui vale relaxar: este ponto NÃO cobra nada, é só onde o mapa abre. Como
+   * quem decide a taxa é a confirmação do cliente, um palpite aproximado deixou
+   * de ser perigoso e passou a ser útil — poupa o cliente de arrastar o mapa
+   * da loja até o outro lado da cidade.
+   */
+  const posicionarPino = async (
+    dados: { logradouro?: string; bairro?: string; cidade?: string; uf?: string; lat?: number | null; lng?: number | null; coordenadas?: { lat: number; lng: number }[] },
+    numero: string,
+    cfg: DeliveryConfig,
+  ) => {
+    // Busca no mapa demora. Se o cliente pedir o GPS ou arrastar enquanto ela
+    // está no ar, a resposta atrasada não pode jogar o pino de volta — foi
+    // exatamente isso que apagava a escolha dele.
+    const minhaVez = ++buscaRef.current
+    const aindaVale = () => buscaRef.current === minhaVez
+
+    const rua = dados.logradouro ?? ''
+    const cidade = dados.cidade ?? ''
+
+    // 1º — a rua (com o número, quando houver) no mapa.
+    if (rua && cidade) {
+      try {
+        const q = new URLSearchParams({ street: `${rua}, ${dados.bairro ?? ''}`, city: cidade, state: dados.uf ?? '' })
+        if (numero.trim()) q.set('number', numero.trim())
+        const res = await fetch(`/api/geocode?${q.toString()}`)
+        if (res.ok) {
+          const g = await res.json()
+          if (typeof g.lat === 'number' && typeof g.lng === 'number') {
+            if (!aindaVale()) return
+            aplicarPino({ lat: g.lat, lng: g.lng })
+            setOrigemPino(g.precisao === 'exata'
+              ? `Achamos ${rua}${numero.trim() ? `, ${numero.trim()}` : ''} no mapa. Confira se o pino está na sua casa.`
+              : 'Achamos a região do seu endereço. Arraste o pino até a sua casa.')
+            return
+          }
+        }
+      } catch {}
+    }
+
+    // 2º — a coordenada do CEP. Mesmo a que foi recusada para cobrança serve
+    // aqui: ela ao menos cai dentro da cidade certa.
+    const doCep = typeof dados.lat === 'number' && typeof dados.lng === 'number'
+      ? { lat: dados.lat, lng: dados.lng }
+      : dados.coordenadas?.[0]
+    if (doCep) {
+      if (!aindaVale()) return
+      aplicarPino(doCep)
+      setOrigemPino('Não achamos sua rua no mapa. Arraste o pino até a sua casa.')
+      return
+    }
+
+    // 3º — a loja. Último recurso, mas com o aviso certo.
+    if (!aindaVale()) return
+    aplicarPino({ lat: cfg.storeLat, lng: cfg.storeLng })
+    setOrigemPino('Não achamos seu endereço no mapa. Arraste o pino da loja até a sua casa.')
+  }
+
+  /**
+   * Número da casa mudou: o pino precisa acompanhar.
+   *
+   * O número move a posição de forma relevante numa rua comprida — e é o campo
+   * que o cliente costuma preencher DEPOIS do CEP, quando o pino já foi posto.
+   */
+  const reposicionarPeloNumero = () => {
+    if (form.orderType !== 'entrega' || !form.street || !form.city) return
+    const cfg = deliveryCfg ?? getDeliveryConfig()
+    setPosicionando(true)
+    posicionarPino(
+      { logradouro: form.street, bairro: form.neighborhood, cidade: form.city, uf: form.state },
+      form.number,
+      cfg,
+    ).finally(() => setPosicionando(false))
+  }
+
+  /**
+   * Move o pino e invalida qualquer taxa que já tivesse sido calculada.
+   *
+   * Também cancela busca de endereço em andamento: quem chamou aqui já sabe
+   * onde o pino deve ficar, e uma resposta atrasada só atrapalharia.
+   */
+  const aplicarPino = (p: { lat: number; lng: number }) => {
+    buscaRef.current++
+    setPino(p)
+    setPinoConfirmado(false)
+    setFeeResult(null)
+    setTaxaEstimada(false)
+    setDeliveryFee(null)
+    setRecentrar((n) => n + 1)
   }
 
   /**
@@ -237,13 +328,10 @@ export default function CheckoutPage() {
     setBuscandoGps(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPino({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setPinoConfirmado(false)
-        setFeeResult(null)
-        setDeliveryFee(null)
-        setRecentrar((n) => n + 1)
+        aplicarPino({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setOrigemPino('Pino colocado onde você está agora. Confira e confirme.')
         setBuscandoGps(false)
-        toast.success('Mapa centralizado onde você está. Confira e confirme.')
+        toast.success('Mapa centralizado onde você está.')
       },
       () => {
         setBuscandoGps(false)
@@ -489,7 +577,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="number" className="text-white/50">Número *</Label>
-                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
+                        <Input id="number" placeholder="123" value={form.number} onChange={set('number')} onBlur={() => reposicionarPeloNumero()} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -526,6 +614,18 @@ export default function CheckoutPage() {
                         calculamos a entrega — e é onde o entregador vai chegar.
                       </p>
 
+                      {origemPino && pino && (
+                        <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[12px] leading-relaxed text-white/55">
+                          {origemPino}
+                        </p>
+                      )}
+
+                      {posicionando && (
+                        <p className="flex items-center gap-2 text-[12px] text-white/40">
+                          <Loader2 size={13} className="animate-spin" /> Procurando seu endereço no mapa…
+                        </p>
+                      )}
+
                       {pino ? (
                         <>
                           <AddressPickerMap
@@ -535,10 +635,16 @@ export default function CheckoutPage() {
                             storeLng={deliveryCfg?.storeLng}
                             recenterKey={recentrar}
                             onChange={(p) => {
+                              // Arrastou: descarta busca de endereço em voo, para
+                              // uma resposta atrasada não puxar o pino de volta.
+                              // Aqui não usamos aplicarPino de propósito — ele
+                              // re-centraliza o mapa e brigaria com o dedo.
+                              buscaRef.current++
                               setPino(p)
                               // Mexeu no mapa: a taxa anterior não vale mais.
                               setPinoConfirmado(false)
                               setFeeResult(null)
+                              setTaxaEstimada(false)
                               setDeliveryFee(null)
                             }}
                           />
