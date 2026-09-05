@@ -19,7 +19,15 @@ import { addOrder } from '@/lib/orders-storage'
 import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
+import dynamic from 'next/dynamic'
 import { pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, unknownFee, resolveDeliveryFee, type FeeDecision, type DeliveryConfig } from '@/lib/delivery-zones'
+
+// Leaflet só funciona no navegador: importado no servidor quebra com
+// "window is not defined". Mesmo padrão da tela de acompanhamento.
+const AddressPickerMap = dynamic(() => import('@/components/delivery/address-picker-map'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-white/5" />,
+})
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -79,6 +87,12 @@ export default function CheckoutPage() {
   const [feeResult, setFeeResult] = useState<FeeDecision | null>(null)
   /** Endereço não localizado: a taxa é um chute e o cliente precisa saber. */
   const [taxaEstimada, setTaxaEstimada] = useState(false)
+  /** Ponto sob o pino do mapa, e se o cliente já o confirmou. */
+  const [pino, setPino] = useState<{ lat: number; lng: number } | null>(null)
+  const [pinoConfirmado, setPinoConfirmado] = useState(false)
+  /** Muda quando um CEP novo chega, para o mapa reposicionar. */
+  const [recentrar, setRecentrar] = useState(0)
+  const [buscandoGps, setBuscandoGps] = useState(false)
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [storeOpen, setStoreOpen] = useState(true)
@@ -96,8 +110,14 @@ export default function CheckoutPage() {
   // faixa, que é a mais barata e não tem nada a ver com quem mora longe.
   useEffect(() => {
     if (!deliveryCfg || form.orderType !== 'entrega') return
-    const base = feeResult && !feeResult.outsideArea ? feeResult.fee : unknownFee(deliveryCfg)
-    setDeliveryFee(applyFreeDelivery(base, subtotal, deliveryCfg))
+    // Fora da área não é "taxa zero": é pedido barrado. Antes este efeito
+    // sobrescrevia o zero com a taxa de indefinição e o resumo mentia.
+    if (feeResult?.outsideArea) { setDeliveryFee(0); return }
+    // Sem nada decidido ainda, a taxa fica em aberto — como o carrinho promete.
+    // Injetar a taxa de indefinição aqui mostrava um preço antes de o cliente
+    // ter dado endereço nenhum.
+    if (!feeResult) { setDeliveryFee(null); return }
+    setDeliveryFee(applyFreeDelivery(feeResult.fee, subtotal, deliveryCfg))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryCfg, subtotal, form.orderType, feeResult])
 
@@ -125,8 +145,11 @@ export default function CheckoutPage() {
     if (type === 'retirada') { setDeliveryFee(0); setFeeResult(null) }
     else {
       const cfg = deliveryCfg ?? getDeliveryConfig()
-      const base = feeResult && !feeResult.outsideArea ? feeResult.fee : unknownFee(cfg)
-      setDeliveryFee(applyFreeDelivery(base, subtotal, cfg))
+      // Volta para entrega mantendo o que já foi decidido; se nada foi, a taxa
+      // fica em aberto até o cliente confirmar o ponto no mapa.
+      setDeliveryFee(feeResult && !feeResult.outsideArea
+        ? applyFreeDelivery(feeResult.fee, subtotal, cfg)
+        : null)
     }
   }
 
@@ -164,23 +187,70 @@ export default function CheckoutPage() {
       const config = await pullDeliveryConfig()
       setDeliveryCfg(config)
 
-      const decisao = resolveDeliveryFee({
-        bairro: neighborhood, lat: data.lat, lng: data.lng, subtotal, cfg: config,
-      })
-      setFeeResult(decisao)
-      setTaxaEstimada(decisao.estimada)
-
-      if (decisao.outsideArea) {
-        toast.error(`Fora da área de entrega (${decisao.distanceKm}km). Máx: ${config.zones.at(-1)?.maxKm}km`)
-        setDeliveryFee(0)
-      } else {
-        setDeliveryFee(decisao.fee)
-        if (decisao.fee === 0) toast.success('🎉 Frete grátis!')
-        else if (decisao.estimada) toast.warning('Não localizamos seu endereço com precisão. A taxa é uma estimativa e será confirmada pela loja.')
-        else toast.info(`Taxa de entrega: ${decisao.fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`)
-      }
+      // O CEP não decide mais a taxa: ele só dá um bom chute de ONDE abrir o
+      // mapa. Quem decide é o ponto que o cliente confirma. Sem coordenada
+      // confiável, o mapa abre na loja e o cliente arrasta até em casa.
+      const abrirEm = typeof data.lat === 'number' && typeof data.lng === 'number'
+        ? { lat: data.lat, lng: data.lng }
+        : { lat: config.storeLat, lng: config.storeLng }
+      setPino(abrirEm)
+      setPinoConfirmado(false)
+      setFeeResult(null)
+      setTaxaEstimada(false)
+      setDeliveryFee(null)
+      setRecentrar((n) => n + 1)
     } catch { toast.error('Erro ao buscar CEP.') }
     finally { setLoadingCep(false) }
+  }
+
+  /**
+   * O cliente confirmou onde mora. É AQUI que a taxa é decidida — e não mais
+   * a partir da coordenada que a base de CEP chutou.
+   */
+  const confirmarPonto = () => {
+    if (!pino) return
+    const cfg = deliveryCfg ?? getDeliveryConfig()
+    const decisao = resolveDeliveryFee({
+      bairro: form.neighborhood, lat: pino.lat, lng: pino.lng,
+      subtotal, cfg, confirmadoNoMapa: true,
+    })
+    setFeeResult(decisao)
+    setTaxaEstimada(decisao.estimada)
+    setPinoConfirmado(true)
+
+    if (decisao.outsideArea) {
+      toast.error(`Esse ponto fica a ${decisao.distanceKm}km da loja — fora da nossa área de entrega.`)
+      setDeliveryFee(0)
+    } else {
+      setDeliveryFee(decisao.fee)
+      if (decisao.fee === 0) toast.success('🎉 Frete grátis!')
+      else toast.success(`Localização confirmada. Taxa: ${decisao.fee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`)
+    }
+  }
+
+  /** GPS só no clique — nunca ao abrir a tela, que assusta e trava o fluxo. */
+  const usarMinhaLocalizacao = () => {
+    if (!('geolocation' in navigator)) {
+      toast.error('Este aparelho não permite localização.')
+      return
+    }
+    setBuscandoGps(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setPino({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setPinoConfirmado(false)
+        setFeeResult(null)
+        setDeliveryFee(null)
+        setRecentrar((n) => n + 1)
+        setBuscandoGps(false)
+        toast.success('Mapa centralizado onde você está. Confira e confirme.')
+      },
+      () => {
+        setBuscandoGps(false)
+        toast.error('Não conseguimos sua localização. Arraste o mapa até sua casa.')
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
   }
 
   const validate = (): string | null => {
@@ -198,6 +268,11 @@ export default function CheckoutPage() {
       }
       if (feeResult?.outsideArea) {
         return 'Endereço fora da nossa área de entrega. Escolha "Retirada" ou outro endereço.'
+      }
+      // Sem ponto confirmado não há taxa confiável. Deixar passar era o que
+      // fazia pedido distante sair com o preço de quem mora ao lado.
+      if (!pinoConfirmado || !feeResult) {
+        return 'Confirme no mapa onde fica sua casa para calcularmos a entrega.'
       }
     }
     if (items.length === 0) return 'Carrinho vazio.'
@@ -241,7 +316,14 @@ export default function CheckoutPage() {
 
     const orderNumber = generateOrderNumber()
     const address = form.orderType === 'entrega'
-      ? { cep: form.cep, street: form.street, number: form.number, complement: form.complement, neighborhood: form.neighborhood, city: form.city, state: form.state }
+      ? {
+          cep: form.cep, street: form.street, number: form.number, complement: form.complement,
+          neighborhood: form.neighborhood, city: form.city, state: form.state,
+          // O ponto confirmado vai junto: é a prova da taxa cobrada e é o que
+          // leva o entregador até a porta.
+          ...(pino ? { lat: pino.lat, lng: pino.lng } : {}),
+          ...(feeResult ? { feeSource: feeResult.fonte, feeDistanceKm: feeResult.distanceKm ?? undefined } : {}),
+        }
       : undefined
 
     // Troco: anexa às observações quando pagamento em dinheiro
@@ -422,6 +504,64 @@ export default function CheckoutPage() {
                     <div className="space-y-2">
                       <Label htmlFor="reference" className="text-white/50">Ponto de referência <span className="text-white/25">(opcional)</span></Label>
                       <Input id="reference" placeholder="Ex: próximo ao Supermercado X, casa azul..." value={form.reference} onChange={set('reference')} className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/25 focus-visible:ring-brand" />
+                    </div>
+
+                    {/* Confirmação no mapa — é daqui que sai a taxa */}
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Label className="text-white/50">Confirme sua localização *</Label>
+                        <button
+                          type="button"
+                          onClick={usarMinhaLocalizacao}
+                          disabled={buscandoGps}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[12px] font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                        >
+                          {buscandoGps ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                          Usar minha localização
+                        </button>
+                      </div>
+
+                      <p className="text-[12px] leading-relaxed text-white/40">
+                        Arraste o mapa até o pino ficar em cima da sua casa. É por esse ponto que
+                        calculamos a entrega — e é onde o entregador vai chegar.
+                      </p>
+
+                      {pino ? (
+                        <>
+                          <AddressPickerMap
+                            lat={pino.lat}
+                            lng={pino.lng}
+                            storeLat={deliveryCfg?.storeLat}
+                            storeLng={deliveryCfg?.storeLng}
+                            recenterKey={recentrar}
+                            onChange={(p) => {
+                              setPino(p)
+                              // Mexeu no mapa: a taxa anterior não vale mais.
+                              setPinoConfirmado(false)
+                              setFeeResult(null)
+                              setDeliveryFee(null)
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={confirmarPonto}
+                            disabled={pinoConfirmado}
+                            className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl font-black uppercase tracking-wide transition-colors ${
+                              pinoConfirmado
+                                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40'
+                                : 'bg-brand text-white hover:bg-brand-hover'
+                            }`}
+                          >
+                            {pinoConfirmado
+                              ? <>✓ Localização confirmada</>
+                              : <>É aqui que eu moro</>}
+                          </button>
+                        </>
+                      ) : (
+                        <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-[13px] text-white/35">
+                          Informe o CEP acima para abrirmos o mapa.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}

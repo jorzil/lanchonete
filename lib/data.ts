@@ -56,6 +56,17 @@ export type OrderStatus = 'novo' | 'aceito' | 'em_preparo' | 'pronto' | 'saiu_en
 export interface Address {
   cep: string; street: string; number: string; complement?: string
   neighborhood: string; city: string; state: string
+  /**
+   * Ponto que o cliente confirmou no mapa, no estilo do iFood.
+   *
+   * É o que decide a taxa e o que leva o entregador até a porta. Opcional
+   * porque pedido antigo, de PDV e do iFood não tem — e continuam válidos.
+   */
+  lat?: number
+  lng?: number
+  /** De onde saiu a taxa deste pedido, para o admin conferir depois. */
+  feeSource?: string
+  feeDistanceKm?: number
 }
 
 export interface Customer    { name: string; phone: string }

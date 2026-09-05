@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createOrder, listOrders } from '@/lib/db-orders'
 import { supabaseConfigured } from '@/lib/supabase'
+import { resolveDeliveryFee, type DeliveryConfig } from '@/lib/delivery-zones'
+import { readDeliveryConfig } from './delivery-config'
 
 // Simple origin check: only allow same-origin or admin requests
 function isAllowedOrigin(req: NextRequest): boolean {
@@ -35,6 +37,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'items required' }, { status: 400 })
     }
 
+    // A taxa de entrega chega pronta do navegador — e o ponto do mapa é
+    // escolhido pelo próprio cliente. Recalculamos aqui: sem isso, bastaria
+    // editar o valor antes de enviar para pagar o frete que quisesse.
+    const erroTaxa = await conferirTaxa(body)
+    if (erroTaxa) return NextResponse.json({ error: erroTaxa }, { status: 400 })
+
     const order = await createOrder(body)
     return NextResponse.json({ success: true, order }, { status: 201 })
   } catch (err) {
@@ -62,4 +70,52 @@ export async function GET(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+
+/**
+ * Caixa que contém Governador Valadares e arredores.
+ *
+ * Coordenada fora daqui não é engano de dedo: é pino forjado tentando virar
+ * frete barato, ou dado corrompido. Em ambos os casos o pedido não passa.
+ */
+const AREA_VALIDA = { latMin: -19.6, latMax: -18.1, lngMin: -42.7, lngMax: -41.2 }
+
+/**
+ * Recalcula a taxa a partir do que foi enviado e recusa divergência relevante.
+ *
+ * Tolera centavos de arredondamento e aceita taxa MAIOR que a calculada (a
+ * loja pode ter cobrado a mais de propósito); recusa só quem tenta pagar menos.
+ */
+async function conferirTaxa(body: Record<string, unknown>): Promise<string | null> {
+  if (body.orderType !== 'entrega') return null
+
+  const endereco = body.address as { lat?: number; lng?: number; neighborhood?: string } | undefined
+  const enviada = typeof body.deliveryFee === 'number' ? body.deliveryFee : 0
+  const subtotal = typeof body.subtotal === 'number' ? body.subtotal : 0
+
+  const lat = endereco?.lat
+  const lng = endereco?.lng
+  if (typeof lat === 'number' && typeof lng === 'number') {
+    if (lat < AREA_VALIDA.latMin || lat > AREA_VALIDA.latMax
+        || lng < AREA_VALIDA.lngMin || lng > AREA_VALIDA.lngMax) {
+      return 'Localização inválida. Confirme no mapa onde fica sua casa.'
+    }
+  }
+
+  let cfg: DeliveryConfig | null = null
+  try { cfg = await readDeliveryConfig() } catch { cfg = null }
+  // Sem configuração para conferir, não dá para acusar ninguém: deixa passar.
+  if (!cfg) return null
+
+  const esperada = resolveDeliveryFee({
+    bairro: endereco?.neighborhood ?? '',
+    lat, lng, subtotal, cfg,
+    confirmadoNoMapa: typeof lat === 'number' && typeof lng === 'number',
+  })
+
+  if (enviada + 0.011 < esperada.fee) {
+    return `Taxa de entrega inválida. O valor correto para este endereço é ${esperada.fee.toFixed(2)}.`
+  }
+  return null
 }

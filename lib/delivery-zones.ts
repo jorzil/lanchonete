@@ -267,7 +267,7 @@ export async function pushDeliveryConfig(config: DeliveryConfig): Promise<boolea
 
 // ─── Decisão da taxa ─────────────────────────────────────────────────────────
 
-export type FeeSource = 'bairro' | 'distancia' | 'indefinido' | 'fora_area' | 'gratis'
+export type FeeSource = 'pino' | 'bairro' | 'distancia' | 'indefinido' | 'fora_area' | 'gratis'
 
 export interface FeeDecision {
   fee: number
@@ -299,8 +299,13 @@ export function resolveDeliveryFee(entrada: {
   lng?: number | null
   subtotal: number
   cfg: DeliveryConfig
+  /**
+   * O cliente confirmou este ponto no mapa. Vence tudo: é o único dado da
+   * cadeia que veio de quem realmente sabe onde a casa fica.
+   */
+  confirmadoNoMapa?: boolean
 }): FeeDecision {
-  const { bairro = '', lat, lng, subtotal, cfg } = entrada
+  const { bairro = '', lat, lng, subtotal, cfg, confirmadoNoMapa = false } = entrada
   const base = (fee: number, fonte: FeeSource, explicacao: string, extra: Partial<FeeDecision> = {}): FeeDecision => {
     const comGratis = applyFreeDelivery(fee, subtotal, cfg)
     return {
@@ -313,12 +318,34 @@ export function resolveDeliveryFee(entrada: {
     }
   }
 
+  // 1º — ponto confirmado pelo cliente no mapa.
+  //
+  // Vem antes até da tabela de bairro: a tabela é uma média do bairro inteiro,
+  // e o pino é a casa. Quem arrastou o pino disse exatamente onde mora.
+  if (confirmadoNoMapa && typeof lat === 'number' && typeof lng === 'number') {
+    const r = calcDeliveryFee(lat, lng, cfg)
+    if (r.outsideArea) {
+      return {
+        ...base(r.fee, 'fora_area', `${r.distanceKm}km do ponto confirmado no mapa — fora da área de entrega`),
+        distanceKm: r.distanceKm, straightKm: r.straightKm, zone: null, outsideArea: true,
+      }
+    }
+    return {
+      ...base(r.fee, 'pino', `${r.distanceKm}km de percurso até o ponto que você confirmou no mapa — faixa "${r.zone?.label}"`),
+      distanceKm: r.distanceKm, straightKm: r.straightKm, zone: r.zone,
+    }
+  }
+
   const doBairro = neighborhoodFee(bairro, cfg)
   if (doBairro !== null) {
     return base(doBairro, 'bairro', `Taxa cadastrada para o bairro ${bairro}`)
   }
 
-  if (cfg.distanceEnabled !== false && typeof lat === 'number' && typeof lng === 'number') {
+  // 3º — distância a partir da coordenada do CEP. Fica por último e só entra
+  // se a loja permitir: essa coordenada é justamente a que erra em cidade mal
+  // mapeada, e foi o que motivou o mapa.
+  if (cfg.distanceEnabled !== false && !confirmadoNoMapa
+      && typeof lat === 'number' && typeof lng === 'number') {
     const r = calcDeliveryFee(lat, lng, cfg)
     if (r.outsideArea) {
       return {
@@ -334,6 +361,6 @@ export function resolveDeliveryFee(entrada: {
 
   const porque = cfg.distanceEnabled === false
     ? 'Cobrança por distância desligada e bairro não cadastrado — taxa a confirmar'
-    : 'Endereço sem bairro cadastrado e sem coordenada confiável — taxa a confirmar'
+    : 'Sem ponto confirmado no mapa, sem bairro cadastrado e sem coordenada confiável — taxa a confirmar'
   return { ...base(unknownFee(cfg), 'indefinido', porque), estimada: true }
 }
