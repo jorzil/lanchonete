@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import {
-  Wallet, Plus, Trash2, TrendingUp, TrendingDown, FileBarChart,
-  ArrowDownCircle, ArrowUpCircle, CheckCircle2, AlertCircle,
-  Clock, Ban, X,
-} from "lucide-react"
+import { Fragment, useEffect, useMemo, useState } from "react"
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, Ban, CheckCircle2, ChevronRight, Clock, FileBarChart, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react"
 import { formatCurrency } from "@/lib/store"
 import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
+  loadSubcategories, addSubcategory, deleteSubcategory, replaceSubcategories,
+  subcategoryLabel, type Subcategory,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   todayLocalISO, parseLocalDay,
   EXPENSE_CATEGORY_LABELS,
@@ -510,10 +508,21 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, subcategory: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+  const [subcats, setSubcats] = useState<Subcategory[]>([])
+  /** Campo de "nova subcategoria" aberto no modal. */
+  const [novaSub, setNovaSub] = useState("")
+  useEffect(() => { setSubcats(loadSubcategories()) }, [])
+  /** Só as subcategorias da categoria escolhida — a lista inteira confundiria. */
+  const subcatsDaCategoria = useMemo(
+    () => subcats.filter((sc) => sc.category === txForm.category),
+    [subcats, txForm.category],
+  )
   const [toDeleteBill, setToDeleteBill] = useState<Bill | null>(null)
   const [txCatFilter, setTxCatFilter] = useState("todos")
   const [expenseSource, setExpenseSource] = useState<"todos" | "lancamentos" | "contas">("todos")
+  /** Categoria com o detalhe por subcategoria aberto. */
+  const [catAberta, setCatAberta] = useState<string | null>(null)
 
   // Gastos do mês agrupados por categoria (lançamentos de despesa + contas a pagar)
   const expensesByCategory = useMemo(() => {
@@ -528,10 +537,27 @@ export default function FinanceiroPage() {
       acc.set(key, cur)
     }
 
+    // Detalhe por subcategoria dentro de cada categoria — é o que responde
+    // "quanto foi de boi" em vez de só "quanto foi de insumos".
+    const detalhe = new Map<string, Map<string, { label: string; amount: number }>>()
+    const addDetalhe = (cat: string, subKey: string, label: string, amount: number) => {
+      const dentro = detalhe.get(cat) ?? new Map()
+      const cur = dentro.get(subKey) ?? { label, amount: 0 }
+      cur.amount += amount
+      dentro.set(subKey, cur)
+      detalhe.set(cat, dentro)
+    }
+
     if (expenseSource !== "contas") {
       for (const t of transactions) {
         if (t.kind !== "despesa" || !inPeriod(t.date)) continue
         add(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category, t.amount)
+        addDetalhe(
+          t.category,
+          t.subcategory ?? "__sem__",
+          t.subcategory ? subcategoryLabel(t.subcategory, subcats) : "Sem subcategoria",
+          t.amount,
+        )
       }
     }
     if (expenseSource !== "lancamentos") {
@@ -542,10 +568,16 @@ export default function FinanceiroPage() {
     }
 
     const rows = [...acc.entries()]
-      .map(([key, v]) => ({ key, ...v }))
+      .map(([key, v]) => ({
+        key,
+        ...v,
+        subs: [...(detalhe.get(key)?.entries() ?? [])]
+          .map(([sk, sv]) => ({ key: sk, ...sv }))
+          .sort((a, b) => b.amount - a.amount),
+      }))
       .sort((a, b) => b.amount - a.amount)
     return { rows, total: rows.reduce((s, r) => s + r.amount, 0) }
-  }, [transactions, bills, month, year, expenseSource])
+  }, [transactions, bills, month, year, expenseSource, subcats])
 
   // Lançamentos do mês selecionado, já filtrados por categoria
   const monthTx = useMemo(() => transactions.filter((t) => {
@@ -553,6 +585,9 @@ export default function FinanceiroPage() {
     if (d.getMonth() !== month || d.getFullYear() !== year) return false
     if (txCatFilter === "todos") return true
     if (txCatFilter === "receita") return t.kind === "receita"
+    if (txCatFilter.startsWith("sub:")) {
+      return t.kind === "despesa" && t.subcategory === txCatFilter.slice(4)
+    }
     return t.kind === "despesa" && t.category === txCatFilter
   }), [transactions, month, year, txCatFilter])
   const [cashBase, setCashBase] = useState(0)
@@ -582,7 +617,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadSubcategories())
   }
 
   useEffect(() => {
@@ -603,9 +638,13 @@ export default function FinanceiroPage() {
         saveCustomCategories(merged)
         saveCashBase(remoteFinance.cashBase)
         saveBankBase(remoteFinance.bankBase)
+        // O servidor manda a lista inteira de subcategorias, incluindo as que
+        // a loja apagou — por isso substituímos em vez de mesclar.
+        replaceSubcategories(remoteFinance.subcategories as Subcategory[])
       }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
+      setSubcats(loadSubcategories())
       setCashBase(loadCashBase())
       setBankBase(loadBankBase())
       refreshBills()
@@ -621,11 +660,34 @@ export default function FinanceiroPage() {
   function handleAddTx() {
     const amount = parseFloat(txForm.amount)
     if (!amount || !txForm.description.trim()) return
-    addTransaction({ ...txForm, amount })
+    // Receita não tem subcategoria: elas são todas de despesa.
+    const sub = txForm.kind === "despesa" ? txForm.subcategory : ""
+    addTransaction({ ...txForm, subcategory: sub || undefined, amount })
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", date: todayLocalISO(), account: "dinheiro" })
+    setNovaSub("")
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", date: todayLocalISO(), account: "dinheiro" })
+  }
+
+  /** Cria a subcategoria digitada e já a deixa selecionada. */
+  function criarSubcategoria() {
+    const nome = novaSub.trim()
+    if (!nome) return
+    const nova = addSubcategory(nome, txForm.category)
+    setSubcats(loadSubcategories())
+    setTxForm((p) => ({ ...p, subcategory: nova.key }))
+    setNovaSub("")
+    persist()
+  }
+
+  function removerSubcategoria(key: string) {
+    deleteSubcategory(key)
+    setSubcats(loadSubcategories())
+    // Lançamentos antigos guardam a chave: eles continuam válidos e a lista
+    // mostra a chave crua em vez de sumir com o dado.
+    if (txForm.subcategory === key) setTxForm((p) => ({ ...p, subcategory: "" }))
+    persist()
   }
 
   function handleDeleteTx(id: string) {
@@ -837,25 +899,70 @@ export default function FinanceiroPage() {
               <p className="py-6 text-center text-sm text-gray-400">Nenhum gasto registrado neste período.</p>
             ) : (
               <div className="space-y-2.5">
-                {expensesByCategory.rows.map((r) => (
-                  <div key={r.key} className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm text-gray-700">{r.label}</span>
-                        <span className="shrink-0 text-xs text-gray-400">
-                          {((r.amount / expensesByCategory.total) * 100).toFixed(1)}%
-                        </span>
+                {expensesByCategory.rows.map((r) => {
+                  // Só vale abrir quando há mais de uma subcategoria, ou uma
+                  // que não seja o "sem subcategoria" — senão é repetir a linha.
+                  const vaiAbrir = r.subs.length > 1
+                    || (r.subs.length === 1 && r.subs[0].key !== "__sem__")
+                  const aberta = catAberta === r.key
+                  return (
+                    <div key={r.key}>
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            {vaiAbrir ? (
+                              <button
+                                onClick={() => setCatAberta(aberta ? null : r.key)}
+                                className="flex min-w-0 items-center gap-1 text-sm text-gray-700 hover:text-gray-900"
+                              >
+                                <ChevronRight
+                                  size={13}
+                                  className={`shrink-0 text-gray-400 transition-transform ${aberta ? "rotate-90" : ""}`}
+                                />
+                                <span className="truncate">{r.label}</span>
+                                <span className="shrink-0 text-[11px] text-gray-400">
+                                  ({r.subs.length})
+                                </span>
+                              </button>
+                            ) : (
+                              <span className="truncate text-sm text-gray-700">{r.label}</span>
+                            )}
+                            <span className="shrink-0 text-xs text-gray-400">
+                              {((r.amount / expensesByCategory.total) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="mt-1 h-1.5 rounded-full bg-gray-100">
+                            <div
+                              className="h-1.5 rounded-full bg-orange-500"
+                              style={{ width: `${(r.amount / expensesByCategory.total) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="w-28 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.amount)}</span>
                       </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-gray-100">
-                        <div
-                          className="h-1.5 rounded-full bg-orange-500"
-                          style={{ width: `${(r.amount / expensesByCategory.total) * 100}%` }}
-                        />
-                      </div>
+
+                      {aberta && (
+                        <div className="mt-2 space-y-1.5 border-l-2 border-orange-100 pl-4">
+                          {r.subs.map((sub) => (
+                            <div key={sub.key} className="flex items-center gap-3">
+                              <span className={`min-w-0 flex-1 truncate text-[13px] ${
+                                sub.key === "__sem__" ? "text-gray-400 italic" : "text-gray-600"
+                              }`}>
+                                {sub.label}
+                              </span>
+                              <span className="shrink-0 text-[11px] text-gray-400">
+                                {((sub.amount / r.amount) * 100).toFixed(0)}%
+                              </span>
+                              <span className="w-28 shrink-0 text-right text-[13px] font-medium text-gray-700">
+                                {fmt(sub.amount)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <span className="w-28 shrink-0 text-right text-sm font-semibold text-gray-900">{fmt(r.amount)}</span>
-                  </div>
-                ))}
+                  )
+                })}
                 <div className="flex items-center justify-between border-t border-gray-200 pt-2">
                   <span className="text-sm font-bold text-gray-700">Total de gastos</span>
                   <span className="text-base font-black text-gray-900">{fmt(expensesByCategory.total)}</span>
@@ -876,9 +983,19 @@ export default function FinanceiroPage() {
                 >
                   <option value="todos">Todas as categorias</option>
                   <option value="receita">Receitas</option>
-                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
+                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => {
+                    const filhas = subcats.filter((sc) => sc.category === k)
+                    return (
+                      <Fragment key={k}>
+                        <option value={k}>{v}</option>
+                        {/* Subcategorias recuadas sob a mãe: dá para filtrar
+                            "Pessoal" inteiro ou só "Motoboy". */}
+                        {filhas.map((sc) => (
+                          <option key={sc.key} value={`sub:${sc.key}`}>&nbsp;&nbsp;&nbsp;{sc.label}</option>
+                        ))}
+                      </Fragment>
+                    )
+                  })}
                 </select>
               </div>
             </div>
@@ -903,8 +1020,25 @@ export default function FinanceiroPage() {
                           {parseLocalDay(t.date).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
-                        <td className="px-5 py-3 text-gray-400 text-xs">
-                          {t.kind === "receita" ? "Receita" : EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                        <td className="px-5 py-3 text-xs">
+                          {t.kind === "receita" ? (
+                            <span className="text-gray-400">Receita</span>
+                          ) : t.subcategory ? (
+                            <>
+                              {/* A subcategoria é a informação que importa na
+                                  leitura rápida; a categoria fica de contexto. */}
+                              <span className="font-medium text-gray-700">
+                                {subcategoryLabel(t.subcategory, subcats)}
+                              </span>
+                              <span className="block text-[11px] text-gray-400">
+                                {EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">
+                              {EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                            </span>
+                          )}
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
@@ -1042,18 +1176,72 @@ export default function FinanceiroPage() {
                 </div>
               </div>
               {txForm.kind === "despesa" && (
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Categoria</label>
-                  <select
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
-                    value={txForm.category}
-                    onChange={(e) => setTxForm((p) => ({ ...p, category: e.target.value as ExpenseCategory }))}
-                  >
-                    {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Categoria</label>
+                    <select
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                      value={txForm.category}
+                      onChange={(e) => setTxForm((p) => ({
+                        ...p,
+                        category: e.target.value as ExpenseCategory,
+                        // Trocar de categoria invalida a subcategoria: elas
+                        // pertencem a uma categoria só.
+                        subcategory: "",
+                      }))}
+                    >
+                      {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Subcategoria <span className="font-normal text-gray-400">(opcional)</span>
+                    </label>
+                    <select
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                      value={txForm.subcategory}
+                      onChange={(e) => setTxForm((p) => ({ ...p, subcategory: e.target.value }))}
+                    >
+                      <option value="">— sem subcategoria —</option>
+                      {subcatsDaCategoria.map((sc) => (
+                        <option key={sc.key} value={sc.key}>{sc.label}</option>
+                      ))}
+                    </select>
+
+                    {/* Criar sem sair do lançamento: na correria do dia a dia,
+                        mandar a pessoa a outra tela significa não usar. */}
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        value={novaSub}
+                        onChange={(e) => setNovaSub(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); criarSubcategoria() } }}
+                        placeholder="Criar nova, ex: Carne — costela"
+                        className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={criarSubcategoria}
+                        disabled={!novaSub.trim()}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                      >
+                        Criar
+                      </button>
+                    </div>
+
+                    {txForm.subcategory && (
+                      <button
+                        type="button"
+                        onClick={() => removerSubcategoria(txForm.subcategory)}
+                        className="mt-2 text-xs font-medium text-red-500 hover:text-red-600"
+                      >
+                        Apagar &quot;{subcategoryLabel(txForm.subcategory, subcats)}&quot; da lista
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
             </div>
             <div className="flex gap-3 border-t border-gray-100 px-6 py-4">

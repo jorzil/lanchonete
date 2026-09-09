@@ -23,10 +23,72 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   outros: "Outros",
 }
 
+/**
+ * Subcategoria do lançamento.
+ *
+ * A categoria diz o TIPO de gasto ("Insumos"); a subcategoria diz QUAL
+ * ("Carne — boi"). Sem ela, o mês fecha com "R$ 4.200 em insumos" e não há
+ * como saber se a carne subiu ou se foi o molho — que é justamente a pergunta
+ * que faz a loja mudar de fornecedor.
+ */
+export interface Subcategory {
+  /** Chave estável. A etiqueta pode ser renomeada sem perder o histórico. */
+  key: string
+  label: string
+  /** A qual categoria de despesa pertence. */
+  category: ExpenseCategory
+}
+
+/**
+ * Subcategorias que já vêm prontas, tiradas do que a loja compra de verdade.
+ *
+ * São só um ponto de partida: a loja adiciona, renomeia e apaga o que quiser
+ * na própria tela de lançamento.
+ */
+export const DEFAULT_SUBCATEGORIES: Subcategory[] = [
+  // Carnes — a maior linha de custo, e a que mais varia de preço
+  { key: "carne_boi", label: "Carne — boi", category: "insumos" },
+  { key: "carne_frango", label: "Carne — frango", category: "insumos" },
+  { key: "carne_porco", label: "Carne — porco", category: "insumos" },
+  { key: "carne_bacon", label: "Carne — bacon", category: "insumos" },
+  // Molhos
+  { key: "molho_barbecue", label: "Molho — barbecue", category: "insumos" },
+  { key: "molho_ranch", label: "Molho — ranch", category: "insumos" },
+  { key: "molho_maionese", label: "Molho — maionese", category: "insumos" },
+  { key: "molho_mostarda_mel", label: "Molho — mostarda com mel", category: "insumos" },
+  // Demais insumos
+  { key: "pao", label: "Pão", category: "insumos" },
+  { key: "queijo", label: "Queijo", category: "insumos" },
+  { key: "salada", label: "Salada / hortifrúti", category: "insumos" },
+  { key: "bebidas", label: "Bebidas", category: "insumos" },
+  { key: "cookies", label: "Cookies", category: "insumos" },
+  { key: "embalagens", label: "Embalagens / descartáveis", category: "insumos" },
+  { key: "gas", label: "Gás", category: "insumos" },
+  // Pessoal — é aqui que o pagamento do motoboy é identificado
+  { key: "motoboy", label: "Motoboy / entregador", category: "pessoal" },
+  { key: "atendente", label: "Atendente", category: "pessoal" },
+  { key: "cozinha", label: "Cozinha", category: "pessoal" },
+  { key: "diaria", label: "Diária / freelance", category: "pessoal" },
+  { key: "vale", label: "Vale / adiantamento", category: "pessoal" },
+  // Utilidades
+  { key: "energia", label: "Energia", category: "utilidades" },
+  { key: "agua", label: "Água", category: "utilidades" },
+  { key: "internet", label: "Internet / telefone", category: "utilidades" },
+  // Taxas
+  { key: "taxa_ifood", label: "Comissão iFood", category: "taxas" },
+  { key: "taxa_cartao", label: "Taxa de cartão", category: "taxas" },
+  { key: "imposto", label: "Impostos", category: "taxas" },
+  // Marketing
+  { key: "anuncio", label: "Anúncios", category: "marketing" },
+  { key: "impresso", label: "Material impresso", category: "marketing" },
+]
+
 export interface Transaction {
   id: string
   kind: TxKind
   category: ExpenseCategory | "vendas" | "outros"
+  /** Chave da subcategoria. Ausente em lançamento antigo — e tudo bem. */
+  subcategory?: string
   description: string
   amount: number
   /** Data de competência (YYYY-MM-DD). */
@@ -37,6 +99,75 @@ export interface Transaction {
 }
 
 const TX_KEY = "mais_sub_transactions"
+const SUBCAT_KEY = "mais_sub_tx_subcategories"
+
+// ---------- Subcategorias ----------
+
+/**
+ * Lista de subcategorias em uso.
+ *
+ * Na primeira vez devolve as padrão. Depois que a loja salva alguma coisa,
+ * vale o que ela salvou — inclusive se ela apagou várias das padrão.
+ */
+export function loadSubcategories(): Subcategory[] {
+  if (typeof window === "undefined") return DEFAULT_SUBCATEGORIES
+  try {
+    const raw = localStorage.getItem(SUBCAT_KEY)
+    if (!raw) return DEFAULT_SUBCATEGORIES
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as Subcategory[]) : DEFAULT_SUBCATEGORIES
+  } catch {
+    return DEFAULT_SUBCATEGORIES
+  }
+}
+
+export function saveSubcategories(list: Subcategory[]): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(SUBCAT_KEY, JSON.stringify(list)) } catch { /* ignore */ }
+}
+
+/** Chave a partir da etiqueta, sem acento e sem espaço. */
+function chaveDe(label: string): string {
+  return label.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+}
+
+/**
+ * Cria uma subcategoria. Se já existir uma com o mesmo nome na mesma
+ * categoria, devolve a existente em vez de duplicar.
+ */
+export function addSubcategory(label: string, category: ExpenseCategory): Subcategory {
+  const lista = loadSubcategories()
+  const base = chaveDe(label)
+  const jaTem = lista.find((s) => s.category === category && chaveDe(s.label) === base)
+  if (jaTem) return jaTem
+
+  // Duas categorias podem ter subcategoria de mesmo nome (ex.: "Extra"), então
+  // a chave carrega a categoria para não colidirem.
+  let key = `${category}_${base}`
+  let n = 2
+  while (lista.some((s) => s.key === key)) key = `${category}_${base}_${n++}`
+
+  const nova: Subcategory = { key, label: label.trim(), category }
+  saveSubcategories([...lista, nova])
+  return nova
+}
+
+export function deleteSubcategory(key: string): void {
+  saveSubcategories(loadSubcategories().filter((s) => s.key !== key))
+}
+
+/** Substitui a lista local (usado na hidratação a partir do Supabase). */
+export function replaceSubcategories(list: Subcategory[]): void {
+  if (Array.isArray(list) && list.length > 0) saveSubcategories(list)
+}
+
+/** Etiqueta da subcategoria. Chave órfã devolve a própria chave, não vazio. */
+export function subcategoryLabel(key: string | undefined, lista?: Subcategory[]): string {
+  if (!key) return ""
+  const achada = (lista ?? loadSubcategories()).find((s) => s.key === key)
+  return achada?.label ?? key
+}
 
 export function loadTransactions(): Transaction[] {
   if (typeof window === "undefined") return []
@@ -93,12 +224,12 @@ export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
 }
 
 /** Envia contas + lançamentos + categorias ao Supabase (chamado após cada mutação). */
-export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0): Promise<boolean> {
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, subcategories: unknown[] = []): Promise<boolean> {
   try {
     const res = await fetch("/api/finance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase }),
+      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase, subcategories }),
     })
     const data = await res.json().catch(() => ({}))
     return !!(res.ok && data.ok)
