@@ -11,6 +11,7 @@ import {
   expenseCategoryOptions, expenseCategoryLabel, type TxCategory,
   loadCards, addCard, deleteCard, replaceCards, cardLabel, faturasEmAberto,
   saveTransactions, type CreditCard,
+  UNIDADES, unidadeLabel, precoUnitario, precoMedio,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   todayLocalISO, parseLocalDay,
   type Transaction, type TxKind, type ExpenseCategory,
@@ -514,7 +515,7 @@ export default function FinanceiroPage() {
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", // string, e não a lista fechada: a loja cria as suas categorias
-    category: "outros" as string, subcategory: "", card: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+    category: "outros" as string, subcategory: "", card: "", quantidade: "", unidade: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [subcats, setSubcats] = useState<Subcategory[]>([])
   const [txCats, setTxCats] = useState<TxCategory[]>([])
   const [cards, setCards] = useState<CreditCard[]>([])
@@ -560,11 +561,12 @@ export default function FinanceiroPage() {
 
     // Detalhe por subcategoria dentro de cada categoria — é o que responde
     // "quanto foi de boi" em vez de só "quanto foi de insumos".
-    const detalhe = new Map<string, Map<string, { label: string; amount: number }>>()
-    const addDetalhe = (cat: string, subKey: string, label: string, amount: number) => {
+    const detalhe = new Map<string, Map<string, { label: string; amount: number; txs: Transaction[] }>>()
+    const addDetalhe = (cat: string, subKey: string, label: string, amount: number, tx?: Transaction) => {
       const dentro = detalhe.get(cat) ?? new Map()
-      const cur = dentro.get(subKey) ?? { label, amount: 0 }
+      const cur = dentro.get(subKey) ?? { label, amount: 0, txs: [] as Transaction[] }
       cur.amount += amount
+      if (tx) cur.txs.push(tx)
       dentro.set(subKey, cur)
       detalhe.set(cat, dentro)
     }
@@ -579,6 +581,7 @@ export default function FinanceiroPage() {
           t.subcategory ?? "__sem__",
           t.subcategory ? subcategoryLabel(t.subcategory, subcats) : "Sem subcategoria",
           t.amount,
+          t,
         )
       }
     }
@@ -688,18 +691,22 @@ export default function FinanceiroPage() {
     if (!amount || !txForm.description.trim()) return
     // Receita não tem subcategoria: elas são todas de despesa.
     const sub = txForm.kind === "despesa" ? txForm.subcategory : ""
+    const qtd = parseFloat(txForm.quantidade.replace(",", "."))
     addTransaction({
       ...txForm,
       subcategory: sub || undefined,
       // Cartão só faz sentido quando a despesa foi no crédito.
       card: txForm.account === "credito" ? (txForm.card || undefined) : undefined,
+      // Quantidade só vale acompanhada de unidade: "20" sozinho não diz nada.
+      quantidade: qtd > 0 && txForm.unidade ? qtd : undefined,
+      unidade: qtd > 0 && txForm.unidade ? txForm.unidade : undefined,
       amount,
     })
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
     setNovaSub("")
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", card: "", date: todayLocalISO(), account: "dinheiro" })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", card: "", quantidade: "", unidade: "", date: todayLocalISO(), account: "dinheiro" })
   }
 
   /** Cria a subcategoria digitada e já a deixa selecionada. */
@@ -712,6 +719,38 @@ export default function FinanceiroPage() {
     setNovaSub("")
     persist()
   }
+
+  /**
+   * Preço médio por unidade de cada subcategoria no mês ANTERIOR.
+   *
+   * É a régua da comparação: saber que o boi está a R$ 45/kg só vira decisão
+   * quando se sabe que mês passado estava a R$ 41.
+   */
+  const precoMesAnterior = useMemo(() => {
+    const mesAnt = month === 0 ? 11 : month - 1
+    const anoAnt = month === 0 ? year - 1 : year
+    const porSub = new Map<string, Transaction[]>()
+    for (const t of transactions) {
+      if (t.kind !== "despesa" || t.transferencia || !t.subcategory) continue
+      const d = parseLocalDay(t.date)
+      if (d.getMonth() !== mesAnt || d.getFullYear() !== anoAnt) continue
+      porSub.set(t.subcategory, [...(porSub.get(t.subcategory) ?? []), t])
+    }
+    const out: Record<string, { preco: number; unidade: string }> = {}
+    for (const [k, lista] of porSub) {
+      const m = precoMedio(lista)
+      if (m) out[k] = { preco: m.preco, unidade: m.unidade }
+    }
+    return out
+  }, [transactions, month, year])
+
+  /** Preço por unidade do que está sendo digitado agora, para conferência. */
+  const precoDigitado = useMemo(() => {
+    const q = parseFloat(txForm.quantidade.replace(",", "."))
+    const v = parseFloat(txForm.amount)
+    if (!q || q <= 0 || !v || !txForm.unidade) return null
+    return v / q
+  }, [txForm.quantidade, txForm.amount, txForm.unidade])
 
   /** Quanto está em aberto em cada cartão. */
   const faturas = useMemo(() => faturasEmAberto(transactions), [transactions])
@@ -1075,21 +1114,46 @@ export default function FinanceiroPage() {
 
                       {aberta && (
                         <div className="mt-2 space-y-1.5 border-l-2 border-orange-100 pl-4">
-                          {r.subs.map((sub) => (
-                            <div key={sub.key} className="flex items-center gap-3">
-                              <span className={`min-w-0 flex-1 truncate text-[13px] ${
-                                sub.key === "__sem__" ? "text-gray-400 italic" : "text-gray-600"
-                              }`}>
-                                {sub.label}
-                              </span>
-                              <span className="shrink-0 text-[11px] text-gray-400">
-                                {((sub.amount / r.amount) * 100).toFixed(0)}%
-                              </span>
-                              <span className="w-28 shrink-0 text-right text-[13px] font-medium text-gray-700">
-                                {fmt(sub.amount)}
-                              </span>
-                            </div>
-                          ))}
+                          {r.subs.map((sub) => {
+                            const medio = precoMedio(sub.txs)
+                            const antes = precoMesAnterior[sub.key]
+                            // Só compara o que é comparável: mesma unidade.
+                            const variacao = medio && antes && antes.unidade === medio.unidade && antes.preco > 0
+                              ? ((medio.preco - antes.preco) / antes.preco) * 100
+                              : null
+                            return (
+                              <div key={sub.key}>
+                                <div className="flex items-center gap-3">
+                                  <span className={`min-w-0 flex-1 truncate text-[13px] ${
+                                    sub.key === "__sem__" ? "text-gray-400 italic" : "text-gray-600"
+                                  }`}>
+                                    {sub.label}
+                                  </span>
+                                  <span className="shrink-0 text-[11px] text-gray-400">
+                                    {((sub.amount / r.amount) * 100).toFixed(0)}%
+                                  </span>
+                                  <span className="w-28 shrink-0 text-right text-[13px] font-medium text-gray-700">
+                                    {fmt(sub.amount)}
+                                  </span>
+                                </div>
+                                {medio && (
+                                  <p className="mt-0.5 text-[11px] text-gray-400">
+                                    {medio.quantidade.toLocaleString("pt-BR")} {medio.unidade} ·{" "}
+                                    <strong className="font-semibold text-gray-600">
+                                      {fmt(medio.preco)}/{medio.unidade}
+                                    </strong>
+                                    {variacao !== null && Math.abs(variacao) >= 1 && (
+                                      <span className={`ml-1.5 font-semibold ${
+                                        variacao > 0 ? "text-red-500" : "text-emerald-600"
+                                      }`}>
+                                        {variacao > 0 ? "▲" : "▼"} {Math.abs(variacao).toFixed(0)}% vs mês anterior
+                                      </span>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -1191,6 +1255,11 @@ export default function FinanceiroPage() {
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
+                          {precoUnitario(t) !== null && (
+                            <span className="block text-[11px] font-normal text-gray-400">
+                              {t.quantidade} {t.unidade} · {fmt(precoUnitario(t) as number)}/{t.unidade}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-right">
                           <button onClick={() => handleDeleteTx(t.id)} className="text-gray-300 hover:text-red-400">
@@ -1521,6 +1590,45 @@ export default function FinanceiroPage() {
                       >
                         Apagar &quot;{subcategoryLabel(txForm.subcategory, subcats)}&quot; da lista
                       </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Quanto foi comprado <span className="font-normal text-gray-400">(opcional)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        inputMode="decimal"
+                        value={txForm.quantidade}
+                        onChange={(e) => setTxForm((p) => ({ ...p, quantidade: e.target.value }))}
+                        placeholder="20"
+                        className="w-24 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                      />
+                      <select
+                        className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                        value={txForm.unidade}
+                        onChange={(e) => setTxForm((p) => ({ ...p, unidade: e.target.value }))}
+                      >
+                        <option value="">— sem unidade —</option>
+                        {UNIDADES.map((u) => (
+                          <option key={u.key} value={u.key}>{u.label} ({u.key})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* O preço por unidade aparece enquanto se digita: é o
+                        número que diz se a compra foi cara, e ver na hora evita
+                        fechar o lançamento com o valor errado. */}
+                    {precoDigitado !== null ? (
+                      <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] font-medium text-emerald-800">
+                        Sai a <strong>{fmt(precoDigitado)}</strong> por {txForm.unidade}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        Preenchendo, o sistema calcula o preço por {txForm.unidade || "unidade"} e
+                        avisa quando o insumo encarecer.
+                      </p>
                     )}
                   </div>
                 </>

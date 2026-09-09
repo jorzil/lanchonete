@@ -30,6 +30,36 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
  * — "Frota", "Contador", "Reforma". Sem poder criar, tudo isso ia parar em
  * "Outros", que é onde o dinheiro some de vista.
  */
+/**
+ * Unidades de compra.
+ *
+ * As mesmas do estoque (un, kg, g, L, ml, pct), mais as que aparecem em nota
+ * de fornecedor e em pagamento de serviço. Sem isso, "R$ 900 de carne" não diz
+ * se foi caro: 20kg a R$ 45 é uma conversa, 12kg a R$ 75 é outra.
+ */
+export const UNIDADES = [
+  { key: "un", label: "unidade" },
+  { key: "kg", label: "quilo" },
+  { key: "g", label: "grama" },
+  { key: "L", label: "litro" },
+  { key: "ml", label: "mililitro" },
+  { key: "cx", label: "caixa" },
+  { key: "pct", label: "pacote" },
+  { key: "fardo", label: "fardo" },
+  { key: "dz", label: "dúzia" },
+  { key: "saco", label: "saco" },
+  { key: "bdj", label: "bandeja" },
+  { key: "h", label: "hora" },
+  { key: "diaria", label: "diária" },
+  { key: "mes", label: "mês" },
+] as const
+
+export type Unidade = (typeof UNIDADES)[number]["key"]
+
+export function unidadeLabel(key?: string): string {
+  return UNIDADES.find((u) => u.key === key)?.label ?? key ?? ""
+}
+
 export interface TxCategory {
   key: string
   label: string
@@ -105,6 +135,15 @@ export interface Transaction {
   category: string
   /** Chave da subcategoria. Ausente em lançamento antigo — e tudo bem. */
   subcategory?: string
+  /**
+   * Quanto foi comprado e em que unidade — "20" e "kg".
+   *
+   * Opcional de propósito: aluguel e internet não têm quantidade, e obrigar a
+   * preencher só atrapalharia. Quando existe, dá para calcular o preço por
+   * unidade e enxergar o insumo encarecendo.
+   */
+  quantidade?: number
+  unidade?: string
   description: string
   amount: number
   /** Data de competência (YYYY-MM-DD). */
@@ -376,6 +415,40 @@ export function deleteTransaction(id: string): void {
 /** Substitui a lista local (usado na hidratação a partir do Supabase). */
 export function replaceTransactions(list: Transaction[]): void {
   saveTransactions(Array.isArray(list) ? list : [])
+}
+
+/**
+ * Preço por unidade do lançamento. null quando não dá para calcular.
+ *
+ * Fica aqui, e não na tela, porque a mesma conta é usada na lista, no
+ * detalhamento por subcategoria e na comparação entre meses.
+ */
+export function precoUnitario(t: Transaction): number | null {
+  if (!t.quantidade || t.quantidade <= 0 || !t.unidade) return null
+  return t.amount / t.quantidade
+}
+
+/**
+ * Preço médio por unidade de um conjunto de lançamentos.
+ *
+ * Média PONDERADA: soma os valores e divide pela soma das quantidades. A média
+ * simples dos preços daria peso igual a uma compra de 1kg e a uma de 50kg, e o
+ * número não representaria o que a loja pagou.
+ *
+ * Só agrupa lançamentos da MESMA unidade — misturar kg com unidade produziria
+ * um número sem significado.
+ */
+export function precoMedio(txs: Transaction[]): { preco: number; unidade: string; quantidade: number } | null {
+  const comQuantidade = txs.filter((t) => t.quantidade && t.quantidade > 0 && t.unidade)
+  if (comQuantidade.length === 0) return null
+
+  const unidades = new Set(comQuantidade.map((t) => t.unidade as string))
+  if (unidades.size !== 1) return null
+
+  const quantidade = comQuantidade.reduce((a, t) => a + (t.quantidade as number), 0)
+  const valor = comQuantidade.reduce((a, t) => a + t.amount, 0)
+  if (quantidade <= 0) return null
+  return { preco: valor / quantidade, unidade: [...unidades][0], quantidade }
 }
 
 // ---------- Sincronização com Supabase ----------
