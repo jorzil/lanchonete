@@ -7,9 +7,10 @@ import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
   loadSubcategories, addSubcategory, deleteSubcategory, replaceSubcategories,
   subcategoryLabel, type Subcategory,
+  loadTxCategories, addTxCategory, deleteTxCategory, replaceTxCategories,
+  expenseCategoryOptions, expenseCategoryLabel, type TxCategory,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   todayLocalISO, parseLocalDay,
-  EXPENSE_CATEGORY_LABELS,
   type Transaction, type TxKind, type ExpenseCategory,
 } from "@/lib/finance-storage"
 import {
@@ -508,11 +509,22 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
-  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", category: "outros" as ExpenseCategory, subcategory: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+  const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", // string, e não a lista fechada: a loja cria as suas categorias
+    category: "outros" as string, subcategory: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [subcats, setSubcats] = useState<Subcategory[]>([])
+  const [txCats, setTxCats] = useState<TxCategory[]>([])
+  /** Campo de "nova categoria" aberto no modal. */
+  const [novaCat, setNovaCat] = useState("")
+  /** Categorias de fábrica + as criadas pela loja, na ordem de exibição. */
+  const catOptions = useMemo(() => expenseCategoryOptions(txCats), [txCats])
+  /** Categoria de fábrica não pode ser apagada — o histórico depende dela. */
+  const catEhDaLoja = useMemo(
+    () => txCats.some((c) => c.key === txForm.category),
+    [txCats, txForm.category],
+  )
   /** Campo de "nova subcategoria" aberto no modal. */
   const [novaSub, setNovaSub] = useState("")
-  useEffect(() => { setSubcats(loadSubcategories()) }, [])
+  useEffect(() => { setSubcats(loadSubcategories()); setTxCats(loadTxCategories()) }, [])
   /** Só as subcategorias da categoria escolhida — a lista inteira confundiria. */
   const subcatsDaCategoria = useMemo(
     () => subcats.filter((sc) => sc.category === txForm.category),
@@ -551,7 +563,7 @@ export default function FinanceiroPage() {
     if (expenseSource !== "contas") {
       for (const t of transactions) {
         if (t.kind !== "despesa" || !inPeriod(t.date)) continue
-        add(t.category, EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category, t.amount)
+        add(t.category, expenseCategoryLabel(t.category, txCats), t.amount)
         addDetalhe(
           t.category,
           t.subcategory ?? "__sem__",
@@ -577,7 +589,7 @@ export default function FinanceiroPage() {
       }))
       .sort((a, b) => b.amount - a.amount)
     return { rows, total: rows.reduce((s, r) => s + r.amount, 0) }
-  }, [transactions, bills, month, year, expenseSource, subcats])
+  }, [transactions, bills, month, year, expenseSource, subcats, txCats])
 
   // Lançamentos do mês selecionado, já filtrados por categoria
   const monthTx = useMemo(() => transactions.filter((t) => {
@@ -617,7 +629,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadSubcategories())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadSubcategories(), loadTxCategories())
   }
 
   useEffect(() => {
@@ -641,10 +653,12 @@ export default function FinanceiroPage() {
         // O servidor manda a lista inteira de subcategorias, incluindo as que
         // a loja apagou — por isso substituímos em vez de mesclar.
         replaceSubcategories(remoteFinance.subcategories as Subcategory[])
+        replaceTxCategories(remoteFinance.txCategories as TxCategory[])
       }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setSubcats(loadSubcategories())
+      setTxCats(loadTxCategories())
       setCashBase(loadCashBase())
       setBankBase(loadBankBase())
       refreshBills()
@@ -678,6 +692,27 @@ export default function FinanceiroPage() {
     setSubcats(loadSubcategories())
     setTxForm((p) => ({ ...p, subcategory: nova.key }))
     setNovaSub("")
+    persist()
+  }
+
+  /** Cria a categoria digitada e já a deixa selecionada. */
+  function criarCategoria() {
+    const nome = novaCat.trim()
+    if (!nome) return
+    const nova = addTxCategory(nome)
+    setTxCats(loadTxCategories())
+    setTxForm((p) => ({ ...p, category: nova.key, subcategory: "" }))
+    setNovaCat("")
+    persist()
+  }
+
+  function removerCategoria(key: string) {
+    deleteTxCategory(key)
+    setTxCats(loadTxCategories())
+    setSubcats(loadSubcategories())
+    // Lançamentos antigos guardam a chave e continuam válidos; a lista mostra
+    // a chave crua em vez de sumir com o dado.
+    if (txForm.category === key) setTxForm((p) => ({ ...p, category: "outros", subcategory: "" }))
     persist()
   }
 
@@ -983,7 +1018,7 @@ export default function FinanceiroPage() {
                 >
                   <option value="todos">Todas as categorias</option>
                   <option value="receita">Receitas</option>
-                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => {
+                  {catOptions.map(({ key: k, label: v }) => {
                     const filhas = subcats.filter((sc) => sc.category === k)
                     return (
                       <Fragment key={k}>
@@ -1031,12 +1066,12 @@ export default function FinanceiroPage() {
                                 {subcategoryLabel(t.subcategory, subcats)}
                               </span>
                               <span className="block text-[11px] text-gray-400">
-                                {EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                                {expenseCategoryLabel(t.category, txCats)}
                               </span>
                             </>
                           ) : (
                             <span className="text-gray-400">
-                              {EXPENSE_CATEGORY_LABELS[t.category as ExpenseCategory] ?? t.category}
+                              {expenseCategoryLabel(t.category, txCats)}
                             </span>
                           )}
                         </td>
@@ -1184,16 +1219,47 @@ export default function FinanceiroPage() {
                       value={txForm.category}
                       onChange={(e) => setTxForm((p) => ({
                         ...p,
-                        category: e.target.value as ExpenseCategory,
+                        category: e.target.value,
                         // Trocar de categoria invalida a subcategoria: elas
                         // pertencem a uma categoria só.
                         subcategory: "",
                       }))}
                     >
-                      {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>{v}</option>
+                      {catOptions.map((c) => (
+                        <option key={c.key} value={c.key}>{c.label}</option>
                       ))}
                     </select>
+
+                    {/* Mesma mecânica da subcategoria: criar sem sair daqui. */}
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        value={novaCat}
+                        onChange={(e) => setNovaCat(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); criarCategoria() } }}
+                        placeholder="Criar nova, ex: Frota"
+                        className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-orange-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={criarCategoria}
+                        disabled={!novaCat.trim()}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                      >
+                        Criar
+                      </button>
+                    </div>
+
+                    {/* Só as criadas pela loja podem sair: as de fábrica são
+                        referência do histórico e de outras telas. */}
+                    {catEhDaLoja && (
+                      <button
+                        type="button"
+                        onClick={() => removerCategoria(txForm.category)}
+                        className="mt-2 text-xs font-medium text-red-500 hover:text-red-600"
+                      >
+                        Apagar &quot;{expenseCategoryLabel(txForm.category, txCats)}&quot; e suas subcategorias
+                      </button>
+                    )}
                   </div>
 
                   <div>

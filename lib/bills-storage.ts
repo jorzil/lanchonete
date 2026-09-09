@@ -281,7 +281,7 @@ export function saveBankBase(v: number): void {
 }
 
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; subcategories: unknown[]; cashBase: number; bankBase: number } | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; subcategories: unknown[]; txCategories: unknown[]; cashBase: number; bankBase: number } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
@@ -290,6 +290,7 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
       bills: Array.isArray(data.bills) ? (data.bills as Bill[]) : [],
       customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
       subcategories: Array.isArray(data.subcategories) ? data.subcategories : [],
+      txCategories: Array.isArray(data.txCategories) ? data.txCategories : [],
       cashBase: typeof data.cashBase === "number" ? data.cashBase : 0,
       bankBase: typeof data.bankBase === "number" ? data.bankBase : 0,
     }

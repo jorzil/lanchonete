@@ -24,6 +24,18 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 }
 
 /**
+ * Categoria criada pela loja.
+ *
+ * As oito de fábrica cobrem o básico, mas cada casa tem a sua linha de gasto
+ * — "Frota", "Contador", "Reforma". Sem poder criar, tudo isso ia parar em
+ * "Outros", que é onde o dinheiro some de vista.
+ */
+export interface TxCategory {
+  key: string
+  label: string
+}
+
+/**
  * Subcategoria do lançamento.
  *
  * A categoria diz o TIPO de gasto ("Insumos"); a subcategoria diz QUAL
@@ -35,8 +47,8 @@ export interface Subcategory {
   /** Chave estável. A etiqueta pode ser renomeada sem perder o histórico. */
   key: string
   label: string
-  /** A qual categoria de despesa pertence. */
-  category: ExpenseCategory
+  /** A qual categoria pertence — de fábrica ou criada pela loja. */
+  category: string
 }
 
 /**
@@ -86,7 +98,11 @@ export const DEFAULT_SUBCATEGORIES: Subcategory[] = [
 export interface Transaction {
   id: string
   kind: TxKind
-  category: ExpenseCategory | "vendas" | "outros"
+  /**
+   * Chave da categoria. String, e não uma lista fechada, porque a loja cria
+   * as suas — e um lançamento antigo pode apontar para uma já apagada.
+   */
+  category: string
   /** Chave da subcategoria. Ausente em lançamento antigo — e tudo bem. */
   subcategory?: string
   description: string
@@ -100,6 +116,74 @@ export interface Transaction {
 
 const TX_KEY = "mais_sub_transactions"
 const SUBCAT_KEY = "mais_sub_tx_subcategories"
+const TXCAT_KEY = "mais_sub_tx_categories"
+
+// ---------- Categorias criadas pela loja ----------
+
+export function loadTxCategories(): TxCategory[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(TXCAT_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as TxCategory[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function saveTxCategories(list: TxCategory[]): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(TXCAT_KEY, JSON.stringify(list)) } catch { /* ignore */ }
+}
+
+/** Cria uma categoria. Nome repetido devolve a existente, sem duplicar. */
+export function addTxCategory(label: string): TxCategory {
+  const lista = loadTxCategories()
+  const base = chaveDe(label)
+  const jaTem = lista.find((c) => chaveDe(c.label) === base)
+  if (jaTem) return jaTem
+  // Prefixo para nunca colidir com as de fábrica (insumos, pessoal, ...).
+  let key = `cat_${base}`
+  let n = 2
+  while (lista.some((c) => c.key === key)) key = `cat_${base}_${n++}`
+
+  const nova: TxCategory = { key, label: label.trim() }
+  saveTxCategories([...lista, nova])
+  return nova
+}
+
+export function deleteTxCategory(key: string): void {
+  saveTxCategories(loadTxCategories().filter((c) => c.key !== key))
+  // As subcategorias que dependiam dela perdem o pai e ficariam invisíveis
+  // para sempre — melhor levá-las junto.
+  saveSubcategories(loadSubcategories().filter((s) => s.category !== key))
+}
+
+export function replaceTxCategories(list: TxCategory[]): void {
+  if (Array.isArray(list)) saveTxCategories(list)
+}
+
+/**
+ * Todas as categorias de despesa, de fábrica e criadas, na ordem de exibição.
+ *
+ * Recebe as listas por parâmetro para poder rodar no servidor e em teste, onde
+ * não existe localStorage.
+ */
+export function expenseCategoryOptions(custom?: TxCategory[]): { key: string; label: string }[] {
+  const criadas = custom ?? loadTxCategories()
+  return [
+    ...Object.entries(EXPENSE_CATEGORY_LABELS).map(([key, label]) => ({ key, label })),
+    ...criadas.map((c) => ({ key: c.key, label: c.label })),
+  ]
+}
+
+/** Etiqueta da categoria. Chave órfã devolve a própria chave, não vazio. */
+export function expenseCategoryLabel(key: string, custom?: TxCategory[]): string {
+  const daFabrica = EXPENSE_CATEGORY_LABELS[key as ExpenseCategory]
+  if (daFabrica) return daFabrica
+  return (custom ?? loadTxCategories()).find((c) => c.key === key)?.label ?? key
+}
 
 // ---------- Subcategorias ----------
 
@@ -136,7 +220,7 @@ function chaveDe(label: string): string {
  * Cria uma subcategoria. Se já existir uma com o mesmo nome na mesma
  * categoria, devolve a existente em vez de duplicar.
  */
-export function addSubcategory(label: string, category: ExpenseCategory): Subcategory {
+export function addSubcategory(label: string, category: string): Subcategory {
   const lista = loadSubcategories()
   const base = chaveDe(label)
   const jaTem = lista.find((s) => s.category === category && chaveDe(s.label) === base)
@@ -224,12 +308,12 @@ export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
 }
 
 /** Envia contas + lançamentos + categorias ao Supabase (chamado após cada mutação). */
-export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, subcategories: unknown[] = []): Promise<boolean> {
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, subcategories: unknown[] = [], txCategories: unknown[] = []): Promise<boolean> {
   try {
     const res = await fetch("/api/finance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase, subcategories }),
+      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase, subcategories, txCategories }),
     })
     const data = await res.json().catch(() => ({}))
     return !!(res.ok && data.ok)
