@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useState } from "react"
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, Ban, CheckCircle2, ChevronRight, Clock, FileBarChart, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react"
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, Ban, CheckCircle2, ChevronRight, Clock, CreditCard as IconeCartao, FileBarChart, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react"
 import { formatCurrency } from "@/lib/store"
 import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
@@ -9,6 +9,8 @@ import {
   subcategoryLabel, type Subcategory,
   loadTxCategories, addTxCategory, deleteTxCategory, replaceTxCategories,
   expenseCategoryOptions, expenseCategoryLabel, type TxCategory,
+  loadCards, addCard, deleteCard, replaceCards, cardLabel, faturasEmAberto,
+  saveTransactions, type CreditCard,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   todayLocalISO, parseLocalDay,
   type Transaction, type TxKind, type ExpenseCategory,
@@ -18,7 +20,7 @@ import {
   getBillsSummary, replaceBills, fetchBillsRemote,
   loadCustomCategories, saveCustomCategories, addCustomCategory, billCategoryLabel,
   loadCashBase, saveCashBase, loadBankBase, saveBankBase,
-  MONEY_ACCOUNT_LABELS, type MoneyAccount,
+  MONEY_ACCOUNT_LABELS, MONEY_ACCOUNT_ICON, SALDO_ACCOUNTS, type MoneyAccount,
   BILL_CATEGORY_LABELS, PAGAR_CATEGORIES, RECEBER_CATEGORIES,
   RECURRENCE_LABELS,
   type Bill, type BillType, type BillCategory, type Recurrence, type CustomCategory,
@@ -229,7 +231,9 @@ function BillModal({
               {type === "pagar" ? "Sai de onde?" : "Entra onde?"}
             </label>
             <div className="flex gap-2">
-              {(Object.keys(MONEY_ACCOUNT_LABELS) as MoneyAccount[]).map((a) => (
+              {/* Contas a pagar/receber ainda não têm fatura de cartão: só as
+                  contas que movem saldo direto. */}
+              {SALDO_ACCOUNTS.map((a) => (
                 <button
                   key={a}
                   type="button"
@@ -240,7 +244,7 @@ function BillModal({
                       : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                   }`}
                 >
-                  {a === "dinheiro" ? "💵 " : "🏦 "}{MONEY_ACCOUNT_LABELS[a]}
+                  {MONEY_ACCOUNT_ICON[a]} {MONEY_ACCOUNT_LABELS[a]}
                 </button>
               ))}
             </div>
@@ -510,9 +514,12 @@ export default function FinanceiroPage() {
   const [showTxModal, setShowTxModal] = useState(false)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", // string, e não a lista fechada: a loja cria as suas categorias
-    category: "outros" as string, subcategory: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
+    category: "outros" as string, subcategory: "", card: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
   const [subcats, setSubcats] = useState<Subcategory[]>([])
   const [txCats, setTxCats] = useState<TxCategory[]>([])
+  const [cards, setCards] = useState<CreditCard[]>([])
+  const [novoCartao, setNovoCartao] = useState("")
+  const [faturaModal, setFaturaModal] = useState(false)
   /** Campo de "nova categoria" aberto no modal. */
   const [novaCat, setNovaCat] = useState("")
   /** Categorias de fábrica + as criadas pela loja, na ordem de exibição. */
@@ -524,7 +531,9 @@ export default function FinanceiroPage() {
   )
   /** Campo de "nova subcategoria" aberto no modal. */
   const [novaSub, setNovaSub] = useState("")
-  useEffect(() => { setSubcats(loadSubcategories()); setTxCats(loadTxCategories()) }, [])
+  useEffect(() => {
+    setSubcats(loadSubcategories()); setTxCats(loadTxCategories()); setCards(loadCards())
+  }, [])
   /** Só as subcategorias da categoria escolhida — a lista inteira confundiria. */
   const subcatsDaCategoria = useMemo(
     () => subcats.filter((sc) => sc.category === txForm.category),
@@ -562,7 +571,8 @@ export default function FinanceiroPage() {
 
     if (expenseSource !== "contas") {
       for (const t of transactions) {
-        if (t.kind !== "despesa" || !inPeriod(t.date)) continue
+        // transferencia fica de fora: pagar a fatura não é gasto novo.
+        if (t.kind !== "despesa" || t.transferencia || !inPeriod(t.date)) continue
         add(t.category, expenseCategoryLabel(t.category, txCats), t.amount)
         addDetalhe(
           t.category,
@@ -629,7 +639,7 @@ export default function FinanceiroPage() {
 
   // Envia contas + lançamentos + categorias + caixa ao Supabase (persistência em todos os aparelhos)
   function persist() {
-    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadSubcategories(), loadTxCategories())
+    void pushFinanceRemote(loadBills(), loadTransactions(), loadCustomCategories(), loadCashBase(), loadBankBase(), loadSubcategories(), loadTxCategories(), loadCards())
   }
 
   useEffect(() => {
@@ -654,11 +664,13 @@ export default function FinanceiroPage() {
         // a loja apagou — por isso substituímos em vez de mesclar.
         replaceSubcategories(remoteFinance.subcategories as Subcategory[])
         replaceTxCategories(remoteFinance.txCategories as TxCategory[])
+        replaceCards(remoteFinance.cards as CreditCard[])
       }
       if (remoteTx) replaceTransactions(remoteTx)
       setTransactions(loadTransactions())
       setSubcats(loadSubcategories())
       setTxCats(loadTxCategories())
+      setCards(loadCards())
       setCashBase(loadCashBase())
       setBankBase(loadBankBase())
       refreshBills()
@@ -676,12 +688,18 @@ export default function FinanceiroPage() {
     if (!amount || !txForm.description.trim()) return
     // Receita não tem subcategoria: elas são todas de despesa.
     const sub = txForm.kind === "despesa" ? txForm.subcategory : ""
-    addTransaction({ ...txForm, subcategory: sub || undefined, amount })
+    addTransaction({
+      ...txForm,
+      subcategory: sub || undefined,
+      // Cartão só faz sentido quando a despesa foi no crédito.
+      card: txForm.account === "credito" ? (txForm.card || undefined) : undefined,
+      amount,
+    })
     setTransactions(loadTransactions())
     persist()
     setShowTxModal(false)
     setNovaSub("")
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", date: todayLocalISO(), account: "dinheiro" })
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", card: "", date: todayLocalISO(), account: "dinheiro" })
   }
 
   /** Cria a subcategoria digitada e já a deixa selecionada. */
@@ -692,6 +710,65 @@ export default function FinanceiroPage() {
     setSubcats(loadSubcategories())
     setTxForm((p) => ({ ...p, subcategory: nova.key }))
     setNovaSub("")
+    persist()
+  }
+
+  /** Quanto está em aberto em cada cartão. */
+  const faturas = useMemo(() => faturasEmAberto(transactions), [transactions])
+  const faturaTotal = useMemo(
+    () => Object.values(faturas).reduce((a, v) => a + v, 0),
+    [faturas],
+  )
+
+  function criarCartao() {
+    const nome = novoCartao.trim()
+    if (!nome) return
+    const novo = addCard(nome)
+    setCards(loadCards())
+    setTxForm((p) => ({ ...p, card: novo.key }))
+    setNovoCartao("")
+    persist()
+  }
+
+  function removerCartao(key: string) {
+    deleteCard(key)
+    setCards(loadCards())
+    if (txForm.card === key) setTxForm((p) => ({ ...p, card: "" }))
+    persist()
+  }
+
+  /**
+   * Paga a fatura: o dinheiro sai do caixa ou do banco AGORA, e as despesas
+   * que ela cobria ficam marcadas como pagas.
+   *
+   * O lançamento criado é uma TRANSFERÊNCIA, não uma despesa nova — o gasto já
+   * foi contado quando a compra foi lançada. Sem isso o mês fecharia com o
+   * cartão em dobro.
+   */
+  function pagarFatura(cardKey: string, conta: MoneyAccount) {
+    const lista = loadTransactions()
+    const hoje = todayLocalISO()
+    const alvo = lista.filter((t) =>
+      t.kind === "despesa" && t.account === "credito" && !t.transferencia
+      && !t.faturaPagaEm && (t.card ?? "__sem_cartao__") === cardKey)
+    const total = alvo.reduce((a, t) => a + t.amount, 0)
+    if (total <= 0) return
+
+    const marcados = lista.map((t) =>
+      alvo.some((x) => x.id === t.id) ? { ...t, faturaPagaEm: hoje } : t)
+    saveTransactions(marcados)
+
+    addTransaction({
+      kind: "despesa",
+      category: "outros",
+      description: `Pagamento da fatura — ${cardLabel(cardKey, cards)}`,
+      amount: total,
+      date: hoje,
+      account: conta,
+      transferencia: true,
+    })
+
+    setTransactions(loadTransactions())
     persist()
   }
 
@@ -795,6 +872,26 @@ export default function FinanceiroPage() {
           <p className="text-xl font-bold">{fmt(bankTotal)}</p>
           <p className="text-[10px] text-white/70 mt-0.5">banco / Pix · total geral {fmt(cashTotal + bankTotal)}</p>
         </div>
+
+        {/* Fatura só aparece quando existe: cartão zerado é ruído no painel. */}
+        {faturaTotal > 0 && (
+          <div className="rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 p-4 text-white">
+            <div className="flex items-center gap-2 mb-2">
+              <IconeCartao size={16} className="text-white/80" />
+              <span className="text-xs font-medium text-white/80">Fatura do cartão</span>
+            </div>
+            <p className="text-xl font-bold">{fmt(faturaTotal)}</p>
+            <p className="text-[10px] text-white/70 mt-0.5">
+              em aberto · ainda não saiu do caixa
+            </p>
+            <button
+              onClick={() => setFaturaModal(true)}
+              className="mt-2 w-full rounded-lg bg-white/20 px-2 py-1 text-[11px] font-bold transition-colors hover:bg-white/30"
+            >
+              Pagar fatura
+            </button>
+          </div>
+        )}
         <div className="rounded-xl bg-white border border-gray-100 p-4">
           <div className="flex items-center gap-2 mb-2">
             <ArrowDownCircle size={16} className="text-emerald-500" />
@@ -1054,7 +1151,24 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3 text-gray-500">
                           {parseLocalDay(t.date).toLocaleDateString("pt-BR")}
                         </td>
-                        <td className="px-5 py-3 font-medium text-gray-900">{t.description}</td>
+                        <td className="px-5 py-3 font-medium text-gray-900">
+                          {t.description}
+                          {t.account === "credito" && !t.transferencia && (
+                            <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              t.faturaPagaEm
+                                ? "bg-gray-100 text-gray-500"
+                                : "bg-violet-100 text-violet-700"
+                            }`}>
+                              💳 {t.card ? cardLabel(t.card, cards) : "crédito"}
+                              {t.faturaPagaEm ? " · paga" : ""}
+                            </span>
+                          )}
+                          {t.transferencia && (
+                            <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+                              transferência
+                            </span>
+                          )}
+                        </td>
                         <td className="px-5 py-3 text-xs">
                           {t.kind === "receita" ? (
                             <span className="text-gray-400">Receita</span>
@@ -1140,6 +1254,56 @@ export default function FinanceiroPage() {
       )}
 
       {/* Transaction Modal */}
+      {faturaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="border-b border-gray-100 px-6 py-4">
+              <p className="font-semibold text-gray-900">Pagar fatura do cartão</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                O dinheiro sai do caixa ou do banco agora. O gasto já foi contado quando você
+                lançou as compras — pagar a fatura não conta de novo.
+              </p>
+            </div>
+
+            <div className="max-h-80 space-y-3 overflow-y-auto px-6 py-4">
+              {Object.entries(faturas).length === 0 && (
+                <p className="py-4 text-center text-sm text-gray-400">Nenhuma fatura em aberto.</p>
+              )}
+              {Object.entries(faturas).map(([key, valor]) => (
+                <div key={key} className="rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-gray-800">
+                      💳 {key === "__sem_cartao__" ? "Sem cartão específico" : cardLabel(key, cards)}
+                    </span>
+                    <span className="font-bold text-gray-900">{fmt(valor)}</span>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    {SALDO_ACCOUNTS.map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => { pagarFatura(key, a); setFaturaModal(false) }}
+                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-violet-300 hover:bg-violet-50"
+                      >
+                        Pagar com {MONEY_ACCOUNT_ICON[a]} {a === "dinheiro" ? "dinheiro" : "conta"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-gray-100 px-6 py-4">
+              <button
+                onClick={() => setFaturaModal(false)}
+                className="w-full rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showTxModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
@@ -1194,7 +1358,10 @@ export default function FinanceiroPage() {
                   {txForm.kind === "despesa" ? "Sai de onde?" : "Entra onde?"}
                 </label>
                 <div className="flex gap-2">
-                  {(Object.keys(MONEY_ACCOUNT_LABELS) as MoneyAccount[]).map((a) => (
+                  {(Object.keys(MONEY_ACCOUNT_LABELS) as MoneyAccount[])
+                    // Receita não entra no cartão de crédito.
+                    .filter((a) => a !== "credito" || txForm.kind === "despesa")
+                    .map((a) => (
                     <button
                       key={a}
                       type="button"
@@ -1205,10 +1372,59 @@ export default function FinanceiroPage() {
                           : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                       }`}
                     >
-                      {a === "dinheiro" ? "💵 " : "🏦 "}{MONEY_ACCOUNT_LABELS[a]}
+                      {MONEY_ACCOUNT_ICON[a]} {MONEY_ACCOUNT_LABELS[a]}
                     </button>
                   ))}
                 </div>
+
+                {txForm.account === "credito" && (
+                  <div className="mt-3 rounded-lg border border-violet-100 bg-violet-50 p-3">
+                    <label className="mb-1 block text-xs font-medium text-violet-800">
+                      Qual cartão <span className="font-normal text-violet-500">(opcional)</span>
+                    </label>
+                    <select
+                      className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-violet-400"
+                      value={txForm.card}
+                      onChange={(e) => setTxForm((p) => ({ ...p, card: e.target.value }))}
+                    >
+                      <option value="">— sem cartão específico —</option>
+                      {cards.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        value={novoCartao}
+                        onChange={(e) => setNovoCartao(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); criarCartao() } }}
+                        placeholder="Criar novo, ex: Nubank PJ"
+                        className="flex-1 rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-violet-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={criarCartao}
+                        disabled={!novoCartao.trim()}
+                        className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-40"
+                      >
+                        Criar
+                      </button>
+                    </div>
+
+                    {txForm.card && (
+                      <button
+                        type="button"
+                        onClick={() => removerCartao(txForm.card)}
+                        className="mt-2 text-xs font-medium text-red-500 hover:text-red-600"
+                      >
+                        Apagar &quot;{cardLabel(txForm.card, cards)}&quot; da lista
+                      </button>
+                    )}
+
+                    <p className="mt-2 text-[11px] leading-relaxed text-violet-700">
+                      No crédito o gasto conta no mês, mas o dinheiro só sai quando você pagar
+                      a fatura. O saldo em caixa não muda agora.
+                    </p>
+                  </div>
+                )}
               </div>
               {txForm.kind === "despesa" && (
                 <>

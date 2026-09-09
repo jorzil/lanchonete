@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // System row stored in customers table — no extra table needed
 const SYSTEM_PHONE = '__finance__'
 
-const DEFAULT_CONFIG = { bills: [] as unknown[], transactions: [] as unknown[], customCategories: [] as unknown[], subcategories: [] as unknown[], txCategories: [] as unknown[], cashBase: 0 }
+const DEFAULT_CONFIG = { bills: [] as unknown[], transactions: [] as unknown[], customCategories: [] as unknown[], subcategories: [] as unknown[], txCategories: [] as unknown[], cards: [] as unknown[], cashBase: 0 }
 
 async function readFromDb() {
   const { data } = await supabase
@@ -39,6 +39,7 @@ export async function GET() {
     customCategories: Array.isArray(stored?.customCategories) ? stored.customCategories : [],
     subcategories: Array.isArray(stored?.subcategories) ? stored.subcategories : [],
     txCategories: Array.isArray(stored?.txCategories) ? stored.txCategories : [],
+    cards: Array.isArray(stored?.cards) ? stored.cards : [],
     cashBase: typeof stored?.cashBase === 'number' ? stored.cashBase : 0,
     bankBase: typeof stored?.bankBase === 'number' ? stored.bankBase : 0,
   })
@@ -54,12 +55,13 @@ export async function PATCH(req: NextRequest) {
   const customCategories = Array.isArray(body.customCategories) ? body.customCategories : []
   const subcategories = Array.isArray(body.subcategories) ? body.subcategories : []
   const txCategories = Array.isArray(body.txCategories) ? body.txCategories : []
+  const cards = Array.isArray(body.cards) ? body.cards : []
   const cashBase = typeof body.cashBase === 'number' && isFinite(body.cashBase) ? body.cashBase : 0
   const bankBase = typeof body.bankBase === 'number' && isFinite(body.bankBase) ? body.bankBase : 0
-  const next = { bills, transactions, customCategories, subcategories, txCategories, cashBase, bankBase, updatedAt: new Date().toISOString() }
+  const next = { bills, transactions, customCategories, subcategories, txCategories, cards, cashBase, bankBase, updatedAt: new Date().toISOString() }
   const writeErr = await writeToDb(next)
   if (writeErr) {
     return NextResponse.json({ ok: false, error: writeErr.message }, { status: 500 })
   }
-  return NextResponse.json({ ok: true, bills, transactions, customCategories, subcategories, txCategories, cashBase, bankBase })
+  return NextResponse.json({ ok: true, bills, transactions, customCategories, subcategories, txCategories, cards, cashBase, bankBase })
 }

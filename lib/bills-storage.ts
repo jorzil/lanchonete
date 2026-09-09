@@ -80,11 +80,28 @@ export function billCategoryLabel(cat: string): string {
 }
 
 // ---------- Onde o dinheiro fica ----------
-export type MoneyAccount = "dinheiro" | "banco"
+/**
+ * De onde o dinheiro sai (ou entra).
+ *
+ * "credito" é diferente dos outros dois por natureza: a despesa acontece hoje,
+ * mas o dinheiro só sai na fatura. Por isso ela não mexe em saldo nenhum na
+ * hora — mexe quando a fatura é paga.
+ */
+export type MoneyAccount = "dinheiro" | "banco" | "credito"
 
 export const MONEY_ACCOUNT_LABELS: Record<MoneyAccount, string> = {
   dinheiro: "Dinheiro (espécie)",
   banco: "Na conta (banco/Pix)",
+  credito: "Cartão de crédito",
+}
+
+/** Contas que têm saldo. O crédito não tem: o que ele tem é fatura. */
+export const SALDO_ACCOUNTS: MoneyAccount[] = ["dinheiro", "banco"]
+
+export const MONEY_ACCOUNT_ICON: Record<MoneyAccount, string> = {
+  dinheiro: "💵",
+  banco: "🏦",
+  credito: "💳",
 }
 
 export type Recurrence = "none" | "semanal" | "mensal" | "anual"
@@ -281,7 +298,7 @@ export function saveBankBase(v: number): void {
 }
 
 // ---------- Sincronização com Supabase ----------
-export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; subcategories: unknown[]; txCategories: unknown[]; cashBase: number; bankBase: number } | null> {
+export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategories: CustomCategory[]; subcategories: unknown[]; txCategories: unknown[]; cards: unknown[]; cashBase: number; bankBase: number } | null> {
   try {
     const res = await fetch("/api/finance", { cache: "no-store" })
     if (!res.ok) return null
@@ -291,6 +308,7 @@ export async function fetchBillsRemote(): Promise<{ bills: Bill[]; customCategor
       customCategories: Array.isArray(data.customCategories) ? (data.customCategories as CustomCategory[]) : [],
       subcategories: Array.isArray(data.subcategories) ? data.subcategories : [],
       txCategories: Array.isArray(data.txCategories) ? data.txCategories : [],
+      cards: Array.isArray(data.cards) ? data.cards : [],
       cashBase: typeof data.cashBase === "number" ? data.cashBase : 0,
       bankBase: typeof data.bankBase === "number" ? data.bankBase : 0,
     }

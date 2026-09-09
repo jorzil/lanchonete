@@ -109,14 +109,97 @@ export interface Transaction {
   amount: number
   /** Data de competência (YYYY-MM-DD). */
   date: string
-  /** Onde entrou/saiu: espécie ou conta bancária (padrão: dinheiro) */
-  account?: "dinheiro" | "banco"
+  /** Onde entrou/saiu: espécie, conta bancária ou cartão (padrão: dinheiro) */
+  account?: "dinheiro" | "banco" | "credito"
+  /** Qual cartão, quando a conta é crédito. */
+  card?: string
+  /**
+   * Quando a fatura que cobria esta despesa foi paga (AAAA-MM-DD).
+   * Enquanto vazio, a despesa está na fatura em aberto.
+   */
+  faturaPagaEm?: string
+  /**
+   * Movimento de dinheiro que NÃO é despesa nova — pagar a fatura do cartão é
+   * o caso. Mexe no saldo, mas fica fora da DRE e dos gastos por categoria:
+   * a despesa já foi contada quando a compra foi lançada. Sem esta marca, o
+   * mês fecharia com o gasto do cartão em dobro.
+   */
+  transferencia?: boolean
   createdAt: string
 }
 
 const TX_KEY = "mais_sub_transactions"
 const SUBCAT_KEY = "mais_sub_tx_subcategories"
 const TXCAT_KEY = "mais_sub_tx_categories"
+const CARD_KEY = "mais_sub_credit_cards"
+
+// ---------- Cartões de crédito ----------
+
+export interface CreditCard {
+  key: string
+  label: string
+  /** Dia do vencimento da fatura, quando a loja quiser registrar. */
+  diaVencimento?: number
+}
+
+export function loadCards(): CreditCard[] {
+  if (typeof window === "undefined") return []
+  try {
+    const raw = localStorage.getItem(CARD_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CreditCard[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function saveCards(list: CreditCard[]): void {
+  if (typeof window === "undefined") return
+  try { localStorage.setItem(CARD_KEY, JSON.stringify(list)) } catch { /* ignore */ }
+}
+
+export function addCard(label: string): CreditCard {
+  const lista = loadCards()
+  const base = chaveDe(label)
+  const jaTem = lista.find((c) => chaveDe(c.label) === base)
+  if (jaTem) return jaTem
+  let key = `card_${base}`
+  let n = 2
+  while (lista.some((c) => c.key === key)) key = `card_${base}_${n++}`
+  const novo: CreditCard = { key, label: label.trim() }
+  saveCards([...lista, novo])
+  return novo
+}
+
+export function deleteCard(key: string): void {
+  saveCards(loadCards().filter((c) => c.key !== key))
+}
+
+export function replaceCards(list: CreditCard[]): void {
+  if (Array.isArray(list)) saveCards(list)
+}
+
+export function cardLabel(key: string | undefined, lista?: CreditCard[]): string {
+  if (!key) return "Cartão"
+  return (lista ?? loadCards()).find((c) => c.key === key)?.label ?? key
+}
+
+/**
+ * Fatura em aberto de cada cartão: despesas no crédito ainda não cobertas por
+ * um pagamento de fatura.
+ */
+export function faturasEmAberto(txs?: Transaction[]): Record<string, number> {
+  const lista = txs ?? loadTransactions()
+  const out: Record<string, number> = {}
+  for (const t of lista) {
+    if (t.kind !== "despesa" || t.account !== "credito" || t.transferencia) continue
+    if (t.faturaPagaEm) continue
+    const k = t.card ?? "__sem_cartao__"
+    out[k] = (out[k] ?? 0) + t.amount
+  }
+  return out
+}
 
 // ---------- Categorias criadas pela loja ----------
 
@@ -308,12 +391,12 @@ export async function fetchTransactionsRemote(): Promise<Transaction[] | null> {
 }
 
 /** Envia contas + lançamentos + categorias ao Supabase (chamado após cada mutação). */
-export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, subcategories: unknown[] = [], txCategories: unknown[] = []): Promise<boolean> {
+export async function pushFinanceRemote(bills: unknown[], transactions: unknown[], customCategories: unknown[] = [], cashBase = 0, bankBase = 0, subcategories: unknown[] = [], txCategories: unknown[] = [], cards: unknown[] = []): Promise<boolean> {
   try {
     const res = await fetch("/api/finance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase, subcategories, txCategories }),
+      body: JSON.stringify({ bills, transactions, customCategories, cashBase, bankBase, subcategories, txCategories, cards }),
     })
     const data = await res.json().catch(() => ({}))
     return !!(res.ok && data.ok)
@@ -374,11 +457,15 @@ export function calcDRE(month: number, year: number): DRE {
     return d.getMonth() === month && d.getFullYear() === year
   })
 
-  const receitasExtras = txs.filter((t) => t.kind === "receita").reduce((acc, t) => acc + t.amount, 0)
+  // Transferência não é receita nem despesa: é dinheiro mudando de lugar.
+  // Pagar a fatura do cartão entra aqui — a despesa já foi contada na compra.
+  const movimentos = txs.filter((t) => !t.transferencia)
+
+  const receitasExtras = movimentos.filter((t) => t.kind === "receita").reduce((acc, t) => acc + t.amount, 0)
 
   const despesasPorCategoria: Record<string, number> = {}
   let despesasTotais = 0
-  for (const t of txs) {
+  for (const t of movimentos) {
     if (t.kind !== "despesa") continue
     despesasPorCategoria[t.category] = (despesasPorCategoria[t.category] ?? 0) + t.amount
     despesasTotais += t.amount
