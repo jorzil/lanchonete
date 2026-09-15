@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { normalizePhone, formatPhone } from "@/lib/phone"
-import { Search, Star, Users, TrendingUp, ShoppingBag, Phone, MapPin, ChevronRight, X } from "lucide-react"
+import { normalizePhone, formatPhone, isInternalPhone } from "@/lib/phone"
+import { Search, Star, Users, TrendingUp, ShoppingBag, Phone, MapPin, ChevronRight, X, Download, Copy, Check } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -71,6 +71,50 @@ function buildCustomers(orders: Order[]): CustomerStat[] {
   }).sort((a, b) => b.totalSpent - a.totalSpent)
 }
 
+/**
+ * Telefone no formato que as ferramentas de disparo esperam: 5533999991234.
+ *
+ * Sem o 55 na frente, a maioria delas não reconhece o número como brasileiro
+ * e a mensagem simplesmente não sai.
+ */
+function telefoneInternacional(phone: string): string {
+  const n = normalizePhone(phone)
+  return /^\d{10,11}$/.test(n) ? `55${n}` : ""
+}
+
+/**
+ * Só clientes de verdade.
+ *
+ * Pedido de balcão e do iFood entram com marcador interno no lugar do telefone
+ * ("pdv-balcao", "ifood-6fa10b35"). Mandar mensagem para eles é impossível, e
+ * deixá-los na lista só suja a contagem da campanha.
+ */
+function podeReceberMensagem(c: CustomerStat): boolean {
+  return !isInternalPhone(c.phone) && telefoneInternacional(c.phone) !== ""
+}
+
+/** Campo de CSV: aspas dobradas e o texto entre aspas, sempre. */
+function csvCampo(v: string | number): string {
+  return `"${String(v).replace(/"/g, '""')}"`
+}
+
+/**
+ * Baixa o CSV.
+ *
+ * Com BOM no começo porque o Excel em português, sem ele, lê o arquivo como
+ * latin-1 e transforma "João" em "JoÃ£o".
+ */
+function baixarCSV(nome: string, linhas: (string | number)[][]) {
+  const conteudo = "\uFEFF" + linhas.map((l) => l.map(csvCampo).join(";")).join("\r\n")
+  const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = nome
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function ClientesPage() {
   const [allOrders, setAllOrders] = useState<Order[]>([])
   // Mesma lixeira da tela de Pedidos: pedido excluído não pode somar aqui.
@@ -85,6 +129,9 @@ export default function ClientesPage() {
 
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<CustomerStat | null>(null)
+  /** Filtro por tipo — é como se escolhe o público do disparo. */
+  const [tipo, setTipo] = useState<'todos' | CustomerStat['classification']>('todos')
+  const [copiado, setCopiado] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -107,15 +154,49 @@ export default function ClientesPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return customers
     const qDigits = normalizePhone(q)
-    return customers.filter(
-      (c) =>
+    return customers.filter((c) => {
+      if (tipo !== 'todos' && c.classification !== tipo) return false
+      if (!q) return true
+      return (
         c.name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
-        (qDigits.length >= 4 && normalizePhone(c.phone).includes(qDigits)),
-    )
-  }, [customers, query])
+        (qDigits.length >= 4 && normalizePhone(c.phone).includes(qDigits))
+      )
+    })
+  }, [customers, query, tipo])
+
+  /** Quem está na tela AGORA e pode receber mensagem — é isto que se exporta. */
+  const exportaveis = useMemo(() => filtered.filter(podeReceberMensagem), [filtered])
+
+  function exportarCSV() {
+    const hoje = new Date().toISOString().slice(0, 10)
+    const linhas: (string | number)[][] = [
+      ["Nome", "WhatsApp", "Telefone", "Pedidos", "Total gasto", "Ticket medio", "Ultimo pedido", "Dias sem pedir", "Tipo"],
+      ...exportaveis.map((c) => [
+        c.name,
+        telefoneInternacional(c.phone),
+        c.phone,
+        c.totalOrders,
+        // Vírgula decimal: é assim que o Excel em português lê número.
+        c.totalSpent.toFixed(2).replace(".", ","),
+        c.avgTicket.toFixed(2).replace(".", ","),
+        new Date(c.lastOrder).toLocaleDateString("pt-BR"),
+        c.daysSinceLast,
+        CLASS_CONFIG[c.classification].label,
+      ]),
+    ]
+    baixarCSV(`clientes-mais-sub-${tipo === 'todos' ? 'todos' : tipo}-${hoje}.csv`, linhas)
+  }
+
+  async function copiarNumeros() {
+    const texto = exportaveis.map((c) => telefoneInternacional(c.phone)).join("\n")
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2500)
+    } catch {}
+  }
 
   const stats = useMemo(() => ({
     total: customers.length,
@@ -151,16 +232,59 @@ export default function ClientesPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Buscar por nome ou telefone..."
-          className="pl-10"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      {/* Busca, filtro por tipo e exportação */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Buscar por nome ou telefone..."
+            className="pl-10"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as typeof tipo)}
+          className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-orange-400"
+        >
+          <option value="todos">Todos os clientes</option>
+          {(Object.keys(CLASS_CONFIG) as CustomerStat['classification'][]).map((k) => (
+            <option key={k} value={k}>
+              {CLASS_CONFIG[k].label} ({customers.filter((c) => c.classification === k).length})
+            </option>
+          ))}
+        </select>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={copiarNumeros}
+            disabled={exportaveis.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            {copiado ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
+            {copiado ? "Copiado!" : "Copiar números"}
+          </button>
+          <button
+            onClick={exportarCSV}
+            disabled={exportaveis.length === 0}
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-40"
+          >
+            <Download size={15} /> Exportar CSV
+          </button>
+        </div>
       </div>
+
+      <p className="-mt-1 text-xs text-gray-500">
+        <strong>{exportaveis.length}</strong> {exportaveis.length === 1 ? "cliente" : "clientes"} na
+        exportação
+        {filtered.length !== exportaveis.length && (
+          <> · {filtered.length - exportaveis.length} sem telefone válido (balcão/iFood) ficam de fora</>
+        )}
+        . Os números saem no formato <code className="rounded bg-gray-100 px-1">55DDDNÚMERO</code>,
+        que é o que as ferramentas de disparo esperam.
+      </p>
 
       {/* Table */}
       <Card className="overflow-hidden">
