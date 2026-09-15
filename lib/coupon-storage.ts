@@ -86,6 +86,55 @@ export function getCoupons(): CouponDef[] {
   return DEFAULT_COUPONS
 }
 
+/**
+ * O que está salvo neste aparelho, SEM semear os padrões.
+ *
+ * getCoupons() grava a lista de fábrica quando não acha nada — o que é certo
+ * para exibir, mas fatal para sincronizar: foi assim que os três cupons padrão
+ * acabaram enviados por cima de uma base inteira.
+ */
+export function getCouponsRaw(): CouponDef[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const lista = JSON.parse(raw)
+      return Array.isArray(lista) ? (lista as CouponDef[]) : []
+    }
+  } catch {}
+  return []
+}
+
+// ─── Cópia de segurança local ────────────────────────────────────────────────
+// Antes de o servidor sobrescrever a lista deste aparelho, guardamos o que
+// havia aqui. Se o servidor vier com menos cupons, esta cópia pode ser o único
+// lugar onde os que faltam ainda existem.
+const BACKUP_KEY = 'mais_sub_coupons_backup'
+
+export function saveCouponBackup(list: CouponDef[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify({ coupons: list, em: new Date().toISOString() }))
+  } catch {}
+}
+
+export function loadCouponBackup(): { coupons: CouponDef[]; em: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw)
+    return Array.isArray(p?.coupons) && p.coupons.length > 0 ? p : null
+  } catch {
+    return null
+  }
+}
+
+export function clearCouponBackup(): void {
+  if (typeof window === 'undefined') return
+  try { localStorage.removeItem(BACKUP_KEY) } catch {}
+}
+
 export function saveCoupons(coupons: CouponDef[]): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(coupons))
@@ -173,12 +222,24 @@ export async function pullCoupons(): Promise<boolean> {
     const res = await fetch('/api/coupons', { cache: 'no-store' })
     if (!res.ok) return false
     const data = await res.json()
+
     if (Array.isArray(data.coupons)) {
+      const local = getCouponsRaw()
+      // O servidor está trazendo MENOS do que existe aqui. Isso é sinal de
+      // perda, não de sincronização: guarda o que há neste aparelho antes de
+      // sobrescrever, para dar como recuperar.
+      if (local.length > data.coupons.length) saveCouponBackup(local)
       saveCoupons(data.coupons as CouponDef[])
       return true
     }
-    // Banco vazio: semeia com o que existe localmente (ou os padrões)
-    await pushCoupons()
+
+    // Semeia SÓ quando o servidor confirma que a linha não existe.
+    //
+    // Antes, qualquer resposta sem lista — falha momentânea, JSON ilegível —
+    // fazia este navegador enviar a lista local por cima do banco. Num
+    // navegador recém-aberto essa lista são os três cupons de fábrica, e foi
+    // assim que uma base inteira de cupons foi substituída por eles.
+    if (data.existe === false) await pushCoupons()
     return false
   } catch {
     return false
@@ -186,16 +247,41 @@ export async function pullCoupons(): Promise<boolean> {
 }
 
 // Envia os cupons locais para o banco.
-export async function pushCoupons(): Promise<boolean> {
+/**
+ * Envia os cupons locais ao banco.
+ *
+ * `force` é para quando o admin apaga de propósito: sem ele, o servidor recusa
+ * um envio que reduziria drasticamente a lista.
+ */
+export async function pushCoupons(force = false): Promise<boolean> {
   try {
-    const res = await fetch('/api/coupons', {
+    const res = await fetch(`/api/coupons${force ? '?force=1' : ''}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ coupons: getCoupons() }),
+      body: JSON.stringify({ coupons: getCouponsRaw() }),
     })
     const data = await res.json().catch(() => ({}))
     return res.ok && data.ok
   } catch {
     return false
   }
+}
+
+/** Cupons guardados no servidor antes da última gravação. */
+export async function fetchCouponBackupRemote(): Promise<CouponDef[] | null> {
+  try {
+    const res = await fetch('/api/coupons', { cache: 'no-store' })
+    if (!res.ok) return null
+    const d = await res.json()
+    return Array.isArray(d?.anterior?.coupons) ? (d.anterior.coupons as CouponDef[]) : null
+  } catch {
+    return null
+  }
+}
+
+/** Restaura uma lista, gravando local e no servidor. */
+export async function restaurarCupons(lista: CouponDef[]): Promise<boolean> {
+  saveCoupons(lista)
+  clearCouponBackup()
+  return pushCoupons(true)
 }

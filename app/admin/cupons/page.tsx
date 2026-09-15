@@ -12,6 +12,7 @@ import { loadOrders } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
 import {
   getCoupons, addCoupon, updateCoupon, deleteCoupon, pullCoupons, pushCoupons,
+  loadCouponBackup, clearCouponBackup, fetchCouponBackupRemote, restaurarCupons,
   type CouponDef, type CouponType,
 } from "@/lib/coupon-storage"
 
@@ -42,7 +43,37 @@ export default function CuponsPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  useEffect(() => { pullCoupons().then(() => setCoupons(getCoupons())) }, [])
+  /** Lista recuperável: deste aparelho ou da versão anterior no servidor. */
+  const [recuperavel, setRecuperavel] = useState<{ lista: CouponDef[]; origem: string } | null>(null)
+
+  useEffect(() => {
+    ;(async () => {
+      await pullCoupons()
+      const atual = getCoupons()
+      setCoupons(atual)
+
+      // Se em algum lugar existe uma lista MAIOR que a de agora, é sinal de
+      // perda — oferecemos a volta em vez de deixar o dono descobrir sozinho.
+      const local = loadCouponBackup()
+      if (local && local.coupons.length > atual.length) {
+        setRecuperavel({ lista: local.coupons, origem: "deste aparelho" })
+        return
+      }
+      const remoto = await fetchCouponBackupRemote()
+      if (remoto && remoto.length > atual.length) {
+        setRecuperavel({ lista: remoto, origem: "da versão anterior no servidor" })
+      }
+    })()
+  }, [])
+
+  async function recuperar() {
+    if (!recuperavel) return
+    const ok = await restaurarCupons(recuperavel.lista)
+    if (ok) {
+      setCoupons(getCoupons())
+      setRecuperavel(null)
+    }
+  }
 
   // Carrega os pedidos para vincular por cupom
   useEffect(() => {
@@ -158,6 +189,44 @@ export default function CuponsPage() {
 
   return (
     <div className="space-y-6">
+      {recuperavel && (
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
+          <p className="font-semibold text-amber-900">
+            Encontramos {recuperavel.lista.length} cupons que não estão na lista atual
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            A lista {recuperavel.origem} tem {recuperavel.lista.length} cupons, e a de agora tem{" "}
+            {coupons.length}. Isso costuma ser perda de dado, não uma exclusão sua.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={recuperar}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+            >
+              Restaurar os {recuperavel.lista.length} cupons
+            </button>
+            <button
+              onClick={() => { clearCouponBackup(); setRecuperavel(null) }}
+              className="rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100"
+            >
+              Ignorar
+            </button>
+          </div>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-medium text-amber-700">
+              Ver quais são
+            </summary>
+            <ul className="mt-2 space-y-0.5 text-xs text-amber-800">
+              {recuperavel.lista.map((c) => (
+                <li key={c.id ?? c.code}>
+                  <span className="font-mono font-semibold">{c.code}</span> — {c.name}
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Cupons de Desconto</h1>
