@@ -20,6 +20,7 @@ import { supabaseConfigured } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { fetchStoreStatus, computeIsOpen } from '@/lib/store-status'
 import { geocodeStructured, calcDeliveryFee, pullDeliveryConfig, getDeliveryConfig, applyFreeDelivery, type FeeResult, type DeliveryConfig } from '@/lib/delivery-zones'
+import { calcCouponDiscount } from '@/lib/coupon-storage'
 
 type OrderType = 'entrega' | 'retirada'
 
@@ -113,7 +114,9 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
+  // O desconto incide só sobre o que o cupom alcança: um cupom preso a um
+  // produto não pode descontar o pedido inteiro.
+  const discount = coupon ? calcCouponDiscount(coupon, subtotal, items) : 0
   const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
   const handleOrderType = (type: OrderType) => {
@@ -507,8 +510,8 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={async () => {
                         if (!couponInput.trim()) return
-                        const ok = await applyCoupon(couponInput)
-                        if (!ok) setCouponError('Cupom inválido, expirado ou não disponível.')
+                        const r = await applyCoupon(couponInput)
+                        if (!r.ok) setCouponError(r.erro || 'Cupom inválido, expirado ou não disponível.')
                         else { setCouponInput(''); setCouponError('') }
                       }}
                       className="rounded-lg bg-white/8 border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/15 transition-colors"

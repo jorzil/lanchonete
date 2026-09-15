@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { CartItem, Coupon } from '@/lib/store'
-import { validateCouponFresh } from '@/lib/coupon-storage'
+import { validateCouponFresh, calcCouponDiscount, subtotalElegivel } from '@/lib/coupon-storage'
 import { fbTrack } from '@/components/analytics/meta-pixel'
 
 interface CartContextValue {
@@ -20,7 +20,9 @@ interface CartContextValue {
   toggleCart: () => void
   openCart: () => void
   closeCart: () => void
-  applyCoupon: (code: string) => Promise<boolean>
+  /** Devolve o motivo junto: ler de um estado logo após chamar pegaria o
+   *  valor anterior, porque o React só propaga no próximo render. */
+  applyCoupon: (code: string) => Promise<{ ok: boolean; erro?: string }>
   removeCoupon: () => void
   setDeliveryFee: (fee: number) => void
 }
@@ -58,7 +60,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [coupon, hydrated])
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
+  // O desconto incide só sobre o que o cupom alcança: um cupom preso a um
+  // produto não pode descontar o pedido inteiro.
+  const discount = coupon ? calcCouponDiscount(coupon, subtotal, items) : 0
   const total = Math.max(0, subtotal - discount + deliveryFee)
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -91,16 +95,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), [])
   const closeCart = useCallback(() => setIsOpen(false), [])
 
-  const applyCoupon = useCallback(async (code: string): Promise<boolean> => {
+  const applyCoupon = useCallback(async (code: string): Promise<{ ok: boolean; erro?: string }> => {
     // Sempre valida com os dados atuais do servidor (cupom pode ter sido inativado)
     const result = await validateCouponFresh(code, subtotal)
     if (result.valid && result.coupon) {
       const c = result.coupon
-      setCoupon({ code: c.code, discount: c.discount, type: c.type === 'free_shipping' ? 'fixed' : c.type })
-      return true
+      // O cupom é válido, mas alcança alguma coisa deste carrinho?
+      //
+      // Aplicar um cupom que desconta zero é pior que recusar: o cliente vê
+      // "cupom aplicado", o total não muda, e ele acha que o site quebrou.
+      if (subtotalElegivel(c, items) <= 0) {
+        return {
+          ok: false,
+          erro: 'Este cupom vale só para alguns produtos, e nenhum deles está no seu pedido.',
+        }
+      }
+      setCoupon({
+        code: c.code,
+        discount: c.discount,
+        type: c.type === 'free_shipping' ? 'fixed' : c.type,
+        // O escopo viaja junto: é ele que impede o cupom de um produto de
+        // descontar o carrinho inteiro.
+        scope: c.scope,
+        scopeProducts: c.scopeProducts,
+      })
+      return { ok: true }
     }
-    return false
-  }, [subtotal])
+    return { ok: false, erro: result.error }
+  }, [subtotal, items])
   const removeCoupon = useCallback(() => setCoupon(null), [])
   const setDeliveryFee = useCallback((fee: number) => setDeliveryFeeState(fee), [])
 

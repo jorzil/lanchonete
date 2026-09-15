@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useCart } from '@/contexts/cart-context'
 import { formatCurrency, MENU } from '@/lib/store'
-import { pullCoupons } from '@/lib/coupon-storage'
+import { pullCoupons, calcCouponDiscount } from '@/lib/coupon-storage'
 import { fetchStoreStatus } from '@/lib/store-status'
 import { pullDeliveryConfig } from '@/lib/delivery-zones'
 import { OrderBumpSuggestions } from '@/components/cart/order-bump-suggestions'
@@ -89,12 +89,14 @@ export function CartPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
-  const discount = coupon ? (coupon.type === 'percentage' ? subtotal * (coupon.discount / 100) : coupon.discount) : 0
+  // O desconto incide só sobre o que o cupom alcança: um cupom preso a um
+  // produto não pode descontar o pedido inteiro.
+  const discount = coupon ? calcCouponDiscount(coupon, subtotal, items) : 0
 
   const handleApplyCoupon = async () => {
-    const ok = await applyCoupon(couponInput)
-    if (ok) { toast.success('Cupom aplicado com sucesso!'); setCouponInput('') }
-    else toast.error('Cupom inválido ou expirado.')
+    const r = await applyCoupon(couponInput)
+    if (r.ok) { toast.success('Cupom aplicado com sucesso!'); setCouponInput('') }
+    else toast.error(r.erro || 'Cupom inválido ou expirado.')
   }
 
   const handleOrderType = (type: 'entrega' | 'retirada') => {

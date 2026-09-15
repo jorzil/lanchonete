@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, type Order } from "@/lib/store"
+import { fetchEffectiveCatalog } from "@/lib/effective-products"
 import { loadOrders } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
 import {
   getCoupons, addCoupon, updateCoupon, deleteCoupon, pullCoupons, pushCoupons,
   loadCouponBackup, clearCouponBackup, fetchCouponBackupRemote, restaurarCupons,
-  type CouponDef, type CouponType,
+  type CouponDef, type CouponType, type CouponScope,
 } from "@/lib/coupon-storage"
 
 const TYPE_CONFIG: Record<CouponType, { label: string; cls: string }> = {
@@ -31,6 +32,8 @@ const EMPTY_FORM = {
   validFrom: new Date().toISOString().slice(0, 10),
   validUntil: '',
   active: true,
+  scope: 'todos' as CouponScope,
+  scopeProducts: [] as string[],
 }
 
 export default function CuponsPage() {
@@ -40,6 +43,19 @@ export default function CuponsPage() {
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
   const [toDelete, setToDelete] = useState<CouponDef | null>(null)
+  /** Catálogo real, incluindo o que foi criado ou renomeado no painel. */
+  const [catalogo, setCatalogo] = useState<{ id: string; name: string; category: string }[]>([])
+  useEffect(() => {
+    fetchEffectiveCatalog()
+      .then(({ products, disabled }) =>
+        setCatalogo(
+          products
+            .filter((p) => !disabled.has(p.id))
+            .map((p) => ({ id: p.id, name: p.name, category: p.category })),
+        ),
+      )
+      .catch(() => setCatalogo([]))
+  }, [])
   const [orders, setOrders] = useState<Order[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -128,6 +144,10 @@ export default function CuponsPage() {
         validFrom: form.validFrom,
         validUntil: form.validUntil || null,
         active: form.active,
+        scope: form.scope,
+        // Escopo "todos" não guarda produto: deixar lixo ali confundiria na
+        // próxima edição.
+        scopeProducts: form.scope === 'todos' ? [] : form.scopeProducts,
       }
 
       if (editing) {
@@ -146,6 +166,8 @@ export default function CuponsPage() {
 
   function startEdit(c: CouponDef) {
     setForm({
+      scope: c.scope ?? 'todos',
+      scopeProducts: c.scopeProducts ?? [],
       code: c.code, name: c.name, description: c.description,
       type: c.type, discount: c.discount, minOrder: c.minOrder,
       maxUses: c.maxUses ?? '', validFrom: c.validFrom,
@@ -167,6 +189,8 @@ export default function CuponsPage() {
       type: c.type, discount: c.discount, minOrder: c.minOrder,
       maxUses: c.maxUses ?? '', validFrom: new Date().toISOString().slice(0, 10),
       validUntil: c.validUntil ?? '', active: c.active,
+      // Duplicar leva o escopo junto: quase sempre é o mesmo público.
+      scope: c.scope ?? 'todos', scopeProducts: c.scopeProducts ?? [],
     })
     setEditing(null)       // null = criar novo (não editar o original)
     setShowForm(true)
@@ -319,6 +343,82 @@ export default function CuponsPage() {
                 onChange={e => set('minOrder', parseFloat(e.target.value) || 0)}
                 placeholder="0 = sem mínimo"
               />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Onde o cupom vale</Label>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { k: 'todos', t: 'Em todo o pedido' },
+                  { k: 'apenas', t: 'Só em alguns produtos' },
+                  { k: 'exceto', t: 'Em tudo, menos alguns' },
+                ] as { k: CouponScope; t: string }[]).map(({ k, t }) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => set('scope', k)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      form.scope === k
+                        ? 'border-orange-400 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {form.scope !== 'todos' && (
+                <div className="mt-2 rounded-lg border border-gray-200 p-3">
+                  <p className="mb-2 text-xs text-gray-500">
+                    {form.scope === 'apenas'
+                      ? 'O desconto vale só sobre estes produtos. O resto do pedido sai sem desconto.'
+                      : 'Estes produtos ficam de fora. O desconto vale sobre todo o resto.'}
+                    {' '}
+                    <strong className="text-gray-700">
+                      {form.scopeProducts.length} selecionado{form.scopeProducts.length === 1 ? '' : 's'}
+                    </strong>
+                  </p>
+
+                  {catalogo.length === 0 ? (
+                    <p className="py-3 text-center text-xs text-gray-400">Carregando o cardápio…</p>
+                  ) : (
+                    <div className="max-h-56 space-y-0.5 overflow-y-auto">
+                      {catalogo.map((prod) => {
+                        const marcado = form.scopeProducts.includes(prod.id)
+                        return (
+                          <label
+                            key={prod.id}
+                            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 cursor-pointer accent-orange-500"
+                              checked={marcado}
+                              onChange={() =>
+                                set(
+                                  'scopeProducts',
+                                  marcado
+                                    ? form.scopeProducts.filter((x) => x !== prod.id)
+                                    : [...form.scopeProducts, prod.id],
+                                )
+                              }
+                            />
+                            <span className="flex-1 text-gray-700">{prod.name}</span>
+                            <span className="text-[11px] text-gray-400">{prod.category}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {form.scopeProducts.length === 0 && (
+                    <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                      Sem nenhum produto marcado, o cupom volta a valer em todo o pedido.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

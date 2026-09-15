@@ -2,6 +2,18 @@
 
 export type CouponType = 'percentage' | 'fixed' | 'free_shipping'
 
+/**
+ * A quais produtos o cupom se aplica.
+ *
+ *   todos  — o carrinho inteiro, como sempre foi
+ *   apenas — só os produtos escolhidos
+ *   exceto — tudo, menos os produtos escolhidos
+ *
+ * "apenas" serve para promover um item; "exceto" para proteger a margem de um
+ * item que não pode receber desconto. São a mesma máquina, invertida.
+ */
+export type CouponScope = 'todos' | 'apenas' | 'exceto'
+
 export interface CouponDef {
   id: string
   code: string
@@ -16,6 +28,53 @@ export interface CouponDef {
   validUntil: string | null // null = never expires
   active: boolean
   createdAt: string
+  /** Ausente em cupom antigo, e aí vale para tudo — como sempre valeu. */
+  scope?: CouponScope
+  /** productIds escolhidos. Só importa quando scope é 'apenas' ou 'exceto'. */
+  scopeProducts?: string[]
+}
+
+/** Item mínimo que o cálculo precisa — serve ao carrinho e ao PDV. */
+export interface ItemParaCupom {
+  productId: string
+  price: number
+  quantity: number
+}
+
+/**
+ * O mínimo para calcular o desconto.
+ *
+ * O carrinho guarda uma versão enxuta do cupom, não o cadastro inteiro — pedir
+ * o CouponDef completo obrigaria a carregar dados que ali não existem.
+ */
+export interface CupomParaCalculo {
+  type: CouponType
+  discount: number
+  scope?: CouponScope
+  scopeProducts?: string[]
+}
+
+/** O cupom cobre este produto? */
+export function cobreProduto(coupon: CupomParaCalculo, productId: string): boolean {
+  const escopo = coupon.scope ?? 'todos'
+  if (escopo === 'todos') return true
+  const lista = coupon.scopeProducts ?? []
+  // Escopo configurado sem nenhum produto não faz sentido: tratar como
+  // "todos" evita um cupom que nunca desconta nada e ninguém entende por quê.
+  if (lista.length === 0) return true
+  return escopo === 'apenas' ? lista.includes(productId) : !lista.includes(productId)
+}
+
+/**
+ * Quanto do carrinho o cupom alcança.
+ *
+ * É sobre ESTE valor que o desconto incide — e não sobre o carrinho inteiro.
+ * "10% no sub de frango" tem que dar 10% do frango, não 10% do pedido todo.
+ */
+export function subtotalElegivel(coupon: CupomParaCalculo, itens: ItemParaCupom[]): number {
+  return itens
+    .filter((i) => cobreProduto(coupon, i.productId))
+    .reduce((s, i) => s + i.price * i.quantity, 0)
 }
 
 export interface CouponValidationResult {
@@ -204,9 +263,20 @@ export async function validateCouponFresh(code: string, orderTotal: number): Pro
   return validateCoupon(code, orderTotal)
 }
 
-export function calcCouponDiscount(coupon: CouponDef, subtotal: number): number {
-  if (coupon.type === 'percentage') return subtotal * (coupon.discount / 100)
-  if (coupon.type === 'fixed') return Math.min(coupon.discount, subtotal)
+/**
+ * Desconto do cupom.
+ *
+ * Passando os itens, o desconto incide só sobre a parte que o cupom alcança.
+ * Sem eles, vale o subtotal inteiro — é o caminho dos cupons sem escopo e das
+ * telas que ainda não têm a lista em mãos.
+ */
+export function calcCouponDiscount(coupon: CupomParaCalculo, subtotal: number, itens?: ItemParaCupom[]): number {
+  const base = itens ? subtotalElegivel(coupon, itens) : subtotal
+  if (base <= 0) return 0
+  if (coupon.type === 'percentage') return base * (coupon.discount / 100)
+  // O desconto fixo não pode passar do que ele alcança: R$ 20 num item de
+  // R$ 15 viraria dinheiro de volta.
+  if (coupon.type === 'fixed') return Math.min(coupon.discount, base)
   if (coupon.type === 'free_shipping') return 0 // handled separately
   return 0
 }

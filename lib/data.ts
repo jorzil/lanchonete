@@ -60,7 +60,12 @@ export interface Address {
 
 export interface Customer    { name: string; phone: string }
 export type PaymentMethod    = 'pix' | 'cartao-credito' | 'cartao-debito' | 'dinheiro'
-export interface Coupon      { code: string; discount: number; type: 'percentage' | 'fixed' }
+export interface Coupon      {
+  code: string; discount: number; type: 'percentage' | 'fixed'
+  /** Escopo do cupom — sem isto o carrinho descontaria o pedido inteiro. */
+  scope?: 'todos' | 'apenas' | 'exceto'
+  scopeProducts?: string[]
+}
 export interface LoyaltyPoints { customerId: string; points: number; history: { date: string; points: number; description: string }[] }
 
 export type OrderSource = 'site' | 'whatsapp' | 'pdv' | 'ifood'
