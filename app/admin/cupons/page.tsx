@@ -213,8 +213,24 @@ export default function CuponsPage() {
 
   const totalDiscount = coupons.reduce((s, c) => s + c.usedCount * (c.type === 'percentage' ? 0 : c.discount), 0)
 
+  // Cupons que o checkout recusa por não descontarem nada.
+  const semValor = coupons.filter((c) => c.active && c.type !== 'free_shipping' && !(c.discount > 0))
+
   return (
     <div className="space-y-6">
+      {semValor.length > 0 && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+          <p className="font-semibold text-red-900">
+            {semValor.length === 1
+              ? '1 cupom ativo está sem valor de desconto'
+              : `${semValor.length} cupons ativos estão sem valor de desconto`}
+          </p>
+          <p className="mt-1 text-sm text-red-800">
+            Eles não descontam nada no checkout e o cliente recebe um aviso ao tentar usar.
+            Edite cada um e informe o valor: {semValor.map((c) => c.code).join(', ')}
+          </p>
+        </div>
+      )}
       {recuperavel && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
           <p className="font-semibold text-amber-900">
@@ -512,9 +528,16 @@ export default function CuponsPage() {
                         {typeCfg.label}
                       </span>
                     </td>
+                    {/* Cupom sem valor não desconta nada no checkout. Fica
+                        vermelho aqui para ser achado e corrigido — prêmios do
+                        clube gerados antes da correção nasceram assim. */}
                     <td className="px-2 py-3 md:px-5 font-semibold text-gray-900">
-                      {c.type === 'percentage' ? `${c.discount}%` :
-                       c.type === 'fixed' ? formatCurrency(c.discount) : 'Grátis'}
+                      {c.type === 'free_shipping' ? 'Grátis'
+                        : c.discount > 0 ? (c.type === 'percentage' ? `${c.discount}%` : formatCurrency(c.discount))
+                        : <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700"
+                                title="Sem valor: este cupom não desconta nada. Clique em editar e informe o valor.">
+                            ⚠ sem valor
+                          </span>}
                     </td>
                     <td className="hidden px-5 py-3 text-gray-500 md:table-cell">
                       {c.minOrder > 0 ? formatCurrency(c.minOrder) : '—'}

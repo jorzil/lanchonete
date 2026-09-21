@@ -316,6 +316,24 @@ export function validateCoupon(
   }
 
   const discountAmount = calcCouponDiscount(coupon, orderTotal)
+
+  /**
+   * Cupom que não desconta nada é recusado, não aceito em silêncio.
+   *
+   * Frete grátis é a exceção legítima: ele desconta zero do subtotal porque
+   * quem ele zera é a entrega. Fora isso, um cupom com desconto zerado é
+   * sempre configuração errada — e aceitá-lo produz o pior resultado
+   * possível: "cupom aplicado", total intacto, e o cliente achando que o
+   * site engoliu o prêmio dele. Recusar aqui faz o problema aparecer na hora,
+   * com o nome do cupom, em vez de virar reclamação no balcão.
+   */
+  if (coupon.type !== 'free_shipping' && discountAmount <= 0) {
+    return {
+      valid: false,
+      error: `O cupom ${coupon.code} está sem valor de desconto cadastrado. Avise a loja para corrigir — ele não foi consumido.`,
+    }
+  }
+
   return { valid: true, coupon, discountAmount }
 }
 
