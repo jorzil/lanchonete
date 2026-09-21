@@ -132,6 +132,12 @@ export function Roulette({ config, saldo, phone, onFim, girarLocal, esgotadas, c
                 </strong>{' '}
                 {saldo.girosDisponiveis > 1 ? 'disponíveis' : 'disponível'}
               </>
+            ) : saldo.faltaGiroTexto ? (
+              // Sem giro, o cliente precisa saber o que falta — "você não tem
+              // giros" sozinho não diz o que fazer para ter.
+              <>
+                🎯 <strong className="text-white">{saldo.faltaGiroTexto}</strong>
+              </>
             ) : (
               <>😢 Você não tem giros no momento</>
             )}
@@ -148,6 +154,23 @@ export function Roulette({ config, saldo, phone, onFim, girarLocal, esgotadas, c
         </button>
       </div>
 
+      {/* Barra do caminho até o próximo giro: ver o progresso andar é o que
+          traz o cliente de volta. Só aparece quando há o que contar — nas
+          regras por período ou manuais não existe progresso a mostrar. */}
+      {!compacto && !girando && saldo.girosDisponiveis === 0 && saldo.faltaParaGiro > 0 && (
+        <div className="mb-4">
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-brand transition-all duration-700"
+              style={{ width: `${Math.min(100, saldo.progressoGiro ?? 0)}%` }}
+            />
+          </div>
+          {saldo.comoGanharGiro && (
+            <p className="mt-1.5 text-center text-[11px] text-white/40">{saldo.comoGanharGiro}</p>
+          )}
+        </div>
+      )}
+
       <RouletteWheel ref={rodaRef} fatias={fatias} esgotadas={esgotadas} girando={girando} />
 
       <button
@@ -159,7 +182,10 @@ export function Roulette({ config, saldo, phone, onFim, girarLocal, esgotadas, c
         }`}
       >
         {girando ? <Loader2 size={18} className="animate-spin" /> : null}
-        {girando ? 'Girando…' : !podeGirar ? 'Sem giros disponíveis' : 'Girar a roleta 🎯'}
+        {girando ? 'Girando…'
+          : !podeGirar
+            ? (saldo.faltaGiroCurto || 'Sem giros disponíveis')
+            : 'Girar a roleta 🎯'}
       </button>
 
       {!compacto && (

@@ -286,6 +286,18 @@ export interface SpinStatus {
   disponiveis: number
   /** Frase pronta para a tela explicando como conseguir o próximo giro. */
   comoGanhar: string
+  /**
+   * Quanto falta para o próximo giro, na unidade da regra: pedidos/selos na
+   * AFTER_ORDER, reais na AFTER_AMOUNT. Zero quando não há o que contar
+   * (regra por período, liberação manual, ou giro já disponível).
+   */
+  faltaParaGiro: number
+  /** A mesma informação escrita, pronta para a tela. */
+  faltaGiroTexto: string
+  /** Versão curta, para caber no botão: "Faltam 2 selos", "Faltam R$ 30". */
+  faltaGiroCurto: string
+  /** Quanto do caminho até o próximo giro já foi andado, em % — para a barra. */
+  progressoGiro: number
 }
 
 /**
@@ -336,12 +348,65 @@ export function computeSpins(
       comoGanhar = `A cada ${valor} pedidos entregues você ganha um giro`
   }
 
+  const disponiveis = Math.max(0, ganhos + manuais - usados)
+
+  /**
+   * O que falta para o próximo giro, na unidade da própria regra.
+   *
+   * Cada pedido entregue vale um selo, então na regra por pedidos "faltam 2
+   * pedidos" e "faltam 2 selos" são o mesmo número — e selo é como o cliente
+   * enxerga na tela do clube. Nas regras por período não há o que contar: o
+   * que falta é o dia virar.
+   */
+  let falta = 0
+  let faltaTexto = ''
+  let faltaCurto = ''
+  let progresso = 0
+
+  if (disponiveis > 0) {
+    progresso = 100
+  } else {
+    switch (regra.tipo) {
+      case 'AFTER_AMOUNT': {
+        const andado = totalGasto % valor
+        falta = Math.max(0, valor - andado)
+        progresso = Math.round((andado / valor) * 100)
+        const emReais = falta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+        faltaTexto = `Faltam ${emReais} em pedidos para girar`
+        faltaCurto = `Faltam ${emReais}`
+        break
+      }
+      case 'DAILY':
+        faltaTexto = 'Você já girou hoje — volte amanhã para girar de novo'
+        break
+      case 'WEEKLY':
+        faltaTexto = 'Você já girou esta semana — volte na semana que vem'
+        break
+      case 'MANUAL':
+        faltaTexto = 'Os giros são liberados pela loja'
+        break
+      default: {
+        const andado = pedidos % valor
+        falta = Math.max(1, valor - andado)
+        progresso = Math.round((andado / valor) * 100)
+        faltaTexto = falta === 1
+          ? 'Falta 1 selo para você girar a roleta'
+          : `Faltam ${falta} selos para você girar a roleta`
+        faltaCurto = falta === 1 ? 'Falta 1 selo' : `Faltam ${falta} selos`
+      }
+    }
+  }
+
   // Os giros dados a mão entram por fora e são consumidos junto com os demais.
   return {
     ganhos: ganhos + manuais,
     usados,
-    disponiveis: Math.max(0, ganhos + manuais - usados),
+    disponiveis,
     comoGanhar,
+    faltaParaGiro: falta,
+    faltaGiroTexto: faltaTexto,
+    faltaGiroCurto: faltaCurto,
+    progressoGiro: Math.max(0, Math.min(100, progresso)),
   }
 }
 
@@ -399,6 +464,14 @@ export interface LoyaltyBalance {
   pedidosParaProximoGiro: number
   /** Frase explicando como se ganha giro na regra atual. */
   comoGanharGiro: string
+  /** Quanto falta para o próximo giro, na unidade da regra configurada. */
+  faltaParaGiro: number
+  /** A mesma informação escrita: "Faltam 2 selos para você girar a roleta". */
+  faltaGiroTexto: string
+  /** Versão curta para o botão: "Faltam 2 selos". */
+  faltaGiroCurto: string
+  /** Progresso até o próximo giro, em % — para a barra da tela do clube. */
+  progressoGiro: number
   /**
    * Quanto do caminho até o próximo nível já foi percorrido, em %.
    *
@@ -479,6 +552,10 @@ export function computeBalance(
     girosDisponiveis: giros.disponiveis,
     pedidosParaProximoGiro: porGiro - restoPedidos,
     comoGanharGiro: giros.comoGanhar,
+    faltaParaGiro: giros.faltaParaGiro,
+    faltaGiroTexto: giros.faltaGiroTexto,
+    faltaGiroCurto: giros.faltaGiroCurto,
+    progressoGiro: giros.progressoGiro,
   }
 }
 
