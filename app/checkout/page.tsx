@@ -510,7 +510,9 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={async () => {
                         if (!couponInput.trim()) return
-                        const r = await applyCoupon(couponInput)
+                        // O telefone vai junto: cupom de resgate do clube é
+                        // pessoal, e sem ele não dá para saber de quem é.
+                        const r = await applyCoupon(couponInput, form.phone)
                         if (!r.ok) setCouponError(r.erro || 'Cupom inválido, expirado ou não disponível.')
                         else { setCouponInput(''); setCouponError('') }
                       }}

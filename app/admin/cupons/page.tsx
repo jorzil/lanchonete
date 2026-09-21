@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, type Order } from "@/lib/store"
 import { fetchEffectiveCatalog } from "@/lib/effective-products"
+import { formatPhone } from "@/lib/phone"
 import { loadOrders } from "@/lib/orders-storage"
 import { supabaseConfigured } from "@/lib/supabase"
 import {
   getCoupons, addCoupon, updateCoupon, deleteCoupon, pullCoupons, pushCoupons,
   loadCouponBackup, clearCouponBackup, fetchCouponBackupRemote, restaurarCupons,
+  donoDoCupom,
   type CouponDef, type CouponType, type CouponScope,
 } from "@/lib/coupon-storage"
 
@@ -496,6 +498,13 @@ export default function CuponsPage() {
                       <code className="rounded bg-gray-100 px-2 py-0.5 text-[13px] font-mono font-bold text-gray-800">
                         {c.code}
                       </code>
+                      {/* Cupom de resgate do clube pertence a um cliente só —
+                          quem olha a lista precisa ver isso de relance. */}
+                      {donoDoCupom(c) && (
+                        <span className="mt-1 block text-[10px] font-semibold text-violet-600">
+                          👤 pessoal · {formatPhone(donoDoCupom(c))}
+                        </span>
+                      )}
                     </td>
                     <td className="hidden px-5 py-3 font-medium text-gray-900 md:table-cell">{c.name}</td>
                     <td className="hidden px-5 py-3 md:table-cell">

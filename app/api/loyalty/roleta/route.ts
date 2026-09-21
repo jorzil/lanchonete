@@ -190,7 +190,8 @@ export async function POST(req: NextRequest) {
           validUntil: validade.toISOString(),
           active: true,
           createdAt: hoje.toISOString(),
-          phone: chave,
+          // Preso ao cliente que girou: prêmio de roleta é pessoal.
+          ownerPhone: chave,
         })
         if (erroCupom) {
           return NextResponse.json({ ok: false, error: `Falha ao gerar o cupom: ${erroCupom.message}` }, { status: 500 })

@@ -1,3 +1,5 @@
+import { normalizePhone } from '@/lib/phone'
+
 // Coupon management — localStorage persistence with full business rules
 
 export type CouponType = 'percentage' | 'fixed' | 'free_shipping'
@@ -28,6 +30,14 @@ export interface CouponDef {
   validUntil: string | null // null = never expires
   active: boolean
   createdAt: string
+  /**
+   * Telefone do dono, quando o cupom é pessoal.
+   *
+   * Cupom de resgate do clube ou prêmio de roleta nasce para UMA pessoa.
+   * maxUses:1 não resolve isso: limita a uma utilização, mas por qualquer um —
+   * bastava o cliente passar o código no grupo do WhatsApp.
+   */
+  ownerPhone?: string
   /** Ausente em cupom antigo, e aí vale para tudo — como sempre valeu. */
   scope?: CouponScope
   /** productIds escolhidos. Só importa quando scope é 'apenas' ou 'exceto'. */
@@ -230,12 +240,68 @@ export function incrementCouponUsage(code: string): void {
   saveCoupons(coupons)
 }
 
-export function validateCoupon(code: string, orderTotal: number): CouponValidationResult {
+/**
+ * Dono do cupom, aceitando o formato antigo.
+ *
+ * A roleta já gravava o telefone em `phone` antes de este campo existir; ler
+ * os dois evita que prêmios já entregues virem cupons sem dono.
+ */
+export function donoDoCupom(coupon: CouponDef): string {
+  const bruto = coupon.ownerPhone ?? (coupon as { phone?: string }).phone ?? ''
+  return bruto ? normalizePhone(bruto) : ''
+}
+
+/**
+ * O cupom é pessoal e de outra pessoa?
+ *
+ * Recebe a lista pronta em vez de buscá-la: assim serve tanto ao navegador
+ * quanto ao servidor, e a regra vive num lugar só.
+ */
+export function cupomDeOutroCliente(
+  cupons: { code?: string; ownerPhone?: string; phone?: string }[],
+  codigo: string,
+  telefoneCliente: string,
+): boolean {
+  const alvo = String(codigo ?? '').toUpperCase().trim()
+  if (!alvo) return false
+  const cupom = cupons.find((c) => String(c?.code ?? '').toUpperCase().trim() === alvo)
+  if (!cupom) return false
+
+  // `phone` é o nome antigo: prêmios de roleta já entregues usam ele.
+  const dono = normalizePhone(cupom.ownerPhone ?? cupom.phone ?? '')
+  if (!dono) return false
+  return normalizePhone(telefoneCliente ?? '') !== dono
+}
+
+export function validateCoupon(
+  code: string,
+  orderTotal: number,
+  /** WhatsApp de quem está tentando usar. Necessário para cupom pessoal. */
+  phoneCliente?: string,
+): CouponValidationResult {
   const coupons = getCoupons()
   const coupon = coupons.find(c => c.code === code.toUpperCase().trim())
 
   if (!coupon) return { valid: false, error: 'Cupom não encontrado.' }
   if (!coupon.active) return { valid: false, error: 'Este cupom não está ativo.' }
+
+  // Cupom pessoal só vale para o dono.
+  const dono = donoDoCupom(coupon)
+  if (dono) {
+    const tentando = normalizePhone(phoneCliente ?? '')
+    if (!tentando) {
+      // Vale para o carrinho também, onde não há campo de telefone: a frase
+      // diz onde resolver em vez de pedir algo que não existe na tela.
+      return {
+        valid: false,
+        error: 'Este cupom é pessoal. Use-o ao finalizar o pedido, com o WhatsApp do dono.',
+      }
+    }
+    if (tentando !== dono) {
+      return { valid: false, error: 'Este cupom pertence a outro cliente.' }
+    }
+  }
+
   if (coupon.minOrder > 0 && orderTotal < coupon.minOrder) {
     return { valid: false, error: `Pedido mínimo de ${formatR$(coupon.minOrder)} para usar este cupom.` }
   }
@@ -258,9 +324,13 @@ export function validateCoupon(code: string, orderTotal: number): CouponValidati
  * Evita que um cupom inativado/expirado no admin continue valendo em
  * aparelhos com a lista antiga no localStorage.
  */
-export async function validateCouponFresh(code: string, orderTotal: number): Promise<CouponValidationResult> {
+export async function validateCouponFresh(
+  code: string,
+  orderTotal: number,
+  phoneCliente?: string,
+): Promise<CouponValidationResult> {
   await pullCoupons() // atualiza o localStorage; se falhar, valida com o que há local
-  return validateCoupon(code, orderTotal)
+  return validateCoupon(code, orderTotal, phoneCliente)
 }
 
 /**

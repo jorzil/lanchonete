@@ -22,7 +22,7 @@ interface CartContextValue {
   closeCart: () => void
   /** Devolve o motivo junto: ler de um estado logo após chamar pegaria o
    *  valor anterior, porque o React só propaga no próximo render. */
-  applyCoupon: (code: string) => Promise<{ ok: boolean; erro?: string }>
+  applyCoupon: (code: string, phoneCliente?: string) => Promise<{ ok: boolean; erro?: string }>
   removeCoupon: () => void
   setDeliveryFee: (fee: number) => void
 }
@@ -95,9 +95,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => setIsOpen(true), [])
   const closeCart = useCallback(() => setIsOpen(false), [])
 
-  const applyCoupon = useCallback(async (code: string): Promise<{ ok: boolean; erro?: string }> => {
+  const applyCoupon = useCallback(async (code: string, phoneCliente?: string): Promise<{ ok: boolean; erro?: string }> => {
     // Sempre valida com os dados atuais do servidor (cupom pode ter sido inativado)
-    const result = await validateCouponFresh(code, subtotal)
+    const result = await validateCouponFresh(code, subtotal, phoneCliente)
     if (result.valid && result.coupon) {
       const c = result.coupon
       // O cupom é válido, mas alcança alguma coisa deste carrinho?

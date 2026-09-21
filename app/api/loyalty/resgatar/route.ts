@@ -75,6 +75,9 @@ export async function POST(req: NextRequest) {
       discount: desconto,
       minOrder: 0,
       maxUses: 1, // exclusivo: um resgate, um uso
+      // Preso ao cliente: maxUses sozinho limita a uma utilização, mas por
+      // qualquer pessoa — bastava repassar o código.
+      ownerPhone: chave,
       usedCount: 0,
       validFrom: hoje.toISOString(),
       validUntil: validade.toISOString(),
