@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Loader2, Gift, Star, Truck, Cookie, Plus, Check, Copy } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { formatCurrency } from '@/lib/data'
 import { formatPhone } from '@/lib/phone'
 import { canRedeem, missingFor, type LoyaltyConfig, type LoyaltyBalance, type Reward, type Redemption } from '@/lib/loyalty'
 import { Roulette } from '@/components/roleta/roulette'
@@ -141,12 +140,13 @@ export default function ClubePage() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {/* Sem o total gasto: o cliente entra aqui para ver o que ganhou,
+                    não para ser lembrado de quanto já deixou na loja. */}
+                <div className="mt-4 grid grid-cols-3 gap-3">
                   {[
                     { rotulo: 'Pontos', valor: String(saldo.pontos) },
                     { rotulo: 'Selos', valor: String(saldo.selos) },
                     { rotulo: 'Pedidos', valor: String(saldo.pedidos) },
-                    { rotulo: 'Total', valor: formatCurrency(saldo.totalGasto) },
                   ].map((m) => (
                     <div key={m.rotulo} className="rounded-xl bg-white/5 p-3 text-center">
                       <p className="text-[10px] uppercase tracking-widest text-white/35">{m.rotulo}</p>
@@ -157,14 +157,16 @@ export default function ClubePage() {
 
                 {saldo.proximoNivel && (
                   <div className="mt-4">
+                    {/* A barra mostra o quanto falta em PORCENTAGEM. O progresso
+                        motiva; o valor em reais não precisa aparecer para isso. */}
                     <div className="flex justify-between text-[12px] text-white/50">
-                      <span>Faltam {formatCurrency(saldo.faltaParaProximo)} para o nível {saldo.proximoNivel.nome}</span>
-                      <span>{formatCurrency(saldo.totalGasto)} / {formatCurrency(saldo.proximoNivel.minimoGasto)}</span>
+                      <span>Caminho para o nível {saldo.proximoNivel.nome}</span>
+                      <span className="font-semibold text-white/70">{saldo.progressoNivel ?? 0}%</span>
                     </div>
                     <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-brand transition-all"
-                        style={{ width: `${Math.min(100, (saldo.totalGasto / saldo.proximoNivel.minimoGasto) * 100)}%` }}
+                        style={{ width: `${Math.min(100, saldo.progressoNivel ?? 0)}%` }}
                       />
                     </div>
                   </div>

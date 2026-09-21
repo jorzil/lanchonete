@@ -395,6 +395,13 @@ export interface LoyaltyBalance {
   pedidosParaProximoGiro: number
   /** Frase explicando como se ganha giro na regra atual. */
   comoGanharGiro: string
+  /**
+   * Quanto do caminho até o próximo nível já foi percorrido, em %.
+   *
+   * Existe para a tela do cliente mostrar progresso sem expor quanto ele
+   * gastou — o que motiva é ver a barra andar, não o valor.
+   */
+  progressoNivel: number
 }
 
 /** Nível atual pelo total gasto. */
@@ -460,6 +467,9 @@ export function computeBalance(
     nivel,
     proximoNivel: proximo,
     faltaParaProximo: proximo ? Math.max(0, proximo.minimoGasto - totalGasto) : 0,
+    progressoNivel: proximo && proximo.minimoGasto > 0
+      ? Math.min(100, Math.round((totalGasto / proximo.minimoGasto) * 100))
+      : 100,
     girosGanhos: giros.ganhos,
     girosUsados: giros.usados,
     girosDisponiveis: giros.disponiveis,

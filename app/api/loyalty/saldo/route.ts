@@ -33,5 +33,18 @@ export async function GET(req: NextRequest) {
   }
 
   const meus = redemptions.filter((r) => normalizePhone(r.phone) === chave)
-  return NextResponse.json({ ok: true, config, saldo, resgates: meus.slice(-10).reverse() })
+  // O quanto o cliente gastou não sai daqui: tirar só da tela deixaria o valor
+  // visível para quem abrisse as ferramentas do navegador. O nível e o
+  // progresso em % já foram calculados acima e bastam para a página.
+  const { totalGasto, faltaParaProximo, pontosGanhos, pontosGastos, selosGanhos, selosGastos, ...publico } = saldo
+  const proximoNivel = saldo.proximoNivel
+    ? { id: saldo.proximoNivel.id, nome: saldo.proximoNivel.nome, cor: saldo.proximoNivel.cor }
+    : null
+
+  return NextResponse.json({
+    ok: true,
+    config,
+    saldo: { ...publico, proximoNivel },
+    resgates: meus.slice(-10).reverse(),
+  })
 }
