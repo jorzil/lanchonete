@@ -173,8 +173,10 @@ export async function POST(req: NextRequest) {
           fatia.tipo === 'frete_gratis' ? 'free_shipping'
           : fatia.tipo === 'desconto_percentual' ? 'percentage'
           : 'fixed'
-        const desconto =
-          fatia.tipo === 'desconto_percentual' || fatia.tipo === 'desconto_fixo' ? fatia.valor : 0
+        // Frete grátis é zerado pelo tipo do cupom; brinde desconta o preço do
+        // item. Antes, brinde virava cupom de R$ 0,00 — aceito no checkout e
+        // sem efeito nenhum no total.
+        const desconto = fatia.tipo === 'frete_gratis' ? 0 : fatia.valor
 
         const erroCupom = await criarCupom({
           id: `coupon-${code}`,

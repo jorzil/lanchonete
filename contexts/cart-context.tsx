@@ -9,7 +9,10 @@ interface CartContextValue {
   items: CartItem[]
   isOpen: boolean
   coupon: Coupon | null
+  /** Frete já cobrado: zero quando há cupom de frete grátis. */
   deliveryFee: number
+  /** Há cupom de frete grátis aplicado — para a tela escrever "Grátis". */
+  freteGratis: boolean
   subtotal: number
   total: number
   itemCount: number
@@ -63,7 +66,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // O desconto incide só sobre o que o cupom alcança: um cupom preso a um
   // produto não pode descontar o pedido inteiro.
   const discount = coupon ? calcCouponDiscount(coupon, subtotal, items) : 0
-  const total = Math.max(0, subtotal - discount + deliveryFee)
+  /**
+   * Cupom de frete grátis não desconta do subtotal: ele zera a entrega.
+   *
+   * O valor cobrado é o que sai daqui para a tela e para o pedido, então o
+   * frete some em todo lugar de uma vez — antes o cupom era convertido em
+   * desconto fixo de R$ 0 e o cliente pagava a entrega do mesmo jeito.
+   */
+  const freteGratis = coupon?.type === 'free_shipping'
+  const freteCobrado = freteGratis ? 0 : deliveryFee
+  const total = Math.max(0, subtotal - discount + freteCobrado)
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
 
   // Date.now() sozinho colide: dois itens adicionados no mesmo milissegundo
@@ -113,7 +125,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCoupon({
         code: c.code,
         discount: c.discount,
-        type: c.type === 'free_shipping' ? 'fixed' : c.type,
+        type: c.type,
         // O escopo viaja junto: é ele que impede o cupom de um produto de
         // descontar o carrinho inteiro.
         scope: c.scope,
@@ -127,11 +139,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const setDeliveryFee = useCallback((fee: number) => setDeliveryFeeState(fee), [])
 
   const value = useMemo(() => ({
-    items, isOpen, coupon, deliveryFee, subtotal, total, itemCount,
+    // Sai daqui já com o frete grátis aplicado: quem consome não precisa
+    // saber do cupom para cobrar o valor certo.
+    items, isOpen, coupon, deliveryFee: freteCobrado, freteGratis, subtotal, total, itemCount,
     addItem, removeItem, updateQuantity, clearCart,
     toggleCart, openCart, closeCart,
     applyCoupon, removeCoupon, setDeliveryFee,
-  }), [items, isOpen, coupon, deliveryFee, subtotal, total, itemCount, addItem, removeItem, updateQuantity, clearCart, toggleCart, openCart, closeCart, applyCoupon, removeCoupon, setDeliveryFee])
+  }), [items, isOpen, coupon, freteCobrado, freteGratis, subtotal, total, itemCount, addItem, removeItem, updateQuantity, clearCart, toggleCart, openCart, closeCart, applyCoupon, removeCoupon, setDeliveryFee])
 
   return (
     <CartContext.Provider value={value}>

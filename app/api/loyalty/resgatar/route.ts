@@ -53,6 +53,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    /**
+     * Brinde sem valor não vira cupom.
+     *
+     * Cookie e adicional viram desconto fixo do preço do item. Com valor zero
+     * o cupom nasce descontando R$ 0,00: o cliente gasta os pontos, o cupom é
+     * aceito no checkout e o total não muda. Melhor recusar aqui, com os
+     * pontos intactos, do que entregar um prêmio que não desconta nada.
+     */
+    if ((reward.tipo === 'cookie' || reward.tipo === 'adicional') && !(reward.valor > 0)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Este prêmio ainda não tem valor definido. Fale com a loja — seus pontos não foram usados.',
+        },
+        { status: 409 },
+      )
+    }
+
     const code = redemptionCode(chave, reward.id)
     const hoje = new Date()
     const validade = new Date(hoje.getTime() + 30 * 86_400_000)
@@ -63,8 +81,9 @@ export async function POST(req: NextRequest) {
       : 'fixed'
     // Brindes (cookie/adicional) viram desconto fixo do valor do item, para
     // caberem no cupom que o checkout já sabe validar.
-    const desconto =
-      reward.tipo === 'desconto_percentual' || reward.tipo === 'desconto_fixo' ? reward.valor : 0
+    // Frete grátis não tem desconto em reais: quem zera a entrega é o tipo do
+    // cupom. Todo o resto — inclusive os brindes — carrega o valor da recompensa.
+    const desconto = reward.tipo === 'frete_gratis' ? 0 : reward.valor
 
     const erroCupom = await criarCupom({
       id: `coupon-${code}`,

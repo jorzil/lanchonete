@@ -61,7 +61,7 @@ export interface Address {
 export interface Customer    { name: string; phone: string }
 export type PaymentMethod    = 'pix' | 'cartao-credito' | 'cartao-debito' | 'dinheiro'
 export interface Coupon      {
-  code: string; discount: number; type: 'percentage' | 'fixed'
+  code: string; discount: number; type: 'percentage' | 'fixed' | 'free_shipping'
   /** Escopo do cupom — sem isto o carrinho descontaria o pedido inteiro. */
   scope?: 'todos' | 'apenas' | 'exceto'
   scopeProducts?: string[]

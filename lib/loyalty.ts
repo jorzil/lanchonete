@@ -230,6 +230,10 @@ export function blockedSlices(fatias: WheelSlice[], redemptions: Redemption[]): 
   const fora = new Set<string>()
   for (const f of fatias) {
     if (f.ativo === false) { fora.add(f.id); continue }
+    // Brinde sem valor viraria cupom de R$ 0,00: o cliente ganha, aplica no
+    // checkout e o total não muda. Fica fora do sorteio até a loja dar um
+    // valor a ele.
+    if ((f.tipo === 'cookie' || f.tipo === 'adicional') && !(f.valor > 0)) { fora.add(f.id); continue }
     if (typeof f.estoque === 'number' && (usos[f.id] ?? 0) >= f.estoque) fora.add(f.id)
   }
   return fora

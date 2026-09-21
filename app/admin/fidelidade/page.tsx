@@ -25,6 +25,17 @@ const TIPOS: Array<{ v: Reward["tipo"]; label: string }> = [
   { v: "adicional", label: "Adicional grátis" },
 ]
 
+/**
+ * Brinde configurado sem preço.
+ *
+ * Cookie e adicional viram cupom de desconto fixo do valor do item. Zerado, o
+ * cupom é aceito no checkout e não tira nada do total — por isso o campo fica
+ * marcado em vermelho e a fatia correspondente sai do sorteio.
+ */
+function brindeSemValor(tipo: string, valor: number): boolean {
+  return (tipo === "cookie" || tipo === "adicional") && !(valor > 0)
+}
+
 const STATUS = [
   { v: "entregue", label: "Entregue" },
   { v: "saiu_entrega", label: "Saiu p/ entrega" },
@@ -285,9 +296,11 @@ export default function FidelidadePage() {
                   {TIPOS.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
                 </select>
                 <Input type="number" min="0" value={f.valor}
-                  disabled={f.tipo !== "desconto_percentual" && f.tipo !== "desconto_fixo"}
+                  disabled={f.tipo === "nada" || f.tipo === "frete_gratis"}
                   onChange={(e) => upFatia(f.id, { valor: parseFloat(e.target.value) || 0 })}
-                  className="h-9 w-20" placeholder="valor" />
+                  className={`h-9 w-20 ${brindeSemValor(f.tipo, f.valor) ? "border-red-400 bg-red-50" : ""}`}
+                  placeholder="valor"
+                  title={brindeSemValor(f.tipo, f.valor) ? "Preço do brinde — sem ele a fatia fica fora do sorteio" : undefined} />
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-gray-500">Chance</Label>
                   <Input type="number" min="0" max="100" step="0.5" value={f.chance}
@@ -550,10 +563,15 @@ export default function FidelidadePage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">
-                  {r.tipo === "desconto_percentual" ? "Percentual" : r.tipo === "desconto_fixo" ? "Valor R$" : "—"}
+                  {r.tipo === "desconto_percentual" ? "Percentual" : r.tipo === "frete_gratis" ? "—" : "Valor R$"}
                 </Label>
-                <Input type="number" min="0" value={r.valor} disabled={r.tipo !== "desconto_percentual" && r.tipo !== "desconto_fixo"}
-                  onChange={(e) => upReward(r.id, { valor: parseFloat(e.target.value) || 0 })} className="h-9" />
+                {/* O brinde precisa de valor: é ele que vira o desconto no
+                    checkout. Com o campo travado em zero, o cliente gastava os
+                    pontos e o cupom não descontava nada. */}
+                <Input type="number" min="0" value={r.valor} disabled={r.tipo === "frete_gratis"}
+                  onChange={(e) => upReward(r.id, { valor: parseFloat(e.target.value) || 0 })}
+                  className={`h-9 ${brindeSemValor(r.tipo, r.valor) ? "border-red-400 bg-red-50" : ""}`}
+                  title={brindeSemValor(r.tipo, r.valor) ? "Preço do brinde — sem ele o cupom não desconta nada" : undefined} />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-gray-500">Custa em</Label>
