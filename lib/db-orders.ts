@@ -92,29 +92,66 @@ export async function createOrder(data: CreateOrderPayload): Promise<Order> {
   // criava uma pessoa nova a cada formato ("(33) 9…" vs "339…"), fragmentando
   // o histórico. Guardamos a forma canônica e o texto original no whatsapp.
   const phoneKey = normalizePhone(data.customerPhone) || data.customerPhone
-  const { data: customer, error: custErr } = await supabase
-    .from('customers')
-    .upsert(
-      {
-        name: data.customerName,
-        phone: phoneKey,
-        whatsapp: data.customerWhatsapp ?? data.customerPhone,
-        cpf: data.customerCpf ?? null,
-        address_cep: data.address?.cep ?? null,
-        address_street: data.address?.street ?? null,
-        address_number: data.address?.number ?? null,
-        address_complement: data.address?.complement ?? null,
-        address_neighborhood: data.address?.neighborhood ?? null,
-        address_city: data.address?.city ?? null,
-        address_state: data.address?.state ?? null,
-        address_reference: data.address?.reference ?? null,
-      },
-      { onConflict: 'phone', ignoreDuplicates: false }
-    )
-    .select('id')
-    .single()
 
-  if (custErr) console.error('Customer upsert error (non-fatal):', custErr.message)
+  /**
+   * O que se grava do cliente.
+   *
+   * Campo ausente é OMITIDO, nunca enviado como null. O upsert sobrescreve
+   * coluna por coluna: mandar null apagava o que já estava lá, então um
+   * pedido de retirada — que não tem endereço — limpava o endereço que o
+   * cliente havia cadastrado na entrega anterior.
+   */
+  const cadastro: Record<string, unknown> = {
+    name: data.customerName,
+    phone: phoneKey,
+    whatsapp: data.customerWhatsapp ?? data.customerPhone,
+  }
+  const guardar = (coluna: string, valor?: string | null) => {
+    if (typeof valor === 'string' && valor.trim() !== '') cadastro[coluna] = valor
+  }
+  guardar('cpf', data.customerCpf)
+  guardar('address_cep', data.address?.cep)
+  guardar('address_street', data.address?.street)
+  guardar('address_number', data.address?.number)
+  guardar('address_complement', data.address?.complement)
+  guardar('address_neighborhood', data.address?.neighborhood)
+  guardar('address_city', data.address?.city)
+  guardar('address_state', data.address?.state)
+  guardar('address_reference', data.address?.reference)
+
+  async function salvarCliente(campos: Record<string, unknown>) {
+    return supabase
+      .from('customers')
+      .upsert(campos, { onConflict: 'phone', ignoreDuplicates: false })
+      .select('id')
+      .single()
+  }
+
+  let { data: customer, error: custErr } = await salvarCliente(cadastro)
+
+  /**
+   * Segunda tentativa só com o essencial.
+   *
+   * Se a primeira falhou por causa de uma coluna — ausente no banco, com tipo
+   * diferente, com alguma regra —, insistir com nome e telefone ainda salva a
+   * pessoa. Perder o endereço é ruim; perder o cliente inteiro é pior.
+   */
+  if (custErr) {
+    console.error('Falha ao gravar o cliente, tentando só o essencial:', custErr.message)
+    const minimo = { name: cadastro.name, phone: cadastro.phone, whatsapp: cadastro.whatsapp }
+    const segunda = await salvarCliente(minimo)
+    customer = segunda.data
+    custErr = segunda.error
+  }
+
+  // O pedido nunca deixa de ser gravado por causa disto: venda perdida é pior
+  // que cadastro faltando. Mas o erro fica registrado com o telefone, para dar
+  // para achar depois quem não entrou na base.
+  if (custErr) {
+    console.error(
+      `CLIENTE NÃO SALVO — pedido ${data.orderNumber}, telefone ${phoneKey}: ${custErr.message}`,
+    )
+  }
 
   // Código de entrega (4 dígitos) — só para pedidos de entrega
   const deliveryCode = data.orderType === 'entrega' ? generateDeliveryCode() : null
