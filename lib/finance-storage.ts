@@ -458,23 +458,14 @@ export function precoUnitario(t: Transaction): number | null {
  * um número sem significado.
  */
 /**
- * Unidades pequenas demais para servirem de referência de preço.
+ * Preço unitário na unidade em que o lançamento foi feito.
  *
- * Manteiga de R$ 16,98 com 500 g dá R$ 0,03396 por grama — um número que, em
- * reais, arredonda para R$ 0,03 e não serve para comparar fornecedor nenhum.
- * Convertido, vira R$ 33,96/kg, que é como o preço é falado e cobrado.
- */
-const ESCALA_PRECO: Record<string, { para: string; fator: number }> = {
-  g: { para: "kg", fator: 1000 },
-  ml: { para: "L", fator: 1000 },
-}
-
-/**
- * Preço unitário já na unidade em que ele se lê.
+ * A manteiga foi comprada em gramas, então o preço é por grama — a loja
+ * compara com o que o fornecedor cobra, e o fornecedor cobra na unidade da
+ * nota. Converter para quilo obrigaria a fazer a conta de cabeça de volta.
  *
- * `exato` diz se o valor cabe inteiro nas casas decimais mostradas — a tela
- * usa isso para marcar com "≈" o que foi arredondado, em vez de apresentar
- * uma conta redonda que não fecha.
+ * `exato` diz se o valor cabe inteiro nas casas mostradas; a tela marca com
+ * "≈" o que não couber, em vez de apresentar uma conta que não fecha.
  */
 export function precoUnitarioExibicao(
   t: Transaction,
@@ -488,23 +479,20 @@ export function escalarPreco(
   preco: number,
   unidade: string,
 ): { preco: number; unidade: string; casas: number; exato: boolean } {
-  const escala = ESCALA_PRECO[unidade]
-  const valor = escala ? preco * escala.fator : preco
-  const nome = escala ? escala.para : unidade
-
   /**
    * Casas decimais: as mínimas que representam o valor sem arredondar.
    *
-   * Duas casas bastam para quase tudo, mas item barato vendido em grande
-   * quantidade (guardanapo a R$ 0,0075) viraria "R$ 0,01" — ou pior, "R$ 0,00".
-   * O teto de 4 existe para a tela não virar uma fileira de dígitos; acima
-   * disso a tela avisa que o número está arredondado.
+   * Duas bastam para quase tudo, mas preço por grama é naturalmente miúdo —
+   * manteiga de R$ 16,98 com 500 g sai a R$ 0,03396/g, que em duas casas
+   * viraria R$ 0,03 e perderia justamente a diferença que distingue um
+   * fornecedor do outro. Por isso o teto é seis: o suficiente para o preço
+   * por grama e por mililitro fecharem exatos.
    */
   let casas = 2
-  while (casas < 4 && Math.abs(valor - Number(valor.toFixed(casas))) > 1e-9) casas++
-  const exato = Math.abs(valor - Number(valor.toFixed(casas))) <= 1e-9
+  while (casas < 6 && Math.abs(preco - Number(preco.toFixed(casas))) > 1e-9) casas++
+  const exato = Math.abs(preco - Number(preco.toFixed(casas))) <= 1e-9
 
-  return { preco: valor, unidade: nome, casas, exato }
+  return { preco, unidade, casas, exato }
 }
 
 /** Formata o preço unitário com as casas que ele precisa, nem mais nem menos. */
