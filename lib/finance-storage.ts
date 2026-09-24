@@ -412,6 +412,25 @@ export function deleteTransaction(id: string): void {
   saveTransactions(loadTransactions().filter((t) => t.id !== id))
 }
 
+/**
+ * Altera um lançamento já feito, preservando id e data de criação.
+ *
+ * Sem isto, corrigir um valor digitado errado obrigava a apagar e lançar de
+ * novo — e quem apaga no meio do mês costuma esquecer de relançar.
+ */
+export function updateTransaction(
+  id: string,
+  dados: Omit<Transaction, "id" | "createdAt">,
+): Transaction | null {
+  const list = loadTransactions()
+  const i = list.findIndex((t) => t.id === id)
+  if (i < 0) return null
+  const atualizado: Transaction = { ...dados, id, createdAt: list[i].createdAt }
+  list[i] = atualizado
+  saveTransactions(list)
+  return atualizado
+}
+
 /** Substitui a lista local (usado na hidratação a partir do Supabase). */
 export function replaceTransactions(list: Transaction[]): void {
   saveTransactions(Array.isArray(list) ? list : [])
@@ -438,6 +457,66 @@ export function precoUnitario(t: Transaction): number | null {
  * Só agrupa lançamentos da MESMA unidade — misturar kg com unidade produziria
  * um número sem significado.
  */
+/**
+ * Unidades pequenas demais para servirem de referência de preço.
+ *
+ * Manteiga de R$ 16,98 com 500 g dá R$ 0,03396 por grama — um número que, em
+ * reais, arredonda para R$ 0,03 e não serve para comparar fornecedor nenhum.
+ * Convertido, vira R$ 33,96/kg, que é como o preço é falado e cobrado.
+ */
+const ESCALA_PRECO: Record<string, { para: string; fator: number }> = {
+  g: { para: "kg", fator: 1000 },
+  ml: { para: "L", fator: 1000 },
+}
+
+/**
+ * Preço unitário já na unidade em que ele se lê.
+ *
+ * `exato` diz se o valor cabe inteiro nas casas decimais mostradas — a tela
+ * usa isso para marcar com "≈" o que foi arredondado, em vez de apresentar
+ * uma conta redonda que não fecha.
+ */
+export function precoUnitarioExibicao(
+  t: Transaction,
+): { preco: number; unidade: string; casas: number; exato: boolean } | null {
+  const base = precoUnitario(t)
+  if (base === null || !t.unidade) return null
+  return escalarPreco(base, t.unidade)
+}
+
+export function escalarPreco(
+  preco: number,
+  unidade: string,
+): { preco: number; unidade: string; casas: number; exato: boolean } {
+  const escala = ESCALA_PRECO[unidade]
+  const valor = escala ? preco * escala.fator : preco
+  const nome = escala ? escala.para : unidade
+
+  /**
+   * Casas decimais: as mínimas que representam o valor sem arredondar.
+   *
+   * Duas casas bastam para quase tudo, mas item barato vendido em grande
+   * quantidade (guardanapo a R$ 0,0075) viraria "R$ 0,01" — ou pior, "R$ 0,00".
+   * O teto de 4 existe para a tela não virar uma fileira de dígitos; acima
+   * disso a tela avisa que o número está arredondado.
+   */
+  let casas = 2
+  while (casas < 4 && Math.abs(valor - Number(valor.toFixed(casas))) > 1e-9) casas++
+  const exato = Math.abs(valor - Number(valor.toFixed(casas))) <= 1e-9
+
+  return { preco: valor, unidade: nome, casas, exato }
+}
+
+/** Formata o preço unitário com as casas que ele precisa, nem mais nem menos. */
+export function formatPrecoUnitario(preco: number, casas: number): string {
+  return preco.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  })
+}
+
 export function precoMedio(txs: Transaction[]): { preco: number; unidade: string; quantidade: number } | null {
   const comQuantidade = txs.filter((t) => t.quantidade && t.quantidade > 0 && t.unidade)
   if (comQuantidade.length === 0) return null

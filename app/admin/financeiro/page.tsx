@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useState } from "react"
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, Ban, CheckCircle2, ChevronRight, Clock, CreditCard as IconeCartao, FileBarChart, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react"
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, Ban, CheckCircle2, ChevronRight, Clock, CreditCard as IconeCartao, FileBarChart, Pencil, Plus, Trash2, TrendingDown, TrendingUp, Wallet, X } from "lucide-react"
 import { formatCurrency } from "@/lib/store"
 import {
   loadTransactions, addTransaction, deleteTransaction, calcDRE,
@@ -12,6 +12,7 @@ import {
   loadCards, addCard, deleteCard, replaceCards, cardLabel, faturasEmAberto,
   saveTransactions, type CreditCard,
   UNIDADES, unidadeLabel, precoUnitario, precoMedio,
+  updateTransaction, precoUnitarioExibicao, escalarPreco, formatPrecoUnitario,
   replaceTransactions, fetchTransactionsRemote, pushFinanceRemote,
   todayLocalISO, parseLocalDay,
   type Transaction, type TxKind, type ExpenseCategory,
@@ -513,6 +514,8 @@ export default function FinanceiroPage() {
   const [bills, setBills] = useState<Bill[]>([])
   const [summary, setSummary] = useState({ totalReceber: 0, totalPagar: 0, receberPendente: 0, pagarPendente: 0, receberVencido: 0, pagarVencido: 0, saldoLiquido: 0 })
   const [showTxModal, setShowTxModal] = useState(false)
+  /** Lançamento sendo corrigido. null = o modal está criando um novo. */
+  const [editandoTx, setEditandoTx] = useState<Transaction | null>(null)
   const [billModal, setBillModal] = useState<{ type: BillType; bill: Bill | null } | null>(null)
   const [txForm, setTxForm] = useState({ kind: "receita" as TxKind, amount: "", description: "", // string, e não a lista fechada: a loja cria as suas categorias
     category: "outros" as string, subcategory: "", card: "", quantidade: "", unidade: "", date: todayLocalISO(), account: "dinheiro" as MoneyAccount })
@@ -686,13 +689,42 @@ export default function FinanceiroPage() {
   const receberBills = bills.filter((b) => b.type === "receber")
   const pagarBills = bills.filter((b) => b.type === "pagar")
 
+  function fecharTxModal() {
+    setShowTxModal(false)
+    setEditandoTx(null)
+    setNovaSub("")
+    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", card: "", quantidade: "", unidade: "", date: todayLocalISO(), account: "dinheiro" })
+  }
+
+  /** Abre o modal já preenchido com o lançamento, para corrigir. */
+  function abrirEdicaoTx(t: Transaction) {
+    setEditandoTx(t)
+    setTxForm({
+      kind: t.kind,
+      // Sem trocar o ponto por vírgula: o campo é input[type=number], que
+      // recusa "16,98" e aparece VAZIO. Com ponto, ele mostra o valor.
+      amount: String(t.amount),
+      description: t.description,
+      category: t.category,
+      subcategory: t.subcategory ?? "",
+      card: t.card ?? "",
+      quantidade: t.quantidade ? String(t.quantidade) : "",
+      unidade: t.unidade ?? "",
+      date: t.date,
+      // O campo é opcional no lançamento antigo, mas o formulário sempre tem
+      // uma conta escolhida.
+      account: t.account ?? "dinheiro",
+    })
+    setShowTxModal(true)
+  }
+
   function handleAddTx() {
-    const amount = parseFloat(txForm.amount)
+    const amount = parseFloat(txForm.amount.replace(",", "."))
     if (!amount || !txForm.description.trim()) return
     // Receita não tem subcategoria: elas são todas de despesa.
     const sub = txForm.kind === "despesa" ? txForm.subcategory : ""
     const qtd = parseFloat(txForm.quantidade.replace(",", "."))
-    addTransaction({
+    const dados = {
       ...txForm,
       subcategory: sub || undefined,
       // Cartão só faz sentido quando a despesa foi no crédito.
@@ -701,12 +733,14 @@ export default function FinanceiroPage() {
       quantidade: qtd > 0 && txForm.unidade ? qtd : undefined,
       unidade: qtd > 0 && txForm.unidade ? txForm.unidade : undefined,
       amount,
-    })
+    }
+    // Corrigindo, o lançamento mantém o id — o histórico é o mesmo, com o
+    // valor certo. Criando, entra um novo.
+    if (editandoTx) updateTransaction(editandoTx.id, dados)
+    else addTransaction(dados)
     setTransactions(loadTransactions())
     persist()
-    setShowTxModal(false)
-    setNovaSub("")
-    setTxForm({ kind: "receita", amount: "", description: "", category: "outros", subcategory: "", card: "", quantidade: "", unidade: "", date: todayLocalISO(), account: "dinheiro" })
+    fecharTxModal()
   }
 
   /** Cria a subcategoria digitada e já a deixa selecionada. */
@@ -749,7 +783,9 @@ export default function FinanceiroPage() {
     const q = parseFloat(txForm.quantidade.replace(",", "."))
     const v = parseFloat(txForm.amount)
     if (!q || q <= 0 || !v || !txForm.unidade) return null
-    return v / q
+    // Mesma conta da lista, para o que se confere ao digitar bater com o que
+    // aparece depois de salvar.
+    return escalarPreco(v / q, txForm.unidade)
   }, [txForm.quantidade, txForm.amount, txForm.unidade])
 
   /** Quanto está em aberto em cada cartão. */
@@ -1012,7 +1048,7 @@ export default function FinanceiroPage() {
               {[2024, 2025, 2026, 2027].map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             <button
-              onClick={() => setShowTxModal(true)}
+              onClick={() => { setEditandoTx(null); setShowTxModal(true) }}
               className="ml-auto flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
             >
               <Plus size={15} /> Lançamento
@@ -1136,11 +1172,13 @@ export default function FinanceiroPage() {
                                     {fmt(sub.amount)}
                                   </span>
                                 </div>
-                                {medio && (
+                                {medio && (() => {
+                                  const esc = escalarPreco(medio.preco, medio.unidade)
+                                  return (
                                   <p className="mt-0.5 text-[11px] text-gray-400">
                                     {medio.quantidade.toLocaleString("pt-BR")} {medio.unidade} ·{" "}
                                     <strong className="font-semibold text-gray-600">
-                                      {fmt(medio.preco)}/{medio.unidade}
+                                      {esc.exato ? "" : "≈ "}{formatPrecoUnitario(esc.preco, esc.casas)}/{esc.unidade}
                                     </strong>
                                     {variacao !== null && Math.abs(variacao) >= 1 && (
                                       <span className={`ml-1.5 font-semibold ${
@@ -1150,7 +1188,8 @@ export default function FinanceiroPage() {
                                       </span>
                                     )}
                                   </p>
-                                )}
+                                  )
+                                })()}
                               </div>
                             )
                           })}
@@ -1255,16 +1294,38 @@ export default function FinanceiroPage() {
                         </td>
                         <td className={`px-5 py-3 text-right font-semibold ${t.kind === "receita" ? "text-emerald-600" : "text-red-500"}`}>
                           {t.kind === "receita" ? "+" : "-"}{fmt(t.amount)}
-                          {precoUnitario(t) !== null && (
-                            <span className="block text-[11px] font-normal text-gray-400">
-                              {t.quantidade} {t.unidade} · {fmt(precoUnitario(t) as number)}/{t.unidade}
-                            </span>
-                          )}
+                          {(() => {
+                            // Preço na unidade em que ele se lê: 500 g de
+                            // manteiga viram R$/kg, não R$ 0,03 por grama.
+                            const pu = precoUnitarioExibicao(t)
+                            if (!pu) return null
+                            return (
+                              <span className="block text-[11px] font-normal text-gray-400">
+                                {t.quantidade} {t.unidade} · {pu.exato ? "" : "≈ "}
+                                {formatPrecoUnitario(pu.preco, pu.casas)}/{pu.unidade}
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <button onClick={() => handleDeleteTx(t.id)} className="text-gray-300 hover:text-red-400">
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => abrirEdicaoTx(t)}
+                              title="Corrigir este lançamento"
+                              aria-label={`Corrigir ${t.description}`}
+                              className="rounded p-1 text-gray-300 hover:bg-gray-100 hover:text-orange-500"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTx(t.id)}
+                              title="Excluir este lançamento"
+                              aria-label={`Excluir ${t.description}`}
+                              className="rounded p-1 text-gray-300 hover:bg-gray-100 hover:text-red-400"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1377,8 +1438,10 @@ export default function FinanceiroPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <h2 className="text-base font-semibold text-gray-900">Novo lançamento</h2>
-              <button onClick={() => setShowTxModal(false)} className="text-gray-400 hover:text-gray-600">
+              <h2 className="text-base font-semibold text-gray-900">
+                {editandoTx ? "Corrigir lançamento" : "Novo lançamento"}
+              </h2>
+              <button onClick={fecharTxModal} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
@@ -1622,7 +1685,12 @@ export default function FinanceiroPage() {
                         fechar o lançamento com o valor errado. */}
                     {precoDigitado !== null ? (
                       <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-[12px] font-medium text-emerald-800">
-                        Sai a <strong>{fmt(precoDigitado)}</strong> por {txForm.unidade}
+                        Sai a{" "}
+                        <strong>
+                          {precoDigitado.exato ? "" : "≈ "}
+                          {formatPrecoUnitario(precoDigitado.preco, precoDigitado.casas)}
+                        </strong>{" "}
+                        por {precoDigitado.unidade}
                       </p>
                     ) : (
                       <p className="mt-1 text-[11px] text-gray-400">
@@ -1636,7 +1704,7 @@ export default function FinanceiroPage() {
             </div>
             <div className="flex gap-3 border-t border-gray-100 px-6 py-4">
               <button
-                onClick={() => setShowTxModal(false)}
+                onClick={fecharTxModal}
                 className="flex-1 rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Cancelar
@@ -1645,7 +1713,7 @@ export default function FinanceiroPage() {
                 onClick={handleAddTx}
                 className="flex-1 rounded-lg bg-orange-500 py-2 text-sm font-medium text-white hover:bg-orange-600"
               >
-                Adicionar
+                {editandoTx ? "Salvar correção" : "Adicionar"}
               </button>
             </div>
           </div>
